@@ -1,0 +1,2137 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0E6B58"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="SV-Planer"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<title>SV-Planer</title>
+<script>window.SV_CLOUD={url:'https://nrtpytnvbeosvuztmsgm.supabase.co',key:'sb_publishable_oU-geWGpwIOLAtoeGthfkA_Z9zs8P_U'};</script>
+<script src="supabase.js"></script>
+
+<style>
+/* Layout: schmale Kopfzeile, Tab-Leiste, eine Arbeitsspalte (Übersicht: Hauptkarte + Aufgaben nebeneinander). */
+:root{
+  --bg:#F2F5F3; --surface:#FFFFFF; --surface2:#E7EDE9; --ink:#14201B; --ink2:#4A5B53; --line:#D3DDD7;
+  --accent:#0E6B58; --accent-ink:#FFFFFF; --accent-soft:#D6EBE4;
+  --good:#1B7F4A; --good-soft:#DAF0E3; --warn:#8F5400; --warn-soft:#F8E8C8; --bad:#B42318; --bad-soft:#F9DDD9; --on-bad:#FFFFFF;
+  --f-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --f-body:'Hanken Grotesk','Segoe UI',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1713; --surface:#16211C; --surface2:#1E2B25; --ink:#E6EFEA; --ink2:#9FB3A9; --line:#2B3B33;
+  --accent:#4FC3A5; --accent-ink:#06281F; --accent-soft:#1B3A31;
+  --good:#5CD08F; --good-soft:#173826; --warn:#E8B04A; --warn-soft:#3A2D12; --bad:#FF8A7D; --bad-soft:#40201C; --on-bad:#2A0A07;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1713; --surface:#16211C; --surface2:#1E2B25; --ink:#E6EFEA; --ink2:#9FB3A9; --line:#2B3B33;
+  --accent:#4FC3A5; --accent-ink:#06281F; --accent-soft:#1B3A31;
+  --good:#5CD08F; --good-soft:#173826; --warn:#E8B04A; --warn-soft:#3A2D12; --bad:#FF8A7D; --bad-soft:#40201C; --on-bad:#2A0A07;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 72px}
+.wrap{max-width:1040px;margin-inline:auto}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;line-height:1.15;margin:0;text-wrap:balance}
+h1{font-size:1.7rem;letter-spacing:-.01em}
+h2{font-size:1.35rem}
+h3{font-size:1.05rem}
+p{margin:0}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.meta{font-size:13px;color:var(--ink2)}
+.bad{color:var(--bad)}
+.empty{color:var(--ink2);padding:10px 0}
+em{color:var(--ink2)}
+
+.brandbar{display:flex;flex-direction:column;gap:2px}
+.nav{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin-block:14px 18px}
+.nav button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px;font:inherit;font-weight:600;color:var(--ink2);cursor:pointer;white-space:nowrap}
+.nav button[aria-current="page"]{color:var(--accent);border-bottom-color:var(--accent)}
+.badge{display:inline-block;min-width:20px;padding:0 6px;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-size:12px;text-align:center;font-family:var(--f-mono)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0}
+.card+.card{margin-top:14px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.stack>.card{margin:0}
+.vh{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 12px;margin-bottom:10px}
+.vh>*{min-width:0}
+.cols{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px;align-items:start}
+.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px}
+.frow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.frow>.grow{flex:1 1 220px;min-width:0}
+.grp{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-top:14px;margin-bottom:2px}
+
+.hero{background:var(--accent-soft);border-color:transparent;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.hero .when{font-family:var(--f-display);font-size:1.15rem;font-weight:600}
+.facts{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+
+.lbl{display:block;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2);margin-bottom:4px}
+input[type="text"],input[type="date"],input[type="datetime-local"],input[type="number"],select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:64px}
+input[type="checkbox"]{width:18px;height:18px;accent-color:var(--accent);flex:none;margin-top:3px}
+input[type="number"]{width:5.2rem}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;border-radius:6px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn.danger{color:var(--bad)}
+.btn.armed{background:var(--bad);color:var(--on-bad);border-color:var(--bad)}
+.link{background:none;border:0;padding:0;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer;text-align:left}
+
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--surface2);color:var(--ink2);white-space:nowrap}
+.pill.accent{background:var(--accent-soft);color:var(--accent)}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.tag{font-size:11px;font-weight:600;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--ink2);vertical-align:middle}
+
+.srow{display:grid;grid-template-columns:9.5rem minmax(0,1fr) auto;gap:4px 14px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:12px 4px;font:inherit;color:inherit;cursor:pointer}
+.srow:hover{background:var(--surface2)}
+.srow .st{font-weight:600;overflow-wrap:anywhere}
+.sdate{font-size:13px}
+
+.trow{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.trow .tmain{flex:1;min-width:0}
+.trow label{cursor:pointer;overflow-wrap:anywhere}
+.trow.done label{text-decoration:line-through;color:var(--ink2)}
+.toprow{padding:10px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.toplbl{font-size:13px;font-weight:500;color:var(--ink2);min-width:3.4rem}
+.arow{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-left:1px solid var(--line);background:var(--surface);padding:6px 10px;font:inherit;font-size:13px;color:var(--ink2);cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"][data-v="ja"]{background:var(--good-soft);color:var(--good);font-weight:600}
+.seg button[aria-pressed="true"][data-v="entsch"]{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.seg button[aria-pressed="true"][data-v="nein"]{background:var(--bad-soft);color:var(--bad);font-weight:600}
+.bes{padding:12px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.brow{padding:12px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.brow p{overflow-wrap:anywhere}
+.votes{display:flex;flex-wrap:wrap;gap:10px}
+.votes label{font-size:12px;font-weight:600;color:var(--ink2);display:flex;flex-direction:column;gap:2px}
+.banner{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-weight:500}
+textarea.box{font-family:var(--f-mono);font-size:13px;min-height:220px}
+.sum{font-size:13px;color:var(--ink2);margin-top:8px}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:6px;font-weight:600;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100% - 32px);text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%)}
+
+@media (max-width:760px){
+  .cols{grid-template-columns:minmax(0,1fr)}
+  h1{font-size:1.45rem}
+}
+@media (max-width:560px){
+  .srow{grid-template-columns:minmax(0,1fr) auto}
+  .srow .sdate{grid-column:1/-1}
+}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+.lv-timer{font-size:2rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.lv-timer.over{color:var(--bad)}
+.lv-top{font-size:1.5rem;line-height:1.25;font-weight:700;margin:4px 0 8px}
+.vb{min-width:56px;min-height:56px;font-size:1.5rem;font-weight:700;border-radius:8px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);cursor:pointer;font-family:inherit}
+.vb.plus{background:var(--accent);color:#fff;border-color:var(--accent)}
+.vcount{font-size:2rem;font-weight:700;min-width:2.2ch;text-align:center;font-variant-numeric:tabular-nums}
+.vgrp{display:flex;align-items:center;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip.cur{outline:2px solid var(--accent);outline-offset:1px}
+.chip.done{opacity:.55}
+.rl li{display:flex;gap:8px;align-items:center;margin-bottom:6px;list-style:none}
+.rl{padding:0;margin:0}
+.rl li.done .nm{text-decoration:line-through;opacity:.6}
+.rt.over{color:var(--bad);font-weight:700}
+.att{border-collapse:collapse;font-size:14px}
+.att th,.att td{border:1px solid var(--line);padding:5px 9px;text-align:center}
+.att th{background:var(--surface2);font-weight:600}
+.att td:first-child,.att th:first-child{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surface)}
+.att th:first-child{background:var(--surface2)}
+.att td.c{cursor:pointer}
+.a-ja{color:var(--good);font-weight:700}.a-nein{color:var(--bad);font-weight:700}.a-ent{color:var(--warn);font-weight:700}.a-x{color:var(--ink2)}
+.att sup{font-size:10px;font-weight:400}
+</style>
+<style id="paper-css">
+.sheet{overflow-x:auto;max-width:100%}
+.seg.tabs button{padding:8px 14px;white-space:nowrap;font-weight:600}
+.seg.tabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.paper{background:#fff;color:#111;font-family:'DejaVu Sans','Segoe UI',Arial,sans-serif;font-size:10.5pt;line-height:1.45;padding:28px 34px;max-width:820px;min-width:640px;margin-inline:auto;border:1px solid #cfd6d2}
+.paper h1{font-size:21pt;line-height:1.2;text-align:center;margin:0;font-weight:700;color:#111}
+.paper .sub{font-size:12.5pt;font-weight:700;text-align:center;margin:4px 0 16px}
+.paper h3{font-size:12.5pt;line-height:1.3;margin:18px 0 4px;font-weight:700;color:#111}
+.paper p{margin:0 0 6px}
+.paper p.l2{margin:8px 0 3px}
+.paper table{border-collapse:collapse;width:calc(100% - 22px);margin:0 0 6px 22px;table-layout:fixed}
+.paper td,.paper th{border:1px solid #111;padding:5px 8px;text-align:left;vertical-align:top;font-weight:400;overflow-wrap:anywhere}
+.paper td.k{width:31%}
+.paper table.ebox td{height:26px;white-space:pre-wrap}
+.paper table.sig td{height:30px}
+.paper table.sig tr:nth-child(2) td{height:64px;vertical-align:bottom}
+.paper .ul{display:inline-block;min-width:11rem;border-bottom:1px solid #111;height:1em}
+.paper ol{margin:0 0 6px;padding-left:44px}
+.paper .indent{margin-left:22px}
+.paper input[type="text"],.paper input[type="number"],.paper textarea{border:0;border-radius:0;padding:0;background:transparent;color:#111;width:100%;font:inherit;min-width:0;resize:none;display:block}
+.paper input[type="number"]{width:5rem}
+.paper input.inl{display:inline-block;width:5rem}
+.paper .sub input[type="text"]{text-align:center;font-weight:700;font-size:inherit}
+.paper.edit input[type="text"],.paper.edit input[type="number"],.paper.edit textarea{background:#EEF5F1}
+.paper.edit input:focus-visible,.paper.edit textarea:focus-visible{outline:2px solid #0E6B58;outline-offset:1px}
+.paper .tg{font:inherit;border:1px solid #888;background:#fff;color:#111;padding:1px 10px;margin-right:6px;cursor:pointer;border-radius:3px}
+.paper .tg[aria-pressed="true"]{background:#0E6B58;color:#fff;border-color:#0E6B58}
+.paper .addb{font:inherit;font-size:9.5pt;border:1px dashed #0E6B58;background:#fff;color:#0E6B58;padding:3px 10px;margin:0 0 6px 22px;cursor:pointer;border-radius:3px}
+.paper tr{break-inside:avoid}
+.paper table.tl{width:100%;margin-left:0}
+.paper.aus h1{font-size:30pt;margin-top:8px}.paper.aus li{font-size:13pt;margin-bottom:4px}.paper.aus td{font-size:13pt}.paper.aus .sub{font-weight:400}
+.paper table.sig td{width:25%}
+.paper table.tl th{background:#EDEDED;font-weight:700;font-size:9.5pt}
+.paper table.tl td{height:34px;vertical-align:middle}
+@media print{.paper{border:0;padding:0;min-width:0;max-width:none}.paper table.tl th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+
+<div class="wrap">
+  <header class="brandbar">
+    <div class="eyebrow" id="gname"></div>
+    <h1>SV-Planer</h1>
+    <button type="button" class="pill" id="cpill" data-act="nav" data-v="daten" style="display:none;border:0;cursor:pointer;margin-top:6px"></button>
+  </header>
+  <div id="app"></div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+var KEY='sv-planer-v1';
+function $(s){return document.querySelector(s)}
+function uid(){return Math.random().toString(36).slice(2,9)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
+function pad(n){return String(n).padStart(2,'0')}
+function toLocal(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes())}
+function dstr(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function today(){return dstr(new Date())}
+
+var fDate=new Intl.DateTimeFormat('de-DE',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+var fTime=new Intl.DateTimeFormat('de-DE',{hour:'2-digit',minute:'2-digit'});
+var fShort=new Intl.DateTimeFormat('de-DE',{day:'numeric',month:'short'});
+var fRow=new Intl.DateTimeFormat('de-DE',{weekday:'short',day:'numeric',month:'short'});
+var fD=new Intl.DateTimeFormat('de-DE',{day:'numeric',month:'short',year:'numeric'});
+function dt(s){if(!s)return null;var d=new Date(s);return isNaN(d.getTime())?null:d}
+function dateLabel(s){var d=dt(s);return d?fDate.format(d)+', '+fTime.format(d)+' Uhr':'Kein Termin'}
+function rowDate(s){var d=dt(s);return d?fRow.format(d)+' · '+fTime.format(d):'Kein Termin'}
+function shortD(s){var d=dt(s);return d?fD.format(d):'ohne Datum'}
+function fristLabel(s){var d=new Date(s+'T00:00');return isNaN(d.getTime())?s:fShort.format(d)}
+function daysUntil(s){var d=dt(s);if(!d)return null;var a=new Date();a.setHours(0,0,0,0);var b=new Date(d);b.setHours(0,0,0,0);return Math.round((b-a)/864e5)}
+function rel(n){if(n===null)return '';if(n===0)return 'heute';if(n===1)return 'morgen';if(n===-1)return 'gestern';return n>0?('in '+n+' Tagen'):('vor '+(-n)+' Tagen')}
+function sj(s){var d=dt(s);if(!d)return '–';var y=d.getFullYear(),m=d.getMonth();var a=m>=7?y:y-1;return a+'/'+(a+1)}
+
+var ROLLEN=['Schulsprecher/in','Stellvertretung','Protokoll','Mitglied','Verbindungslehrer/in','Gast'];
+var STATUS=[['geplant','Geplant','neutral'],['eingeladen','Eingeladen','accent'],['gehalten','Gehalten, Protokoll fehlt','warn'],['protokolliert','Protokoll fertig','good'],['abgesagt','Abgesagt','bad']];
+var TYPEN=[['info','Information'],['diskussion','Diskussion'],['beschluss','Beschluss'],['wahl','Wahl'],['sonstiges','Sonstiges'],['ende','Sitzungsende']];
+var AV=[['ja','Anwesend'],['entsch','Entschuldigt'],['nein','Fehlt']];
+var RULES=[['gt50','Mehr als die Hälfte der Stimmberechtigten'],['ge50','Mindestens die Hälfte der Stimmberechtigten'],['ge66','Mindestens zwei Drittel der Stimmberechtigten']];
+var TABS=[['uebersicht','Übersicht'],['sitzungen','Sitzungen'],['anwesenheit','Anwesenheit'],['vorlagen','Vorlagen'],['aufgaben','Aufgaben'],['themen','Themen'],['projekte','Projekte'],['antraege','Anträge'],['umfragen','Umfragen'],['plan','Jahresplan'],['beschluesse','Beschlüsse'],['gremium','Gremium'],['daten','Daten']];
+var ART=[['tagesordnung','Tagesordnung'],['protokoll','Protokoll'],['einladung','Einladung'],['text','Sonstiges']];
+var PLATZ='{{gremium}} {{titel}} {{datum}} {{uhrzeit}} {{ort}} {{heute}} {{tagesordnung}} {{tops_notizen}} {{anwesenheit}} {{beschlussfaehigkeit}} {{beschluesse}} {{aufgaben}} {{notizen}}';
+
+function defaultVorlagenBase(){
+  return [
+   {id:uid(),name:'Standard-Tagesordnung',art:'tagesordnung',inhalt:'Begrüßung und Feststellung der Beschlussfähigkeit | 5 | info\nGenehmigung des letzten Protokolls | 5 | beschluss\nOffene Aufgaben | 10 | info\nBerichte | 10 | info\nAnträge und Beschlüsse | 20 | beschluss\nVerschiedenes | 10 | info'},
+   {id:uid(),name:'Protokoll (Standard)',art:'protokoll',inhalt:'# Protokoll: {{titel}}\n\n- **Gremium:** {{gremium}}\n- **Datum:** {{datum}}, {{uhrzeit}} Uhr\n- **Ort:** {{ort}}\n- **Protokollführung:** \n\n## Anwesenheit\n\n{{anwesenheit}}\n\n{{beschlussfaehigkeit}}\n\n## Tagesordnung\n\n{{tops_notizen}}\n\n## Beschlüsse\n\n{{beschluesse}}\n\n## Aufgaben\n\n{{aufgaben}}\n\n## Weitere Notizen\n\n{{notizen}}\n\nErstellt am {{heute}}\n'},
+   {id:uid(),name:'Einladung zur Sitzung',art:'einladung',inhalt:'Betreff: Einladung zur {{titel}} am {{datum}}\n\nLiebe Mitglieder der {{gremium}},\n\nhiermit lade ich euch zur nächsten Sitzung ein.\n\nTermin: {{datum}}, {{uhrzeit}} Uhr\nOrt: {{ort}}\n\nTagesordnung:\n{{tagesordnung}}\n\nBitte gebt bis zum Vortag Bescheid, ob ihr teilnehmen könnt. Weitere Punkte für die Tagesordnung könnt ihr bis dahin bei mir einreichen.\n\nViele Grüße\n'},
+   {id:uid(),name:'Antrag an die Schulleitung',art:'text',inhalt:'An die Schulleitung\n\nAntrag der {{gremium}} vom {{heute}}\n\nDie {{gremium}} hat in ihrer Sitzung am {{datum}} folgenden Antrag beschlossen:\n\n[Antragstext]\n\nBegründung:\n[Begründung]\n\nDas Abstimmungsergebnis ist im Protokoll der Sitzung festgehalten.\n\nMit freundlichen Grüßen\n'}
+  ];
+}
+function defaultVorlagen(){return defaultVorlagenBase().concat([srTemplate()])}
+function srTemplate(){
+  return {id:uid(),name:'Schülerrat: Sitzung mit Wahl und Geschäftsordnung',art:'tagesordnung',inhalt:[
+    'Eröffnung und Begrüßung | 5 | info | Feststellung der ordnungsgemäßen Einladung und der Beschlussfähigkeit anhand der separaten Anwesenheitsliste. Genehmigung der Tagesordnung.',
+    'Schul-Leitbild und Weihnachtsfeier | 30 | diskussion | 2.1 Entwicklung eines Schul-Leitbildes: Sammlung und Diskussion von Vorschlägen, mögliche Inhalte und weiteres Vorgehen. // 2.2 Weihnachtsfeier: Entscheidung über die Durchführung, Ideensammlung, erste Planung, gegebenenfalls Organisationsteam sowie Einbindung der beauftragten Person für Veranstaltungsplanung. // 2.3 Rückfragen und Aussprache.',
+    'Beratungskonferenzen | 20 | diskussion | 3.1 Vorstellung des von der Schulleitung unterbreiteten Vorschlags, nach den Ferien Beratungskonferenzen einzuführen. // 3.2 Beratung über Ziel, möglichen Ablauf und Ausgestaltung; Fragen und Anregungen aus dem Schülerrat. // 3.3 Beratung über Vorstellungen der Schülerschaft und gegebenenfalls Festlegung weiterer Schritte.',
+    'Wahl des stellvertretenden Schülersprechers | 15 | wahl | Vorstellung der beiden Kandidaten, Fragen an die Kandidaten und geheime Wahl. Die Auszählung erfolgt durch die Wahlleitung und zwei nicht kandidierende Wahlhelferinnen/Wahlhelfer. Das vollständige Wahlergebnis wird in einer separaten Wahlniederschrift dokumentiert.',
+    'Beratung und Beschlussfassung über die Geschäftsordnung der Schülervertretung | 20 | beschluss | Vorstellung des Entwurfs, Beratung und Aussprache, gegebenenfalls Änderungsanträge und Abstimmung. Die beschlossene Geschäftsordnung wird der Schulleitung zur Genehmigung vorgelegt.',
+    'Sonstiges | 10 | sonstiges | Weitere Anliegen und Informationen aus dem Schülerrat sowie weitere Wortmeldungen.',
+    'Ende der Sitzung | 5 | ende | Zusammenfassung der gefassten Beschlüsse und vereinbarten Maßnahmen. Bekanntgabe gegebenenfalls anstehender Termine. Schließung der Sitzung durch den Schülersprecher.'
+  ].join('\n')};
+}
+function setDef(name){return {name:name,quorumRule:'ge50',ort:'',schule:'Musterschule',protGremium:'Schülerrates',leitung:'Vorname Nachname, Schülersprecher',tlRows:30}}
+function parseTops(txt){
+  return String(txt||'').split('\n').map(function(l){return l.trim()}).filter(Boolean).map(function(l){
+    var p=l.split('|').map(function(x){return x.trim()}),ty=(p[2]||'').toLowerCase();
+    return {id:uid(),titel:p[0],min:Math.max(0,parseInt(p[1],10)||5),typ:TYPEN.some(function(x){return x[0]===ty})?ty:'info',beschr:p.slice(3).join(' | ').split(' // ').join('\n'),notiz:''};
+  });
+}
+function tops2lines(s){return s.tops.map(function(t){return t.titel+' | '+t.min+' | '+t.typ+(t.beschr?' | '+String(t.beschr).split('\n').join(' // '):'')}).join('\n')}
+function topSel(s,c,cur){
+  return '<select aria-label="Zu TOP" style="width:auto" '+c+' data-f="top"><option value="">Kein TOP</option>'+s.tops.map(function(t,i){return '<option value="'+t.id+'"'+(cur===t.id?' selected':'')+'>TOP '+(i+1)+'</option>'}).join('')+'</select>';
+}
+
+/* ---------- Protokoll im Aufbau des Protokollformulars ---------- */
+function pfv(s,k,def){return (s.pf&&s.pf[k]!==undefined)?s.pf[k]:def}
+function d2(x){var d=dt(x);return d?pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear():''}
+function t2(x){var d=dt(x);return d?fTime.format(d)+' Uhr':''}
+function sessNo(s){
+  var y=sj(s.datum),l=sorted().filter(function(x){return x.status!=='abgesagt'&&sj(x.datum)===y});
+  var i=l.findIndex(function(x){return x.id===s.id});
+  return i<0?l.length+1:i+1;
+}
+function leitungName(){return String(S.settings.leitung||'').split(',')[0].trim()}
+function dresHTML(b){
+  var r=res(b);
+  return (r.label==='Angenommen'?'☒':'☐')+' angenommen &nbsp; '+(r.k==='bad'?'☒':'☐')+' abgelehnt';
+}
+function ovwRows(s){
+  var rows=[];
+  function idx(id){return s.tops.findIndex(function(t){return t.id===id})}
+  s.beschluesse.forEach(function(b){var i=idx(b.top),r=res(b);rows.push({o:i<0?999:i,top:i<0?'':String(i+1),text:(b.text||'')+(b.ja+b.nein>0?' ('+r.label+')':''),wer:b.wer||'',frist:b.frist?d2(b.frist+'T00:00'):''})});
+  s.aufgaben.forEach(function(t){var i=idx(t.top);rows.push({o:i<0?999:i,top:i<0?'':String(i+1),text:t.text||'',wer:t.wer||'',frist:t.frist?d2(t.frist+'T00:00'):''})});
+  rows.sort(function(a,b){return a.o-b.o});
+  while(rows.length<3)rows.push({top:'',text:'',wer:'',frist:''});
+  return rows.map(function(r){return '<tr><td>'+esc(r.top)+'&nbsp;</td><td>'+esc(r.text)+'&nbsp;</td><td>'+esc(r.wer)+'&nbsp;</td><td>'+esc(r.frist)+'&nbsp;</td></tr>'}).join('');
+}
+function protHTML(s,edit){
+  var sid=s.id,h='';
+  function inp(k,def,label){
+    var v=pfv(s,k,def);
+    return edit?'<input type="text" data-sid="'+sid+'" data-sub="pf" data-f="'+k+'" aria-label="'+esc(label)+'" value="'+esc(v)+'">':(v?esc(v):'<span class="ul"></span>');
+  }
+  function row(k,v){return '<tr><td class="k">'+k+'</td><td>'+v+'</td></tr>'}
+  function blank(){return '<span class="ul" style="min-width:4rem"></span>'}
+  var protMem=S.members.find(function(m){return m.aktiv&&m.rolle==='Protokoll'});
+  var sub=sessNo(s)+'. Sitzung des '+(S.settings.protGremium||'Schülerrates')+' – Schuljahr '+sj(s.datum);
+  h+='<div class="paper'+(edit?' edit':'')+'"><h1>Sitzungsprotokoll</h1><div class="sub">'+(edit?inp('untertitel',sub,'Untertitel'):esc(pfv(s,'untertitel',sub)))+'</div>';
+  h+='<table>'+row('Schule',inp('schule',S.settings.schule||'','Schule'))+row('Datum',inp('datum',d2(s.datum),'Datum'))+row('Uhrzeit',inp('uhrzeit',t2(s.datum),'Uhrzeit'))+row('Ort',inp('ort',s.ort||'','Ort'))+row('Sitzungsleitung',inp('leitung',S.settings.leitung||'','Sitzungsleitung'))+row('Protokollführung',inp('protokoll',protMem?protMem.name:'','Protokollführung'))+'</table>';
+  h+='<h3>Hinweis zur Anwesenheit</h3><p>Die Anwesenheit wird in einer separaten Anwesenheitsliste dokumentiert. Diese ist Bestandteil der Sitzungsunterlagen und wird als Anlage beigefügt.</p>';
+
+  var LAB={info:'Ergebnis / Anmerkungen:',diskussion:'Ergebnisse / Beschlüsse:',beschluss:'Änderungsanträge / wesentliche Beratungsergebnisse:',wahl:'Ergebnis / Anmerkungen:',sonstiges:'Thema / Ergebnis:'};
+  function ebox(t,i){
+    var c='data-sid="'+sid+'" data-coll="tops" data-id="'+t.id+'"';
+    if(edit){var n=Math.max(3,String(t.notiz||'').split('\n').length+1);return '<table class="ebox"><tr><td><textarea rows="'+n+'" '+c+' data-f="notiz" aria-label="Ergebnis TOP '+(i+1)+'">'+esc(t.notiz)+'</textarea></td></tr></table>'}
+    return t.notiz?'<table class="ebox"><tr><td>'+esc(t.notiz)+'</td></tr></table>':'<table class="ebox"><tr><td></td></tr><tr><td></td></tr></table>';
+  }
+  function wahl(t,i){
+    var c='data-sid="'+sid+'" data-coll="tops" data-id="'+t.id+'"';
+    function wf(k,def,label){
+      var v=(t.w&&t.w[k]!==undefined)?t.w[k]:def;
+      return edit?'<input type="text" '+c+' data-sub="w" data-f="'+k+'" aria-label="'+label+'" value="'+esc(v)+'">':(v?esc(v):'<span class="ul"></span>');
+    }
+    var an=t.w&&t.w.annahme,cell;
+    if(edit)cell='<button type="button" class="tg" data-act="wahlja" data-sid="'+sid+'" data-id="'+t.id+'" data-v="ja" aria-pressed="'+(an==='ja')+'">Ja</button><button type="button" class="tg" data-act="wahlja" data-sid="'+sid+'" data-id="'+t.id+'" data-v="nein" aria-pressed="'+(an==='nein')+'">Nein</button>';
+    else cell=(an==='ja'?'☒':'☐')+' Ja &nbsp; '+(an==='nein'?'☒':'☐')+' Nein';
+    return '<table>'+row('Wahlleitung',wf('leitung',leitungName(),'Wahlleitung'))+row('Wahlhelfer/in 1',wf('helfer1','','Wahlhelfer 1'))+row('Wahlhelfer/in 2',wf('helfer2','','Wahlhelfer 2'))+row('Kandidat/in 1',wf('k1','','Kandidat 1'))+row('Kandidat/in 2',wf('k2','','Kandidat 2'))+row('Gewählte Person',wf('gewaehlt','','Gewählte Person'))+row('Annahme der Wahl',cell)+'</table>';
+  }
+  function bes(t,i){
+    var lk=s.beschluesse.filter(function(b){return b.top===t.id}),o='<p class="l2">Beschluss:</p>';
+    function addb(txt){return edit?'<button type="button" class="addb" data-act="besfor" data-sid="'+sid+'" data-id="'+t.id+'">'+txt+'</button>':''}
+    if(!lk.length)return o+'<table>'+row('Abstimmung','☐ angenommen &nbsp; ☐ abgelehnt')+row('Ja-Stimmen',blank())+row('Nein-Stimmen',blank())+row('Enthaltungen',blank())+'</table>'+addb('+ Beschluss erfassen');
+    lk.forEach(function(b){
+      var c='data-sid="'+sid+'" data-coll="beschluesse" data-id="'+b.id+'"';
+      function num(f,l){return edit?'<input type="number" min="0" '+c+' data-f="'+f+'" aria-label="'+l+'" value="'+b[f]+'">':String(b[f])}
+      var wort=edit?row('Beschluss','<textarea rows="2" '+c+' data-f="text" aria-label="Beschlusstext">'+esc(b.text)+'</textarea>'):(b.text?row('Beschluss',esc(b.text)):'');
+      o+='<table>'+wort+row('Abstimmung','<span id="dres-'+b.id+'">'+dresHTML(b)+'</span>')+row('Ja-Stimmen',num('ja','Ja-Stimmen'))+row('Nein-Stimmen',num('nein','Nein-Stimmen'))+row('Enthaltungen',num('enth','Enthaltungen'))+'</table>';
+    });
+    return o+addb('+ weiterer Beschluss');
+  }
+  var na=sorted().filter(function(x){return x.status!=='abgesagt'&&x.id!==s.id&&x.datum>s.datum})[0];
+  s.tops.forEach(function(t,i){
+    h+='<h3>TOP '+(i+1)+' – '+esc(t.titel)+'</h3>';
+    String(t.beschr||'').split('\n').filter(Boolean).forEach(function(l){h+='<p>'+esc(l)+'</p>'});
+    if(t.typ==='ende'){
+      var ev=pfv(s,'ende','');
+      var ecell=edit?'<input type="text" class="inl" data-sid="'+sid+'" data-sub="pf" data-f="ende" aria-label="Ende der Sitzung" value="'+esc(ev)+'"> Uhr':(ev?esc(ev):blank())+' Uhr';
+      h+='<table>'+row('Ende der Sitzung',ecell)+row('Nächster Termin',inp('naechster',na?d2(na.datum)+', '+t2(na.datum):'','Nächster Termin'))+'</table>';
+      return;
+    }
+    if(t.typ==='wahl'){h+=wahl(t,i)+'<p class="l2">'+LAB.wahl+'</p>'+ebox(t,i);return}
+    h+='<p class="l2">'+(LAB[t.typ]||LAB.info)+'</p>'+ebox(t,i);
+    if(t.typ==='beschluss')h+=bes(t,i);
+  });
+
+  h+='<h3>Übersicht der gefassten Beschlüsse und Maßnahmen</h3><table><thead><tr><th style="width:9%">TOP</th><th>Beschluss / Maßnahme</th><th style="width:22%">Verantwortlich</th><th style="width:15%">Frist</th></tr></thead><tbody id="ovw">'+ovwRows(s)+'</tbody></table>';
+
+  var hasWahl=s.tops.some(function(t){return t.typ==='wahl'});
+  var anl=pfv(s,'anlagen','Separate Anwesenheitsliste'+(hasWahl?'\nSeparate Wahlniederschrift':'')+'\nWeitere Unterlagen / Anträge (falls vorhanden)');
+  h+='<h3>Anlagen</h3>';
+  if(edit)h+='<div class="indent"><textarea rows="'+Math.max(3,anl.split('\n').length+1)+'" data-sid="'+sid+'" data-sub="pf" data-f="anlagen" aria-label="Anlagen">'+esc(anl)+'</textarea></div>';
+  else h+='<ol>'+anl.split('\n').filter(function(l){return l.trim()}).map(function(l){return '<li>'+esc(l)+'</li>'}).join('')+'</ol>';
+
+  var ln=String(pfv(s,'leitung',S.settings.leitung||'')).split(',')[0].trim(),pn=pfv(s,'protokoll',protMem?protMem.name:'');
+  h+='<table class="sig" style="margin-top:18px"><tr><td>Sitzungsleitung</td><td>Protokollführung</td></tr><tr><td><span class="ul" style="min-width:12rem"></span></td><td><span class="ul" style="min-width:12rem"></span></td></tr><tr><td>'+esc(ln)+'&nbsp;</td><td>'+esc(pn)+'&nbsp;</td></tr></table></div>';
+  return h;
+}
+function docFile(inner,title){
+  var css=($('#paper-css')||{}).textContent||'';
+  return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+css+'body{margin:0;padding:16px;background:#fff}@page{size:A4;margin:16mm}</style></head><body>'+inner+'</body></html>';
+}
+function ensureTs(){
+  var cur=sess(ui.tsid);if(cur)return cur;
+  var all=sorted(),p=nextSession()||all[all.length-1]||null;
+  ui.tsid=p?p.id:'';return p;
+}
+function tlHTML(s){
+  var sub=pfv(s,'untertitel',sessNo(s)+'. Sitzung des '+(S.settings.protGremium||'Schülerrates')+' – Schuljahr '+sj(s.datum));
+  function row(k,v){return '<tr><td class="k">'+k+'</td><td>'+(v?esc(v):'&nbsp;')+'</td></tr>'}
+  function box(on){return on?'☒':'☐'}
+  var h='<div class="paper"><h1>Teilnehmerliste</h1><div class="sub">'+esc(sub)+'</div>';
+  h+='<table>'+row('Schule',pfv(s,'schule',S.settings.schule||''))+row('Datum',pfv(s,'datum',d2(s.datum)))+row('Uhrzeit',pfv(s,'uhrzeit',t2(s.datum)))+row('Ort',pfv(s,'ort',s.ort||''))+'</table>';
+  var rows=S.members.filter(function(m){return m.aktiv}).map(function(m){return {n:m.name,k:m.klasse,f:m.ksf}});
+  var want=Math.max(parseInt(S.settings.tlRows,10)||0,rows.length+4);while(rows.length<want)rows.push({n:'',k:'',f:''});
+  h+='<table class="tl" style="margin-top:14px"><thead><tr><th style="width:7%">Nr.</th><th style="width:27%">Name</th><th style="width:11%">Klasse</th><th style="width:24%">Klassensprecher/in oder Vertretung</th><th>Unterschrift</th></tr></thead><tbody>'+
+    rows.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+esc(r.n)+'&nbsp;</td><td>'+esc(r.k)+'&nbsp;</td><td>'+box(r.f==='Klassensprecher/in')+' Klassensprecher/in<br>'+box(r.f==='Stellvertreter/in')+' Vertretung</td><td>&nbsp;</td></tr>'}).join('')+'</tbody></table></div>';
+  return h;
+}
+
+function fg(s){return s.fg||(s.fg={st:'entwurf',vers:'',frist:'',gen:'',bem:''})}
+var FG=[['entwurf','Entwurf'],['verteilt','Zur Freigabe verteilt'],['genehmigt','Genehmigt']];
+function fgPill(s){var st=fg(s).st||'entwurf';return '<span class="pill '+(st==='genehmigt'?'good':st==='verteilt'?'warn':'')+'">'+(FG.find(function(x){return x[0]===st})||FG[0])[1]+'</span>'}
+function fgText(s){
+  var g=S.settings.protGremium||'Schülerrat',f=fg(s);
+  return 'Betreff: Protokoll der '+sessNo(s)+'. Sitzung des '+g+' vom '+d2(s.datum)+' – Freigabe\n\nLiebe Mitglieder,\n\nanbei das Protokoll der Sitzung vom '+d2(s.datum)+'. Bitte lest es durch.\n\n'+
+    (f.frist?'Einwände oder Korrekturen bitte bis '+langDatum(f.frist+'T00:00')+' an mich. ':'Einwände oder Korrekturen bitte rechtzeitig an mich. ')+'Andernfalls lasse ich das Protokoll in der nächsten Sitzung genehmigen.\n\nViele Grüße\n'+leitungName();
+}
+function fgPanel(s){
+  var f=fg(s),c='data-sid="'+s.id+'" data-sub="fg"';
+  var o='<div class="toprow" style="margin-bottom:12px"><div class="frow" style="margin-bottom:8px"><strong class="grow">Freigabe des Protokolls</strong>'+fgPill(s)+'</div><div class="seg" role="group" aria-label="Freigabestatus" style="margin-bottom:10px">'+
+    FG.map(function(x){return '<button type="button" data-act="fgset" data-sid="'+s.id+'" data-v="'+x[0]+'" aria-pressed="'+(f.st===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'+
+    '<div class="g2"><div><label class="lbl" for="fg-v">Verteilt am</label><input type="date" id="fg-v" '+c+' data-f="vers" value="'+esc(f.vers)+'"></div>'+
+    '<div><label class="lbl" for="fg-f">Einwände bis</label><input type="date" id="fg-f" '+c+' data-f="frist" value="'+esc(f.frist)+'" data-rr="1"></div></div>'+
+    '<div class="g2" style="margin-top:8px"><div><label class="lbl" for="fg-g">Genehmigt am</label><input type="date" id="fg-g" '+c+' data-f="gen" value="'+esc(f.gen)+'"></div>'+
+    '<div><label class="lbl" for="fg-b">Anmerkung (z. B. Änderungen)</label><input type="text" id="fg-b" '+c+' data-f="bem" value="'+esc(f.bem)+'"></div></div>'+
+    '<div class="frow" style="margin-top:10px"><button type="button" class="btn sm" data-act="fgcopy" data-sid="'+s.id+'">Freigabe-Text kopieren</button></div></div>';
+  return o;
+}
+function wahlTops(s){return s?s.tops.filter(function(t){return t.typ==='wahl'}):[]}
+function ensureW(){
+  var cur=sess(ui.wsid);
+  if(!cur||!wahlTops(cur).length){
+    var l=sorted().filter(function(s){return wahlTops(s).length}),ns=nextSession();
+    cur=(ns&&wahlTops(ns).length)?ns:(l[l.length-1]||null);
+    ui.wsid=cur?cur.id:'';
+  }
+  if(!cur){ui.wtop='';return {s:null,t:null}}
+  var ws=wahlTops(cur),t=ws.find(function(x){return x.id===ui.wtop})||ws[0];
+  ui.wtop=t.id;return {s:cur,t:t};
+}
+function ensureA(){
+  var cur=sess(ui.asid);if(cur)return cur;
+  var all=sorted(),p=nextSession()||all[all.length-1]||null;
+  ui.asid=p?p.id:'';return p;
+}
+function langDatum(x){var d=dt(x);return d?new Intl.DateTimeFormat('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(d):''}
+function wnHTML(s,t,edit){
+  var c='data-sid="'+s.id+'" data-coll="tops" data-id="'+t.id+'"';
+  function wf(k,def,label,num){
+    var v=(t.w&&t.w[k]!==undefined)?t.w[k]:def;
+    if(edit)return '<input type="'+(num?'number" min="0':'text')+'" '+c+' data-sub="w" data-f="'+k+'" aria-label="'+esc(label)+'" value="'+esc(v)+'">';
+    return (v!==''&&v!==undefined&&v!==null)?esc(v):'<span class="ul"></span>';
+  }
+  function row(k,v){return '<tr><td class="k">'+k+'</td><td>'+v+'</td></tr>'}
+  var anw=quorum(s).present;
+  var sub=sessNo(s)+'. Sitzung des '+(S.settings.protGremium||'Schülerrates')+' – Schuljahr '+sj(s.datum);
+  var an=t.w&&t.w.annahme,cell;
+  if(edit)cell='<button type="button" class="tg" data-act="wahlja" data-sid="'+s.id+'" data-id="'+t.id+'" data-v="ja" aria-pressed="'+(an==='ja')+'">Ja</button><button type="button" class="tg" data-act="wahlja" data-sid="'+s.id+'" data-id="'+t.id+'" data-v="nein" aria-pressed="'+(an==='nein')+'">Nein</button>';
+  else cell=(an==='ja'?'☒':'☐')+' Ja &nbsp; '+(an==='nein'?'☒':'☐')+' Nein';
+  var o='<div class="paper'+(edit?' edit':'')+'"><h1>Wahlniederschrift</h1><div class="sub">'+esc(sub)+'</div>';
+  o+='<table>'+row('Schule',esc(S.settings.schule||'')||'&nbsp;')+row('Datum',esc(d2(s.datum)))+row('Ort',esc(s.ort||'')||'&nbsp;')+row('Gewählt wird (Amt)',wf('amt',t.titel||'','Amt'))+row('Wahlleitung',wf('leitung',leitungName(),'Wahlleitung'))+row('Wahlhelfer/in 1',wf('helfer1','','Wahlhelfer 1'))+row('Wahlhelfer/in 2',wf('helfer2','','Wahlhelfer 2'))+row('Wahlzeit',wf('zeit','','Wahlzeit'))+'</table>';
+  o+='<h3>Stimmen</h3><table>'+row('Anwesende Stimmberechtigte',wf('anwes',anw?String(anw):'','Anwesende Stimmberechtigte',true))+row('Abgegebene Stimmen',wf('abg','','Abgegebene Stimmen',true))+row('Ungültige Stimmen',wf('ung','','Ungültige Stimmen',true))+row('Enthaltungen',wf('enth','','Enthaltungen',true))+'</table>';
+  o+='<h3>Kandidat/innen und Stimmen</h3><table><tr><td class="k"><b>Name</b></td><td><b>Stimmen</b></td></tr>'+
+    [1,2,3].map(function(n){return '<tr><td>'+wf('k'+n,'','Kandidat/in '+n)+'</td><td>'+wf('s'+n,'','Stimmen Kandidat/in '+n,true)+'</td></tr>'}).join('')+'</table>';
+  o+='<h3>Ergebnis</h3><table>'+row('Gewählte Person',wf('gewaehlt','','Gewählte Person'))+row('Annahme der Wahl',cell)+'</table>';
+  o+='<h3>Bemerkungen</h3>';
+  if(edit){o+='<table class="ebox"><tr><td><textarea rows="3" '+c+' data-sub="w" data-f="bem" aria-label="Bemerkungen">'+esc(t.w&&t.w.bem||'')+'</textarea></td></tr></table>'}
+  else o+=(t.w&&t.w.bem)?'<table class="ebox"><tr><td>'+esc(t.w.bem)+'</td></tr></table>':'<table class="ebox"><tr><td></td></tr><tr><td></td></tr></table>';
+  function nm(k,def){var v=(t.w&&t.w[k]!==undefined)?t.w[k]:def;return esc(v||'')}
+  o+='<h3>Unterschriften</h3><table class="sig"><tr><td>Wahlleitung<br>'+nm('leitung',leitungName())+'</td><td>Wahlhelfer/in 1<br>'+nm('helfer1','')+'</td><td>Wahlhelfer/in 2<br>'+nm('helfer2','')+'</td><td>Gewählte Person<br>'+nm('gewaehlt','')+'</td></tr><tr><td></td><td></td><td></td><td></td></tr></table></div>';
+  return o;
+}
+function ahHTML(s,edit){
+  var hint=pfv(s,'aus_hinweis','Themenwünsche bitte vorab an die SV richten.');
+  var titel=pfv(s,'aus_titel',(S.settings.protGremium||'Schülerrat')+'-Sitzung');
+  function inp(k,v,l){return edit?'<input type="text" data-sid="'+s.id+'" data-sub="pf" data-f="'+k+'" aria-label="'+l+'" value="'+esc(v)+'">':esc(v)}
+  var o='<div class="paper aus'+(edit?' edit':'')+'"><h1>'+inp('aus_titel',titel,'Titel')+'</h1><div class="sub">'+esc(S.settings.schule||'')+'</div>';
+  o+='<table style="margin-left:0;width:100%"><tr><td class="k">Datum</td><td>'+esc(langDatum(s.datum))+'</td></tr><tr><td class="k">Uhrzeit</td><td>'+esc(t2(s.datum))+'</td></tr><tr><td class="k">Ort</td><td>'+(esc(s.ort||'')||'&nbsp;')+'</td></tr></table>';
+  o+='<h3>Tagesordnung</h3>';
+  o+=s.tops.length?'<ol>'+s.tops.map(function(t){return '<li>'+esc(t.titel||'')+(t.min?' ('+t.min+' Min.)':'')+'</li>'}).join('')+'</ol>':'<p>Noch keine Tagesordnung.</p>';
+  o+='<p style="margin-top:18px">'+inp('aus_hinweis',hint,'Hinweis')+'</p>';
+  o+='<p style="margin-top:14px"><b>'+esc(S.settings.leitung||'')+'</b></p></div>';
+  return o;
+}
+
+function skriptModel(s){
+  var g=S.settings.protGremium||'Schülerrat',n=sessNo(s),q=quorum(s),d=dt(s.datum),start=d?d.getHours()*60+d.getMinutes():0,acc=0,ln=leitungName()||'Sitzungsleitung';
+  var hm=function(m){m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+':'+pad(m%60)};
+  var out=[];
+  s.tops.forEach(function(t,i){
+    var min=+t.min||0,at=start+acc;acc+=min;
+    out.push({t:t,i:i,at:d?hm(at):'',min:min});
+  });
+  if(!acc)out.forEach(function(x){x.at=''});
+  return {g:g,n:n,q:q,start:start,hm:hm,total:acc,items:out,ln:ln};
+}
+function skriptText(s){
+  var m=skriptModel(s),q=m.q,L=[],gr=m.g.replace(/es$/,'');
+  var hdr=(m.n?m.n+'. ':'')+'Sitzung des '+gr+'s';
+  L.push('MODERATIONSSKRIPT – '+hdr);
+  L.push(langDatum(s.datum)+(t2(s.datum)?', '+t2(s.datum):'')+(s.ort?' · '+s.ort:''));
+  L.push('Sitzungsleitung: '+m.ln+(s.titel?' · '+s.titel:''));
+  L.push('');
+  L.push('ZEITPLAN');
+  m.items.forEach(function(x){L.push((x.at?x.at+'  ':'')+'TOP '+(x.i+1)+'  '+(x.t.titel||'(ohne Titel)')+(x.min?'  ('+x.min+' Min.)':''))});
+  L.push('Geplante Gesamtdauer: '+m.total+' Min.'+(s.datum&&m.total?' · voraussichtliches Ende '+m.hm(m.start+m.total)+' Uhr':''));
+  L.push('');
+  L.push('Hinweis: Sätze in Anführungszeichen kannst du so sprechen. Stellen mit ___ trägst du während der Sitzung ein.');
+  m.items.forEach(function(x){
+    var t=x.t,titel=t.titel||'',no='TOP '+(x.i+1),tl=titel.toLowerCase(),hasNote=String(t.beschr||t.notiz||'').trim();
+    L.push('');L.push('────────────────────────────────────────');
+    L.push(no+' · '+titel+(x.at?'   [ab '+x.at+' Uhr'+(x.min?', '+x.min+' Min.':'')+']':(x.min?'   ['+x.min+' Min.]':'')));
+    if(t.typ==='ende'){
+      var na=nextSession();
+      L.push('„Damit sind wir am Ende der Tagesordnung. Ich bedanke mich bei euch für die Mitarbeit.“');
+      L.push('„Das Protokoll geht'+(GO().protfrist?' innerhalb von '+GO().protfrist+' Tagen':' zeitnah')+' an alle Mitglieder.“');
+      L.push('„Die nächste Sitzung findet am '+(na&&na.id!==s.id?d2(na.datum)+' um '+t2(na.datum):'___')+' statt.“');
+      L.push('„Ich schließe die Sitzung um ___ Uhr.“');
+      return;
+    }
+    if(i0(x)||/begr(ü|ue)ß|er(ö|oe)ffn|beschlussf/i.test(tl)){
+      L.push('„Liebe Mitglieder, ich eröffne die '+(m.n?m.n+'. ':'')+'Sitzung des '+gr+'s um ___ Uhr und begrüße euch herzlich.“');
+      L.push('„Die Einladung ist am ___ ergangen. Die Ladungsfrist von '+GO().ladung+' Tagen ist '+'eingehalten.“ (bitte prüfen)');
+      L.push('„Wir stellen die Beschlussfähigkeit fest. Ich zähle die vertretenen Klassen.“');
+      L.push('→ '+q.present+' von '+q.N+' Klassenstimmen laut Anwesenheitsliste, nötig: '+q.need+(s.wdh?'. Wiederholungssitzung: beschlussfähig unabhängig von der Zahl der Anwesenden.':'.')+' '+(q.ok?'Beschlussfähig.':'ACHTUNG: noch nicht beschlussfähig.'));
+      L.push('„Damit ist der '+gr+' beschlussfähig.“ / „Der '+gr+' ist nicht beschlussfähig, die Sitzung wird verschoben.“ (Zutreffendes sprechen)');
+      L.push('„Gibt es Einwände gegen die Tagesordnung oder Änderungswünsche?“ Wenn nein: „Dann gilt die Tagesordnung als genehmigt.“');
+      L.push('„Wer führt heute das Protokoll?“ → ___');
+    }else if(/protokoll/i.test(tl)&&t.typ==='beschluss'){
+      L.push('„Das Protokoll der letzten Sitzung ging allen zu. Gibt es Einwände oder Ergänzungen?“');
+      L.push('Wenn ja: Änderung notieren. „Wer ist für die Genehmigung des Protokolls (mit den genannten Änderungen)?“ Ja ___ · Nein ___ · Enthaltungen ___');
+      L.push('„Das Protokoll ist genehmigt.“');
+    }else if(t.typ==='wahl'){
+      L.push('„Wir kommen zur Wahl: '+titel+'.“');
+      L.push('„Für die Wahl brauchen wir eine Wahlleitung. Wer übernimmt das?“ → ___');
+      L.push('„Wer möchte kandidieren? Auch Vorschläge aus der Runde sind möglich.“ Kandidatur(en): ___');
+      L.push('Kandidat/in stellt sich kurz vor. „Gibt es Fragen an die Kandidatur?“');
+      L.push('„Ist jemand für eine geheime Wahl?“ (Wenn ja, geheim. Sonst offen.) Stimmzettel/Handzeichen.');
+      L.push('Auszählung: abgegebene Stimmen ___ · ungültig ___ · Ja ___ · Nein ___ · Enthaltungen ___');
+      L.push('„Gewählt ist ___. Nimmst du die Wahl an?“ → ___  Ergebnis in die Wahlniederschrift eintragen.');
+    }else if(t.typ==='beschluss'){
+      L.push('„'+titel+'. Dazu liegt ein Antrag vor.“');
+      var lk=s.beschluesse.filter(function(b){return b.top===t.id});
+      if(lk.length)lk.forEach(function(b){L.push('Antragstext: „'+(b.text||'___')+'“')});
+      else L.push('Antragstext (wörtlich vorlesen): „___“');
+      L.push('„Gibt es Fragen oder Wortmeldungen zum Antrag?“ (Redeliste führen)');
+      L.push('„Wenn es keine weiteren Wortmeldungen gibt, kommen wir zur Abstimmung.“');
+      L.push('„Wer ist dafür?“ ___ · „Wer ist dagegen?“ ___ · „Wer enthält sich?“ ___  (eine Stimme pro Klasse, Stellvertretung nur wenn Klassensprecher/in fehlt)');
+      L.push('„Der Antrag ist angenommen / abgelehnt mit ___ Ja, ___ Nein, ___ Enthaltungen.“ Verantwortliche/r: ___ · Frist: ___');
+    }else if(t.typ==='diskussion'){
+      L.push('„Wir kommen zu '+no+': '+titel+'. Ich eröffne die Aussprache.“');
+      L.push('„Ich führe eine Redeliste. Bitte meldet euch per Handzeichen. Ich plane dafür etwa '+(x.min||'___')+' Minuten ein.“');
+      L.push('Zwischenfrage an die Runde: „Welche Möglichkeiten sehen wir? Was spricht dafür, was dagegen?“');
+      L.push('Bei Zeitablauf: „Ich schließe die Redeliste. Fasse ich kurz zusammen: ___“');
+      L.push('„Gibt es einen Antrag oder Auftrag aus der Diskussion?“ → Beschluss/Aufgabe notieren (Wer? Bis wann?).');
+    }else if(/verschiedenes|sonstiges|anregung/i.test(tl)||t.typ==='sonstiges'){
+      L.push('„Gibt es noch Anliegen, die nicht auf der Tagesordnung standen?“');
+      L.push('Wortmeldungen sammeln: ___  („Das nehmen wir als Thema für die nächste Sitzung auf.“)');
+    }else{
+      L.push('„Wir kommen zu '+no+': '+titel+'.“');
+      L.push('„Ich gebe euch dazu eine kurze Information.“ (Berichtende Person: ___)');
+      L.push('„Gibt es dazu Fragen oder Anmerkungen?“');
+      L.push('„Danke, damit ist '+no+' abgeschlossen.“');
+    }
+    if(hasNote){L.push('');L.push('Stichpunkte / Material:');String(t.beschr||'').split('\n').concat(String(t.notiz||'').split('\n')).filter(function(z){return z.trim()}).forEach(function(z){L.push('• '+z.trim())})}
+  });
+  return L.join('\n');
+}
+function i0(x){return x.i===0}
+function skriptHTML(s){
+  var tx=skriptText(s),L=tx.split('\n'),h='<div class="doc" style="font-size:14px;line-height:1.55">';
+  var open=false;
+  L.forEach(function(z,i){
+    if(z.indexOf('MODERATIONSSKRIPT')===0){h+='<h1 style="margin:0 0 4px;font-size:22px">'+esc(z)+'</h1>';return}
+    if(z.indexOf('────')===0){if(open)h+='</div>';h+='<div style="break-inside:avoid-page;margin-top:14px;padding-top:6px;border-top:1px solid #999">';open=true;return}
+    if(z==='ZEITPLAN'){h+='<h3 style="margin:14px 0 4px">Zeitplan</h3>';return}
+    if(/^TOP \d+ · /.test(z)){h+='<h3 style="margin:2px 0 6px">'+esc(z)+'</h3>';return}
+    if(!z.trim()){h+='<div style="height:4px"></div>';return}
+    if(z.indexOf('• ')===0){h+='<p style="margin:2px 0 2px 16px">'+esc(z)+'</p>';return}
+    if(z.indexOf('→')===0||z.indexOf('Stichpunkte')===0||z.indexOf('Hinweis:')===0)h+='<p style="margin:3px 0;color:#444"><i>'+esc(z)+'</i></p>';
+    else h+='<p style="margin:3px 0">'+esc(z)+'</p>';
+  });
+  if(open)h+='</div>';
+  return h+'</div>';
+}
+function einlText(s){
+  var g=S.settings.protGremium||'Schülerrat',n=sessNo(s);
+  var t='Betreff: Einladung zur '+n+'. Sitzung des '+g+' am '+d2(s.datum)+'\n\nLiebe Mitglieder,\n\nhiermit lade ich euch zur '+n+'. Sitzung ein.\n\nTermin: '+langDatum(s.datum)+'\nUhrzeit: '+t2(s.datum)+'\nOrt: '+(s.ort||'')+'\n\nTagesordnung:\n';
+  t+=s.tops.length?s.tops.map(function(x,i){return (i+1)+'. '+(x.titel||'')+(x.min?' ('+x.min+' Min.)':'')}).join('\n'):'(wird noch bekannt gegeben)';
+  t+=(s.wdh?'\n\nHinweis: Der Schülerrat ist bei dieser Sitzung unabhängig von der Zahl der anwesenden Mitglieder beschlussfähig (§ 9 Abs. 3 und 4 GO).':'')+'\n\nBitte gebt rechtzeitig Bescheid, falls ihr nicht teilnehmen könnt. Schickt in dem Fall bitte eure Vertretung.\n\nViele Grüße\n'+leitungName();
+  return t;
+}
+
+var PJS=[['idee','Idee'],['planung','In Planung'],['laufend','Läuft'],['erledigt','Erledigt']];
+function pjById(id){return S.projekte.find(function(p){return p.id===id})}
+function vProj(){
+  var rank={laufend:0,planung:1,idee:2,erledigt:3};
+  var list=S.projekte.slice().sort(function(a,b){return (rank[a.status]-rank[b.status])||(a.termin||'9999').localeCompare(b.termin||'9999')});
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>Projekte und Events</h2><button type="button" class="btn primary" data-act="addpj">+ Projekt</button></div><p class="meta">Zum Beispiel Weihnachtsfeier oder Sommerfest. Ein Projekt hat Ziel, Termin, Verantwortliche, eigene Aufgaben und hängt an den Sitzungen, in denen es besprochen wird.</p></section>';
+  if(!list.length)h+='<section class="card"><p class="empty">Noch kein Projekt.</p></section>';
+  list.forEach(function(p){
+    var open=ui.pj===p.id,c='data-pj="'+p.id+'"',done=p.aufg.filter(function(a){return a.done}).length;
+    var cls=p.status==='erledigt'?'good':p.status==='laufend'?'accent':p.status==='planung'?'warn':'';
+    h+='<section class="card"><div class="frow"><div class="grow"><strong>'+(esc(p.name)||'<em>Ohne Namen</em>')+'</strong> <span class="pill '+cls+'">'+(PJS.find(function(x){return x[0]===p.status})||PJS[0])[1]+'</span>'+
+      '<div class="meta">'+(p.termin?esc(d2(p.termin+'T00:00')):'Kein Termin')+(p.lead?' · '+esc(p.lead):'')+' · Aufgaben '+done+'/'+p.aufg.length+' · '+p.sess.filter(sess).length+' Sitzungen</div></div>'+
+      '<button type="button" class="btn sm" data-act="pjopen" data-id="'+p.id+'">'+(open?'Schließen':'Öffnen')+'</button></div>';
+    if(open){
+      h+='<div class="g2" style="margin-top:12px"><div><label class="lbl" for="pn-'+p.id+'">Name</label><input type="text" id="pn-'+p.id+'" '+c+' data-f="name" value="'+esc(p.name)+'"></div>'+
+        '<div><label class="lbl" for="ps2-'+p.id+'">Status</label><select id="ps2-'+p.id+'" '+c+' data-f="status" data-rr="1">'+opts(PJS,p.status)+'</select></div>'+
+        '<div><label class="lbl" for="pt-'+p.id+'">Termin</label><input type="date" id="pt-'+p.id+'" '+c+' data-f="termin" data-rr="1" value="'+esc(p.termin)+'"></div>'+
+        '<div><label class="lbl" for="pl-'+p.id+'">Verantwortlich</label><input type="text" id="pl-'+p.id+'" '+c+' data-f="lead" value="'+esc(p.lead)+'" placeholder="Name"></div></div>'+
+        '<label class="lbl" for="pz-'+p.id+'" style="margin-top:12px">Ziel</label><textarea class="box" id="pz-'+p.id+'" '+c+' data-f="ziel" style="min-height:70px">'+esc(p.ziel)+'</textarea>'+
+        '<label class="lbl" for="pno-'+p.id+'" style="margin-top:12px">Notizen</label><textarea class="box" id="pno-'+p.id+'" '+c+' data-f="notiz" style="min-height:90px">'+esc(p.notiz)+'</textarea>';
+      h+='<h3 style="margin:16px 0 6px">Aufgaben</h3>';
+      if(!p.aufg.length)h+='<p class="empty">Noch keine Aufgaben.</p>';
+      p.aufg.forEach(function(a){
+        var ca=c+' data-coll="aufg" data-id="'+a.id+'"';
+        h+='<div class="frow" style="margin-bottom:6px"><input type="checkbox" aria-label="Erledigt" '+ca+' data-f="done" data-rr="1"'+(a.done?' checked':'')+'>'+
+          '<input type="text" class="grow" aria-label="Aufgabe" '+ca+' data-f="text" value="'+esc(a.text)+'" placeholder="Aufgabe">'+
+          '<input type="text" style="width:9rem" aria-label="Wer" '+ca+' data-f="wer" value="'+esc(a.wer)+'" placeholder="Wer">'+
+          '<input type="date" aria-label="Frist" '+ca+' data-f="frist" value="'+esc(a.frist)+'">'+
+          '<button type="button" class="btn sm danger" data-act="delpjt" data-pid="'+p.id+'" data-id="'+a.id+'">Entfernen</button></div>';
+      });
+      h+='<button type="button" class="btn sm" data-act="addpjt" data-id="'+p.id+'">+ Aufgabe</button>';
+      h+='<h3 style="margin:16px 0 6px">Sitzungen</h3>';
+      var linked=p.sess.map(sess).filter(Boolean),free=sorted().filter(function(s){return p.sess.indexOf(s.id)<0});
+      if(!linked.length)h+='<p class="empty">Noch mit keiner Sitzung verknüpft.</p>';
+      linked.forEach(function(s){h+='<div class="frow" style="margin-bottom:6px"><span class="grow">'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel'))+'</span><button type="button" class="btn sm" data-act="open" data-sid="'+s.id+'">Öffnen</button><button type="button" class="btn sm" data-act="pjunlink" data-pid="'+p.id+'" data-id="'+s.id+'">Lösen</button></div>'});
+      if(free.length){
+        var sel=free.some(function(s){return s.id===ui.pjsel})?ui.pjsel:free[0].id;ui.pjsel=sel;
+        h+='<div class="frow"><label class="meta" for="pjs-'+p.id+'">Sitzung</label><select id="pjs-'+p.id+'" data-ui="pjsel" class="grow">'+free.map(function(s){return '<option value="'+s.id+'"'+(s.id===sel?' selected':'')+'>'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel'))+'</option>'}).join('')+'</select><button type="button" class="btn sm" data-act="pjlink" data-id="'+p.id+'">Verknüpfen</button></div>';
+      }
+      h+='<div class="frow" style="margin-top:16px">'+cbtn('delpj'+p.id,'Projekt löschen','data-act="delpj" data-id="'+p.id+'"')+'</div>';
+    }
+    h+='</section>';
+  });
+  return h+'</div>';
+}
+function vtList(key){
+  var act=S.members.filter(function(m){return m.aktiv});
+  if(key==='b:alle')return act;
+  if(key==='b:ks')return act.filter(function(m){return m.ksf});
+  if(key==='b:stimm')return act.filter(function(m){return m.stimm});
+  var v=S.verteiler.find(function(x){return x.id===key});
+  return v?S.members.filter(function(m){return v.ids.indexOf(m.id)>=0}):[];
+}
+function vtMails(key){
+  var out=vtList(key).map(function(m){return (m.mail||'').trim()}).filter(Boolean);
+  var v=S.verteiler.find(function(x){return x.id===key});
+  if(v)String(v.extra||'').split(/[,;\s]+/).forEach(function(x){if(x.indexOf('@')>0&&out.indexOf(x)<0)out.push(x)});
+  return out;
+}
+function vtBlock(key,title,v){
+  var l=vtList(key),mails=vtMails(key),miss=l.filter(function(m){return !(m.mail||'').trim()}).length;
+  var o='<div class="toprow"><div class="frow"><div class="grow"><strong>'+esc(title)+'</strong> <span class="pill">'+l.length+' Personen</span>'+(miss?' <span class="pill warn">'+miss+' ohne E-Mail</span>':'')+'</div>'+
+    '<button type="button" class="btn sm primary" data-act="vtcopy" data-k="mail" data-id="'+key+'">E-Mail-Adressen kopieren</button>'+
+    '<button type="button" class="btn sm" data-act="vtcopy" data-k="name" data-id="'+key+'">Namen kopieren</button>'+(v?cbtn('delvt'+v.id,'Löschen','data-act="delvt" data-id="'+v.id+'"'):'')+'</div>';
+  if(v){
+    o+='<div class="g2" style="margin-top:8px"><div><label class="lbl" for="vn-'+v.id+'">Name</label><input type="text" id="vn-'+v.id+'" data-vt="'+v.id+'" data-f="name" value="'+esc(v.name)+'"></div>'+
+      '<div><label class="lbl" for="ve-'+v.id+'">Weitere E-Mail-Adressen (Gäste)</label><input type="text" id="ve-'+v.id+'" data-vt="'+v.id+'" data-f="extra" value="'+esc(v.extra)+'" placeholder="a@b.de, c@d.de"></div></div><div class="frow" style="margin-top:8px">'+
+      S.members.map(function(m){return '<label class="frow meta" style="gap:6px"><input type="checkbox" data-act="vtmem" data-id="'+v.id+'" data-m2="'+m.id+'"'+(v.ids.indexOf(m.id)>=0?' checked':'')+'>'+esc(m.name||'Ohne Namen')+'</label>'}).join('')+'</div>';
+  }
+  return o+'</div>';
+}
+function vVert(){
+  var h='<section class="card"><div class="vh"><h3>Verteiler</h3><button type="button" class="btn sm" data-act="addvt">+ Verteiler</button></div><p class="meta" style="margin-bottom:8px">Adressen kopieren und in das An-Feld deiner Mail einfügen. E-Mail-Adressen trägst du oben bei den Mitgliedern ein.</p>';
+  h+=vtBlock('b:alle','Alle aktiven Mitglieder')+vtBlock('b:ks','Klassensprecher/innen und Vertretungen')+vtBlock('b:stimm','Stimmberechtigte');
+  S.verteiler.forEach(function(v){h+=vtBlock(v.id,v.name||'Ohne Namen',v)});
+  return h+'</section>';
+}
+
+function sjd(d){return d?sj(String(d).length>10?d:d+'T00:00'):'–'}
+function curSj(){return sjd(today())}
+function sjList(){
+  var set={};function add(d){var y=sjd(d);if(y&&y!=='–')set[y]=1}
+  S.sessions.forEach(function(s){add(s.datum);s.aufgaben.forEach(function(t){add(t.frist)})});
+  S.projekte.forEach(function(p){add(p.termin);p.aufg.forEach(function(a){add(a.frist)})});
+  S.antraege.forEach(function(a){add(a.datum)});add(today());
+  return Object.keys(set).sort();
+}
+function sjOpts(cur,id,ui_){return '<select id="'+id+'" data-ui="'+ui_+'">'+sjList().map(function(y){return '<option value="'+y+'"'+(y===cur?' selected':'')+'>Schuljahr '+y+'</option>'}).join('')+'</select>'}
+function ensureSj(k){var l=sjList();if(l.indexOf(ui[k])<0)ui[k]=l.indexOf(curSj())>=0?curSj():l[l.length-1];return ui[k]}
+
+/* ---- Jahresplan ---- */
+function planItems(y){
+  var it=[];
+  function add(o){if(o.d&&sjd(o.d)===y)it.push(o)}
+  S.sessions.forEach(function(s){
+    var d=(s.datum||'').slice(0,10),a='data-sid="'+s.id+'"';
+    add({d:d,tm:(s.datum||'').slice(11,16),k:'Sitzung',c:'accent',t:(s.titel||'Sitzung')+(s.status==='abgesagt'?' (abgesagt)':''),done:s.status==='abgesagt'||s.status==='gehalten'||s.status==='protokolliert',act:'open',attr:a});
+    s.aufgaben.forEach(function(t){add({d:t.frist,k:'Aufgabe',c:'',t:(t.text||'Aufgabe')+(t.wer?' · '+t.wer:''),done:t.done,task:true,act:'open',attr:a})});
+    if(s.status==='geplant'&&s.datum)add({d:addDays(d,-GO().ladung),k:'Einladung',c:'warn',t:'Einladung spätestens · '+(s.titel||'Sitzung'),done:false,task:true,act:'open',attr:a});
+    if((s.status==='gehalten')&&GO().protfrist>0&&fg(s).st==='entwurf'&&s.datum)add({d:addDays(d,GO().protfrist),k:'Protokoll',c:'warn',t:'Protokoll verteilen bis · Sitzung vom '+d2(s.datum),done:false,task:true,act:'open',attr:a});
+    if(fg(s).st==='verteilt'&&fg(s).frist)add({d:fg(s).frist,k:'Protokoll',c:'warn',t:'Einwände bis · Protokoll vom '+d2(s.datum),done:false,act:'open',attr:a});
+  });
+  S.projekte.forEach(function(p){
+    var a='data-id="'+p.id+'"';
+    add({d:p.termin,k:'Projekt',c:'good',t:p.name||'Projekt',done:p.status==='erledigt',act:'pjgo',attr:a});
+    p.aufg.forEach(function(x){add({d:x.frist,k:'Projektaufgabe',c:'',t:(x.text||'Aufgabe')+' · '+(p.name||'Projekt')+(x.wer?' · '+x.wer:''),done:x.done,task:true,act:'pjgo',attr:a})});
+  });
+  S.umfragen.forEach(function(u){add({d:u.bis,k:'Umfrage',c:'',t:'Ende · '+(u.frage||'Umfrage'),done:u.status==='abgeschlossen',act:'ufgo',attr:'data-id="'+u.id+'"'})});
+  S.antraege.forEach(function(x){if(x.status==='eingereicht'&&x.frist)add({d:x.frist,k:'Antrag',c:'warn',t:'Rückmeldung fällig · '+(x.titel||'Antrag'),done:false,task:true,act:'ango',attr:'data-id="'+x.id+'"'})});
+  it.sort(function(a,b){return (a.d+(a.tm||'')).localeCompare(b.d+(b.tm||''))});
+  return it;
+}
+function halbNote(y){
+  var a=+String(y).slice(0,4);if(!a)return '';
+  function cnt(f,t){return S.sessions.filter(function(s){var d=(s.datum||'').slice(0,10);return s.status!=='abgesagt'&&d>=f&&d<=t}).length}
+  var c1=cnt(a+'-08-01',(a+1)+'-01-31'),c2=cnt((a+1)+'-02-01',(a+1)+'-07-31');
+  function p(n,c){return '<span class="pill '+(c?'good':'warn')+'">'+n+'. Halbjahr: '+(c?c+(c===1?' Sitzung':' Sitzungen'):'noch keine Sitzung')+'</span>'}
+  return '<p class="meta" style="margin-top:8px">Der Schülerrat tritt mindestens einmal pro Halbjahr zusammen (GO § 4 Abs. 2). '+p(1,c1)+' '+p(2,c2)+'</p>';
+}
+function vPlan(){
+  var y=ensureSj('psj'),it=planItems(y),td=today();
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>Jahresplan</h2>'+sjOpts(y,'pl-sj','psj')+'</div><p class="meta">Sitzungen, Projekttermine, Aufgabenfristen, Protokoll-Einwände und fällige Antworten auf Anträge an einem Ort.</p>'+halbNote(y)+'</section>';
+  if(!it.length)return h+'<section class="card"><p class="empty">In diesem Schuljahr gibt es noch keine Termine.</p></section></div>';
+  var mf=new Intl.DateTimeFormat('de-DE',{month:'long',year:'numeric'}),cur='',open=false;
+  it.forEach(function(x){
+    var m=mf.format(dt(x.d+'T00:00'));
+    if(m!==cur){if(open)h+='</section>';cur=m;open=true;h+='<section class="card"><h3 style="margin-bottom:6px">'+m+(x.d.slice(0,7)===td.slice(0,7)?' <span class="pill accent">aktueller Monat</span>':'')+'</h3>'}
+    var over=x.task&&!x.done&&x.d<td,past=x.d<td&&(x.done||!x.task);
+    h+='<div class="toprow" style="'+(past?'opacity:.6':'')+'"><div class="frow"><span class="mono" style="min-width:6.5rem">'+esc(fRow.format(dt(x.d+'T00:00')))+(x.tm?' · '+x.tm:'')+'</span><span class="pill '+x.c+'">'+x.k+'</span><span class="grow"'+(x.done&&x.task?' style="text-decoration:line-through"':'')+'>'+esc(x.t)+'</span>'+(over?'<span class="pill bad">überfällig</span>':'')+'<button type="button" class="btn sm" data-act="'+x.act+'" '+x.attr+'>Öffnen</button></div></div>';
+  });
+  return h+'</section></div>';
+}
+
+/* ---- Anträge ---- */
+var ANS=[['entwurf','Entwurf'],['eingereicht','Eingereicht'],['genehmigt','Genehmigt'],['abgelehnt','Abgelehnt'],['umgesetzt','Umgesetzt']];
+function ansPill(st){var c={eingereicht:'warn',genehmigt:'good',abgelehnt:'bad',umgesetzt:'accent'}[st]||'';return '<span class="pill '+c+'">'+(ANS.find(function(x){return x[0]===st})||ANS[0])[1]+'</span>'}
+function besAll(){var o=[];sorted().forEach(function(s){s.beschluesse.forEach(function(b){o.push({v:s.id+'|'+b.id,l:d2(s.datum)+' · '+(b.text||'(ohne Text)').slice(0,70),s:s,b:b})})});return o}
+function besByRef(ref){var p=String(ref||'').split('|');var s=sess(p[0]);var b=s&&s.beschluesse.find(function(x){return x.id===p[1]});return b?{s:s,b:b}:null}
+function antHTML(a){
+  var g=S.settings.protGremium||'Schülerrat',r=besByRef(a.bez);
+  var bez='';
+  if(r){var q=r.b;bez='<p>Der '+esc(g.replace(/es$/,''))+' hat diesen Antrag in der '+sessNo(r.s)+'. Sitzung am '+esc(d2(r.s.datum))+' beschlossen'+(q.ja+q.nein+q.enth>0?' (Ja: '+q.ja+', Nein: '+q.nein+', Enthaltungen: '+q.enth+')':'')+'.</p>';}
+  var o='<div class="paper"><p><b>'+esc(S.settings.name||'')+'</b><br>'+esc(S.settings.schule||'')+'</p>';
+  o+='<p style="text-align:right">'+esc(a.datum?d2(a.datum+'T00:00'):'')+'</p>';
+  o+='<p><b>An:</b> '+esc(a.empf||'Schulleitung')+'</p>';
+  o+='<h3 style="margin-top:14px">Antrag: '+esc(a.titel||'')+'</h3>';
+  o+='<p>Sehr geehrte Damen und Herren,</p><p>die Schülervertretung stellt folgenden Antrag:</p>';
+  o+='<p style="white-space:pre-wrap">'+esc(a.text||'')+'</p>';
+  if(a.begr)o+='<p><b>Begründung</b></p><p style="white-space:pre-wrap">'+esc(a.begr)+'</p>';
+  o+=bez;
+  if(a.frist)o+='<p>Wir bitten um Rückmeldung bis zum '+esc(d2(a.frist+'T00:00'))+'.</p>';
+  o+='<p>Mit freundlichen Grüßen</p><p style="margin-top:34px">'+esc(S.settings.leitung||'')+'</p>';
+  o+='<h3>Entscheidung</h3><table style="margin-left:0;width:100%"><tr><td class="k">Entscheidung</td><td>☐ genehmigt &nbsp; ☐ abgelehnt &nbsp; ☐ mit Änderungen</td></tr><tr><td class="k">Anmerkung</td><td>&nbsp;<br>&nbsp;</td></tr><tr><td class="k">Datum, Unterschrift</td><td style="height:56px">&nbsp;</td></tr></table></div>';
+  return o;
+}
+function vAnt(){
+  var rank={eingereicht:0,entwurf:1,genehmigt:2,abgelehnt:3,umgesetzt:4};
+  var list=S.antraege.filter(function(a){return !ui.astat||a.status===ui.astat}).sort(function(a,b){return (rank[a.status]-rank[b.status])||(b.datum||'').localeCompare(a.datum||'')});
+  var bl=besAll();
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>Anträge</h2><button type="button" class="btn primary" data-act="addant">+ Antrag</button></div><p class="meta" style="margin-bottom:10px">Anträge an die Schulleitung mit Status, Fristen und fertigem Schreiben zum Ausdrucken.</p>';
+  if(bl.length){
+    var sel=bl.some(function(x){return x.v===ui.asel})?ui.asel:bl[bl.length-1].v;ui.asel=sel;
+    h+='<div class="frow"><label class="meta" for="a-bes">Aus Beschluss</label><select id="a-bes" data-ui="asel" class="grow">'+bl.map(function(x){return '<option value="'+esc(x.v)+'"'+(x.v===sel?' selected':'')+'>'+esc(x.l)+'</option>'}).join('')+'</select><button type="button" class="btn" data-act="antfrom">Antrag erstellen</button></div>';
+  }
+  h+='<div class="seg" role="group" aria-label="Filter" style="margin-top:12px">'+[['','Alle']].concat(ANS).map(function(x){return '<button type="button" data-act="astat" data-v="'+x[0]+'" aria-pressed="'+(ui.astat===x[0])+'">'+x[1]+'</button>'}).join('')+'</div></section>';
+  if(!list.length)h+='<section class="card"><p class="empty">Keine Anträge.</p></section>';
+  list.forEach(function(a){
+    var open=ui.aopen===a.id,c='data-ant="'+a.id+'"';
+    h+='<section class="card"><div class="frow"><div class="grow"><strong>'+(esc(a.titel)||'<em>Ohne Titel</em>')+'</strong> '+ansPill(a.status)+'<div class="meta">'+(a.datum?esc(d2(a.datum+'T00:00')):'ohne Datum')+' · an '+esc(a.empf||'Schulleitung')+(a.status==='eingereicht'&&a.frist?' · Rückmeldung bis '+esc(d2(a.frist+'T00:00')):'')+'</div></div><button type="button" class="btn sm" data-act="antopen" data-id="'+a.id+'">'+(open?'Schließen':'Öffnen')+'</button></div>';
+    if(open){
+      h+='<div class="seg" role="group" aria-label="Status" style="margin:12px 0">'+ANS.map(function(x){return '<button type="button" data-act="antst" data-id="'+a.id+'" data-v="'+x[0]+'" aria-pressed="'+(a.status===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'+
+        '<div class="g2"><div><label class="lbl" for="at-'+a.id+'">Titel</label><input type="text" id="at-'+a.id+'" '+c+' data-f="titel" value="'+esc(a.titel)+'"></div>'+
+        '<div><label class="lbl" for="ae-'+a.id+'">Empfänger</label><input type="text" id="ae-'+a.id+'" '+c+' data-f="empf" value="'+esc(a.empf)+'" placeholder="Schulleitung"></div>'+
+        '<div><label class="lbl" for="ad-'+a.id+'">Datum des Antrags</label><input type="date" id="ad-'+a.id+'" '+c+' data-f="datum" data-rr="1" value="'+esc(a.datum)+'"></div>'+
+        '<div><label class="lbl" for="af-'+a.id+'">Rückmeldung erbeten bis</label><input type="date" id="af-'+a.id+'" '+c+' data-f="frist" data-rr="1" value="'+esc(a.frist)+'"></div>'+
+        '<div><label class="lbl" for="ai-'+a.id+'">Eingereicht am</label><input type="date" id="ai-'+a.id+'" '+c+' data-f="ein" value="'+esc(a.ein)+'"></div>'+
+        '<div><label class="lbl" for="aw-'+a.id+'">Antwort erhalten am</label><input type="date" id="aw-'+a.id+'" '+c+' data-f="antw" value="'+esc(a.antw)+'"></div></div>'+
+        '<label class="lbl" for="ab-'+a.id+'" style="margin-top:12px">Zugehöriger Beschluss</label><select id="ab-'+a.id+'" '+c+' data-f="bez" data-rr="1"><option value="">– kein Bezug –</option>'+bl.map(function(x){return '<option value="'+esc(x.v)+'"'+(x.v===a.bez?' selected':'')+'>'+esc(x.l)+'</option>'}).join('')+'</select>'+
+        '<label class="lbl" for="ax-'+a.id+'" style="margin-top:12px">Antragstext</label><textarea class="box" id="ax-'+a.id+'" '+c+' data-f="text" data-rr="1" style="min-height:110px">'+esc(a.text)+'</textarea>'+
+        '<label class="lbl" for="ag-'+a.id+'" style="margin-top:12px">Begründung</label><textarea class="box" id="ag-'+a.id+'" '+c+' data-f="begr" data-rr="1" style="min-height:90px">'+esc(a.begr)+'</textarea>'+
+        '<label class="lbl" for="an-'+a.id+'" style="margin-top:12px">Antwort / Anmerkung der Schulleitung</label><textarea class="box" id="an-'+a.id+'" '+c+' data-f="antwt" style="min-height:70px">'+esc(a.antwt)+'</textarea>'+
+        '<div class="frow" style="margin:12px 0">'+(DL?'<button type="button" class="btn primary" data-act="antsave" data-id="'+a.id+'">Schreiben als HTML speichern</button>':'<button type="button" class="btn primary" data-act="anthtml" data-id="'+a.id+'">Schreiben als HTML kopieren</button>')+cbtn('delant'+a.id,'Antrag löschen','data-act="delant" data-id="'+a.id+'"')+'</div>'+
+        '<h3 style="margin:8px 0">Vorschau</h3><div class="sheet">'+antHTML(a)+'</div>';
+    }
+    h+='</section>';
+  });
+  return h+'</div>';
+}
+
+/* ---- Jahresbericht ---- */
+function berichtHTML(y,edit){
+  var ses=sorted().filter(function(s){return sjd(s.datum)===y}),b=S.berichte[y]||{einl:'',fazit:''};
+  function tbl(head,rows,w){return '<table style="margin-left:0;width:100%"><tr>'+head.map(function(x,i){return '<td'+(w&&w[i]?' style="width:'+w[i]+'"':'')+'><b>'+x+'</b></td>'}).join('')+'</tr>'+rows.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+esc(c)+'&nbsp;</td>'}).join('')+'</tr>'}).join('')+'</table>'}
+  function box(k,l){
+    var v=b[k]||'';
+    if(edit)return '<table class="ebox"><tr><td><textarea rows="'+Math.max(3,v.split('\n').length+1)+'" data-bj="'+y+'" data-f="'+k+'" aria-label="'+l+'">'+esc(v)+'</textarea></td></tr></table>';
+    return v?'<p style="white-space:pre-wrap">'+esc(v)+'</p>':'';
+  }
+  var gehalten=ses.filter(function(s){return s.status==='gehalten'||s.status==='protokolliert'}).length,abg=ses.filter(function(s){return s.status==='abgesagt'}).length;
+  var bes=[],aufg=[];ses.forEach(function(s){s.beschluesse.forEach(function(x){bes.push([d2(s.datum),x.text,x.ja+x.nein>0?res(x).label:''])});s.aufgaben.forEach(function(t){aufg.push({t:t,s:s})})});
+  var ado=aufg.filter(function(x){return x.t.done}).length;
+  var pr=S.projekte.filter(function(p){return p.termin?sjd(p.termin)===y:p.sess.some(function(id){var s=sess(id);return s&&sjd(s.datum)===y})});
+  var an=S.antraege.filter(function(a){return sjd(a.datum)===y});
+  var o='<div class="paper'+(edit?' edit':'')+'"><h1>Jahresbericht</h1><div class="sub">'+esc(S.settings.name||'')+' – Schuljahr '+esc(y)+'</div>';
+  o+='<table><tr><td class="k">Schule</td><td>'+(esc(S.settings.schule||'')||'&nbsp;')+'</td></tr><tr><td class="k">Verfasser/in</td><td>'+(esc(S.settings.leitung||'')||'&nbsp;')+'</td></tr><tr><td class="k">Stand</td><td>'+esc(d2(today()+'T00:00'))+'</td></tr></table>';
+  o+='<h3>Einleitung</h3>'+box('einl','Einleitung');
+  o+='<h3>Kennzahlen</h3><table><tr><td class="k">Sitzungen</td><td>'+gehalten+' gehalten, '+(ses.length-gehalten-abg)+' geplant, '+abg+' abgesagt</td></tr><tr><td class="k">Beschlüsse</td><td>'+bes.length+'</td></tr><tr><td class="k">Aufgaben</td><td>'+ado+' von '+aufg.length+' erledigt</td></tr><tr><td class="k">Projekte</td><td>'+pr.length+' ('+pr.filter(function(p){return p.status==='erledigt'}).length+' erledigt)</td></tr><tr><td class="k">Umfragen</td><td>'+S.umfragen.filter(function(u){return sjd(u.bis||u.von)===y}).length+'</td></tr><tr><td class="k">Anträge</td><td>'+an.length+' ('+an.filter(function(a){return a.status==='genehmigt'||a.status==='umgesetzt'}).length+' genehmigt oder umgesetzt)</td></tr></table>';
+  if(ses.length)o+='<h3>Sitzungen</h3>'+tbl(['Nr.','Datum','Titel','Status'],ses.map(function(s,i){return [String(i+1),d2(s.datum),s.titel,statusInfo(s.status)[1]]}),['8%','18%','',' 20%']);
+  if(bes.length)o+='<h3>Beschlüsse</h3>'+tbl(['Datum','Beschluss','Ergebnis'],bes,['18%','','20%']);
+  if(pr.length)o+='<h3>Projekte</h3>'+tbl(['Projekt','Status','Termin'],pr.map(function(p){return [p.name,(PJS.find(function(x){return x[0]===p.status})||PJS[0])[1],p.termin?d2(p.termin+'T00:00'):'']}),['','22%','18%']);
+  if(an.length)o+='<h3>Anträge</h3>'+tbl(['Antrag','Status','Datum'],an.map(function(a){return [a.titel,(ANS.find(function(x){return x[0]===a.status})||ANS[0])[1],a.datum?d2(a.datum+'T00:00'):'']}),['','22%','18%']);
+  var offen=aufg.filter(function(x){return !x.t.done});
+  if(offen.length)o+='<h3>Offene Aufgaben</h3>'+tbl(['Aufgabe','Wer','Frist'],offen.map(function(x){return [x.t.text,x.t.wer,x.t.frist?d2(x.t.frist+'T00:00'):'']}),['','22%','18%']);
+  o+='<h3>Fazit und Ausblick</h3>'+box('fazit','Fazit und Ausblick');
+  o+='<table class="sig" style="margin-top:18px"><tr><td>Ort, Datum</td><td>Unterschrift</td></tr><tr><td></td><td></td></tr></table></div>';
+  return o;
+}
+
+var GO_TEXT="Hier den Text der Geschäftsordnung einfügen (Reiter Geschäftsordnung → Bearbeiten).";
+function goDef(){return {ladung:7,protfrist:0,text:GO_TEXT,v:2}}
+var IMP1=null;
+function doImp1(){
+  var SID='hist-2026-09-15',anw={};
+  function mk(a,here){
+    var m=S.members.find(function(x){return x.name.trim().toLowerCase()===a[0].toLowerCase()});
+    if(!m){m={id:uid(),name:a[0],rolle:a[2]||'Mitglied',stimm:true,aktiv:true,klasse:a[1],ksf:'',mail:''};S.members.push(m)}
+    else{if(!m.klasse)m.klasse=a[1];if(a[2]&&m.rolle==='Mitglied')m.rolle=a[2];m.aktiv=true}
+    anw[m.id]=here?'ja':'nein';
+  }
+  IMP1.present.forEach(function(a){mk(a,true)});IMP1.absent.forEach(function(a){mk(a,false)});
+  var hz=S.members.find(function(x){return false});if(hz)anw[hz.id]='ja';
+  var tops=IMP1.tops.map(function(t){var o={id:uid(),titel:t.titel,min:0,typ:t.typ,beschr:'',notiz:t.notiz};if(t.w)o.w=JSON.parse(JSON.stringify(t.w));return o});
+  var bes=IMP1.bes.map(function(b){return {id:uid(),text:b.text,ja:b.ja,nein:b.nein,enth:b.enth,wer:b.wer,frist:'',top:tops[b.top].id}});
+  S.sessions=S.sessions.filter(function(x){return x.id!==SID});
+  S.sessions.push({id:SID,titel:'1. Sitzung des Schülerrates',datum:'2026-09-15T20:35',ort:'Musterschule, Raum 1.029',status:'protokolliert',tops:tops,anw:anw,beschluesse:bes,aufgaben:[],protokoll:'',pdoc:'',pf:JSON.parse(JSON.stringify(IMP1.pf)),fg:{st:'entwurf',vers:'',frist:'',gen:'',bem:''}});
+  save();return SID;
+}
+function GO(){return S.go||(S.go=goDef())}
+function addDays(ds,n){var p=String(ds).slice(0,10).split('-').map(Number);var d=new Date(p[0],p[1]-1,p[2]+n);return dstr(d)}
+function goHTML(){
+  var o='<div class="paper"><h1>Geschäftsordnung der Schülervertretung (SV)</h1><div class="sub">'+esc(S.settings.schule||S.settings.name||'')+'</div>';
+  String(GO().text||'').split('\n').forEach(function(l){l=l.trim();if(!l)return;o+=l.indexOf('§ ')===0?'<h3>'+esc(l)+'</h3>':'<p>'+esc(l)+'</p>'});
+  return o+'<p style="margin-top:14px">Stand: '+esc(d2(today()+'T00:00'))+'</p></div>';
+}
+function vGO(){
+  var g=GO(),r=(RULES.find(function(x){return x[0]===S.settings.quorumRule})||RULES[0])[1];
+  return '<section class="card"><h3 style="margin-bottom:6px">Geschäftsordnung</h3><p class="meta" style="margin-bottom:10px">Die Fristen erscheinen als Hinweis in der Sitzung und im Jahresplan. Beschlussfähig ist das Gremium laut Einstellung oben bei: <b>'+esc(r)+'</b> (GO § 9 Abs. 1: mindestens die Hälfte).</p>'+
+    '<div class="g2"><div><label class="lbl" for="go-l">Ladungsfrist in Tagen (GO § 7 Abs. 1)</label><input type="number" min="0" id="go-l" data-go="1" data-f="ladung" value="'+g.ladung+'"></div>'+
+    '<div><label class="lbl" for="go-p">Protokoll verteilen nach Tagen (0 = keine Frist)</label><input type="number" min="0" id="go-p" data-go="1" data-f="protfrist" value="'+g.protfrist+'"></div></div>'+
+    '<label class="lbl" for="go-t" style="margin-top:12px">Text der Geschäftsordnung</label><textarea class="box" id="go-t" data-go="1" data-f="text" style="min-height:300px">'+esc(g.text)+'</textarea>'+
+    '<div class="frow" style="margin-top:8px">'+(DL?'<button type="button" class="btn primary" data-act="gosave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="gohtml">HTML kopieren</button>')+cbtn('goreset','Auf Fassung aus dem PDF zurücksetzen','data-act="goreset"')+'</div></section>';
+}
+
+/* ---- Umfragen ---- */
+function ufRes(u){
+  var tot=u.optionen.reduce(function(a,x){return a+x.n},0);
+  if(!u.optionen.length)return '<p class="empty">Noch keine Antwortmöglichkeiten.</p>';
+  var max=Math.max.apply(null,u.optionen.map(function(x){return x.n}));
+  return '<div class="meta" style="margin-bottom:6px">Teilnehmende: <b>'+tot+'</b></div>'+u.optionen.map(function(x){
+    var p=tot?Math.round(x.n*1000/tot)/10:0;
+    return '<div style="margin-bottom:8px"><div class="frow"><span class="grow">'+esc(x.text||'(ohne Text)')+(tot&&x.n===max&&max>0?' <span class="pill good">vorn</span>':'')+'</span><span class="mono">'+x.n+' · '+String(p).replace('.',',')+' %</span></div><div style="height:10px;background:var(--surface2);border-radius:5px"><div style="height:10px;width:'+p+'%;background:var(--accent);border-radius:5px"></div></div></div>';
+  }).join('');
+}
+function ufHTML(u){
+  var tot=u.optionen.reduce(function(a,x){return a+x.n},0);
+  var z=(u.von||u.bis)?(u.von?d2(u.von+'T00:00'):'')+(u.bis?' bis '+d2(u.bis+'T00:00'):''):'';
+  var o='<div class="paper"><h1>Umfrage</h1><div class="sub">'+esc(u.frage||'')+'</div>';
+  o+='<table style="margin-left:0;width:100%"><tr><td class="k">Zeitraum</td><td>'+(esc(z)||'&nbsp;')+'</td></tr><tr><td class="k">Befragt</td><td>'+(esc(u.ziel||'')||'&nbsp;')+'</td></tr><tr><td class="k">Teilnehmende</td><td>'+tot+'</td></tr></table>';
+  o+='<h3>Ergebnis</h3><table style="margin-left:0;width:100%"><tr><td><b>Antwort</b></td><td style="width:14%"><b>Stimmen</b></td><td style="width:14%"><b>Anteil</b></td><td style="width:34%"><b>Verteilung</b></td></tr>'+u.optionen.map(function(x){var p=tot?Math.round(x.n*1000/tot)/10:0;return '<tr><td>'+esc(x.text)+'</td><td>'+x.n+'</td><td>'+String(p).replace('.',',')+' %</td><td><div style="height:12px;width:'+p+'%;background:#0E6B58;-webkit-print-color-adjust:exact;print-color-adjust:exact"></div></td></tr>'}).join('')+'</table>';
+  if(u.notiz)o+='<h3>Anmerkung</h3><p style="white-space:pre-wrap">'+esc(u.notiz)+'</p>';
+  return o+'<p style="margin-top:14px">'+esc(S.settings.name||'')+', '+esc(S.settings.schule||'')+'</p></div>';
+}
+function vUmf(){
+  var list=S.umfragen.slice().sort(function(a,b){return ((a.status==='offen'?0:1)-(b.status==='offen'?0:1))||(b.von||'').localeCompare(a.von||'')});
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>Umfragen</h2><button type="button" class="btn primary" data-act="adduf">+ Umfrage</button></div><p class="meta">Meinungsbilder aus der Schülerschaft. Du trägst die gezählten Stimmen ein und bekommst Anteile, Balken und einen Aushang mit dem Ergebnis.</p></section>';
+  if(!list.length)h+='<section class="card"><p class="empty">Noch keine Umfrage.</p></section>';
+  list.forEach(function(u){
+    var open=ui.uopen===u.id,c='data-uf="'+u.id+'"',tot=u.optionen.reduce(function(a,x){return a+x.n},0);
+    h+='<section class="card"><div class="frow"><div class="grow"><strong>'+(esc(u.frage)||'<em>Ohne Frage</em>')+'</strong> <span class="pill '+(u.status==='offen'?'warn':'good')+'">'+(u.status==='offen'?'Läuft':'Abgeschlossen')+'</span><div class="meta">'+tot+' Teilnehmende'+(u.bis?' · bis '+esc(d2(u.bis+'T00:00')):'')+'</div></div><button type="button" class="btn sm" data-act="ufopen" data-id="'+u.id+'">'+(open?'Schließen':'Öffnen')+'</button></div>';
+    if(open){
+      h+='<label class="lbl" for="uq-'+u.id+'" style="margin-top:12px">Frage</label><input type="text" id="uq-'+u.id+'" '+c+' data-f="frage" value="'+esc(u.frage)+'">'+
+        '<div class="g2" style="margin-top:12px"><div><label class="lbl" for="uv-'+u.id+'">Von</label><input type="date" id="uv-'+u.id+'" '+c+' data-f="von" value="'+esc(u.von)+'"></div>'+
+        '<div><label class="lbl" for="ub-'+u.id+'">Bis</label><input type="date" id="ub-'+u.id+'" '+c+' data-f="bis" value="'+esc(u.bis)+'"></div>'+
+        '<div><label class="lbl" for="uz-'+u.id+'">Befragt (z. B. alle Klassen)</label><input type="text" id="uz-'+u.id+'" '+c+' data-f="ziel" value="'+esc(u.ziel)+'"></div>'+
+        '<div><label class="lbl" for="us-'+u.id+'">Status</label><select id="us-'+u.id+'" '+c+' data-f="status" data-rr="1">'+opts([['offen','Läuft'],['abgeschlossen','Abgeschlossen']],u.status)+'</select></div></div>'+
+        '<h3 style="margin:16px 0 6px">Antwortmöglichkeiten und Stimmen</h3>';
+      u.optionen.forEach(function(x){
+        var cx=c+' data-coll="optionen" data-id="'+x.id+'"';
+        h+='<div class="frow" style="margin-bottom:6px"><input type="text" class="grow" aria-label="Antwort" '+cx+' data-f="text" value="'+esc(x.text)+'" placeholder="Antwort"><input type="number" min="0" style="width:6rem" aria-label="Stimmen" '+cx+' data-f="n" value="'+x.n+'"><button type="button" class="btn sm danger" data-act="ufoptdel" data-uid="'+u.id+'" data-id="'+x.id+'">Entfernen</button></div>';
+      });
+      h+='<div class="frow"><button type="button" class="btn sm" data-act="ufopt" data-id="'+u.id+'">+ Antwort</button><button type="button" class="btn sm" data-act="ufpreset" data-id="'+u.id+'" data-v="jn">Vorlage Ja / Nein / Enthaltung</button><button type="button" class="btn sm" data-act="ufpreset" data-id="'+u.id+'" data-v="skala">Vorlage Skala 1 bis 5</button></div>'+
+        '<h3 style="margin:16px 0 6px">Auswertung</h3><div id="ufres-'+u.id+'">'+ufRes(u)+'</div>'+
+        '<label class="lbl" for="un-'+u.id+'" style="margin-top:12px">Anmerkung (erscheint auf dem Aushang)</label><textarea class="box" id="un-'+u.id+'" '+c+' data-f="notiz" style="min-height:70px">'+esc(u.notiz)+'</textarea>'+
+        '<div class="frow" style="margin:12px 0">'+(DL?'<button type="button" class="btn primary" data-act="ufsave" data-id="'+u.id+'">Ergebnis-Aushang als HTML speichern</button>':'<button type="button" class="btn primary" data-act="ufhtml" data-id="'+u.id+'">Ergebnis-Aushang als HTML kopieren</button>')+cbtn('deluf'+u.id,'Umfrage löschen','data-act="deluf" data-id="'+u.id+'"')+'</div>';
+    }
+    h+='</section>';
+  });
+  return h+'</div>';
+}
+
+function fmtNotiz(txt){
+  var o='',inUl=false;
+  String(txt||'').split('\n').forEach(function(l){
+    l=l.trim();if(!l)return;
+    var b=/^[-•]\s+(.*)$/.exec(l),sh=/^(\d+\.\d+)\s+(.*)$/.exec(l);
+    if(b){if(!inUl){o+='<ul style="margin:0 0 6px;padding-left:44px">';inUl=true}o+='<li>'+esc(b[1])+'</li>';return}
+    if(inUl){o+='</ul>';inUl=false}
+    o+=sh?'<p class="l2"><b>TOP '+esc(sh[1])+' '+esc(sh[2])+'</b></p>':'<p>'+esc(l)+'</p>';
+  });
+  return o+(inUl?'</ul>':'');
+}
+function ensureNs(){
+  var cur=sess(ui.nsid);if(cur)return cur;
+  var held=sorted().filter(function(s){return s.status==='gehalten'||s.status==='protokolliert'}).pop();
+  var p=held||ensureTs();ui.nsid=p?p.id:'';return p;
+}
+function nsHTML(s){
+  var g=S.settings.protGremium||'Schülerrates',sc=S.settings.schule||'';
+  var sub=pfv(s,'untertitel',sessNo(s)+'. Sitzung des '+g+(sc?' der '+sc:'')+' im Schuljahr '+sj(s.datum));
+  var d=dt(s.datum),wk=d?new Intl.DateTimeFormat('de-DE',{weekday:'long'}).format(d):'';
+  var beginn=pfv(s,'beginn',t2(s.datum)),ende=pfv(s,'ende','');
+  var protMem=S.members.find(function(m){return m.aktiv&&m.rolle==='Protokoll'});
+  var ln=String(pfv(s,'leitung',S.settings.leitung||'')).split(',')[0].trim(),lf=String(pfv(s,'leitung',S.settings.leitung||'')),pn=pfv(s,'protokoll',protMem?protMem.name:'');
+  function row(k,v){return '<tr><td class="k">'+k+'</td><td>'+(v||'&nbsp;')+'</td></tr>'}
+  var o='<div class="paper"><h1>Niederschrift</h1><div class="sub">'+esc(sub)+'</div>';
+  o+='<table style="margin-left:0;width:100%">'+row('Sitzungstermin',esc(wk+', '+d2(s.datum)))+row('Sitzungsbeginn',esc(beginn))+row('Sitzungsende',ende?esc(ende)+' Uhr':'')+row('Ort, Raum',esc(s.ort||''))+row('Sitzungsleitung',esc(lf))+row('Protokollführung',esc(pn))+'</table>';
+  var pres=S.members.filter(function(m){return m.klasse&&s.anw[m.id]==='ja'}),groups={},order=[];
+  pres.forEach(function(m){if(!groups[m.klasse]){groups[m.klasse]=[];order.push(m.klasse)}groups[m.klasse].push(m.name)});
+  order.sort(function(a,b){return a.localeCompare(b,'de',{numeric:true})});
+  o+='<h3>Anwesend</h3>';
+  o+=order.length?'<table style="margin-left:0;width:100%"><tr><td style="width:18%"><b>Klasse</b></td><td><b>Klassensprecher*innen bzw. Stellvertretung</b></td></tr>'+order.map(function(k){return '<tr><td>'+esc(k)+'</td><td>'+esc(groups[k].join(', '))+'</td></tr>'}).join('')+'</table>':'<p>Keine Anwesenheit erfasst.</p>';
+  var abs=S.members.filter(function(m){return m.aktiv&&m.klasse&&s.anw[m.id]!=='ja'});
+  if(abs.length)o+='<p style="margin-top:6px"><b>Nicht anwesend:</b> '+esc(abs.map(function(m){return m.name+' ('+m.klasse+')'}).join(', '))+'</p>';
+  var q=quorum(s);
+  o+='<p>'+esc(pfv(s,'eroeff','Der Schülersprecher eröffnet die Sitzung um '+beginn+' und stellt fest, dass die Einladung ordnungsgemäß ergangen und die Beschlussfähigkeit '+(q.ok?'gegeben':'nicht gegeben')+' ist. Einwendungen gegen die Tagesordnung werden keine vorgetragen, somit ist diese genehmigt. Die Anwesenheit ist in der beigefügten Anwesenheitsliste dokumentiert.'))+'</p>';
+  s.tops.forEach(function(t,i){
+    o+='<h3>TOP '+(i+1)+' '+esc(t.titel)+'</h3>'+fmtNotiz(t.notiz);
+    var w=t.w||{};
+    if(t.typ==='wahl'){
+      function r(k,v){return v?row(k,esc(v)):''}
+      o+='<table>'+row('Wahlleitung',esc(w.leitung!==undefined?w.leitung:leitungName()))+r('Wahlhelfer*in 1',w.helfer1)+r('Wahlhelfer*in 2',w.helfer2)+r('Kandidat*in 1',w.k1)+r('Kandidat*in 2',w.k2)+r('Kandidat*in 3',w.k3)+r('Wahlzeit',w.zeit)+'</table>';
+    }
+    s.beschluesse.filter(function(b){return b.top===t.id}).forEach(function(b){
+      var rs=res(b),tot=b.ja+b.nein+b.enth;
+      o+='<p><b>Beschluss:</b> '+esc(b.text)+'</p>';
+      var line='';
+      if(t.typ==='wahl'&&w.abg!==undefined&&w.abg!=='')line='Abgegebene Stimmen: '+w.abg+', davon gültig: '+Math.max(0,(+w.abg||0)-(+w.ung||0))+'. ';
+      if(tot>0){line+='Ja: '+b.ja+', Nein: '+b.nein+', Enthaltung: '+b.enth;if(b.ja>0&&b.nein===0&&b.enth===0)line+=' (einstimmig angenommen)';else line+=' ('+rs.label.toLowerCase()+')'}
+      if(line)o+='<p>Abstimmungsergebnis: '+esc(line)+'</p>';
+    });
+  });
+  o+='<h3>Übersicht der gefassten Beschlüsse und Maßnahmen</h3><table style="margin-left:0;width:100%"><thead><tr><th style="width:9%">TOP</th><th>Beschluss / Maßnahme</th><th style="width:22%">Verantwortlich</th><th style="width:15%">Frist</th></tr></thead><tbody>'+ovwRows(s)+'</tbody></table>';
+  var anl=pfv(s,'anlagen','');
+  if(anl.trim())o+='<h3>Anlagen</h3><ol>'+anl.split('\n').filter(function(l){return l.trim()}).map(function(l){return '<li>'+esc(l)+'</li>'}).join('')+'</ol>';
+  o+='<table class="sig" style="margin-top:18px"><tr><td>Sitzungsleitung</td><td>Protokollführung</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>'+esc(ln)+'&nbsp;</td><td>'+esc(pn)+'&nbsp;</td></tr></table></div>';
+  return o;
+}
+
+/* ---- Beschluss-Aushang ---- */
+function ensureBn(){
+  var cur=sess(ui.bnid);if(cur)return cur;
+  var l=sorted().filter(function(s){return s.beschluesse.length});
+  var p=l.length?l[l.length-1]:ensureTs();ui.bnid=p?p.id:'';return p;
+}
+function bnHTML(s){
+  var list=s.beschluesse.filter(function(b){return b.pub!==false&&b.text});
+  var o='<div class="paper aus"><h1>Das hat die SV beschlossen</h1><div class="sub">'+esc(S.settings.name||'')+' · Sitzung vom '+esc(d2(s.datum))+'</div>';
+  if(!list.length)o+='<p>Keine Beschlüsse ausgewählt.</p>';
+  else o+='<table style="margin-left:0;width:100%"><tr><td><b>Beschluss</b></td><td style="width:24%"><b>Ergebnis</b></td><td style="width:20%"><b>Zuständig</b></td></tr>'+list.map(function(b){
+    var r=b.ja+b.nein>0?res(b).label+' ('+b.ja+' Ja, '+b.nein+' Nein, '+b.enth+' Enth.)':'';
+    return '<tr><td>'+esc(b.text)+'</td><td>'+esc(r)+'&nbsp;</td><td>'+esc(b.wer||'')+(b.frist?'<br>bis '+esc(d2(b.frist+'T00:00')):'')+'&nbsp;</td></tr>'}).join('')+'</table>';
+  var hint=pfv(s,'bes_hinweis','Fragen und Anregungen gern an die SV.');
+  if(hint)o+='<p style="margin-top:18px">'+esc(hint)+'</p>';
+  return o+'<p style="margin-top:10px"><b>'+esc(S.settings.leitung||'')+'</b></p></div>';
+}
+
+/* ---- Klassenübersicht ---- */
+function vKl(){
+  var ks=[];S.members.forEach(function(m){if(m.aktiv&&m.klasse&&ks.indexOf(m.klasse)<0)ks.push(m.klasse)});
+  ks.sort(function(a,b){return a.localeCompare(b,'de',{numeric:true})});
+  var held=sorted().filter(function(s){return (s.status==='gehalten'||s.status==='protokolliert')&&Object.keys(s.anw).length});
+  var h='<section class="card"><h3 style="margin-bottom:6px">Klassen</h3><p class="meta" style="margin-bottom:8px">Anwesenheit je Klasse über alle gehaltenen Sitzungen mit erfasster Anwesenheit ('+held.length+'). Eine Klasse gilt als anwesend, wenn mindestens eine Person da war.</p>';
+  if(!ks.length)return h+'<p class="empty">Noch keine Klassen. Trage bei den Mitgliedern die Klasse ein.</p></section>';
+  ks.forEach(function(k){
+    var ms=S.members.filter(function(m){return m.aktiv&&m.klasse===k});
+    var ksn=ms.filter(function(m){return m.ksf==='Klassensprecher/in'}).map(function(m){return m.name}),vt=ms.filter(function(m){return m.ksf==='Stellvertreter/in'}).map(function(m){return m.name});
+    var rest=ms.filter(function(m){return !m.ksf}).map(function(m){return m.name});
+    var att=held.map(function(s){return ms.some(function(m){return s.anw[m.id]==='ja'})});
+    var n=att.filter(Boolean).length,miss=0;for(var i=att.length-1;i>=0&&!att[i];i--)miss++;
+    h+='<div class="arow"><span><strong>'+esc(k)+'</strong> <span class="meta">'+(ksn.length?'KS: '+esc(ksn.join(', ')):'')+(vt.length?(ksn.length?' · ':'')+'Vertr.: '+esc(vt.join(', ')):'')+(rest.length?(ksn.length||vt.length?' · ':'')+esc(rest.join(', ')):'')+'</span></span><span>'+(held.length?'<span class="mono">'+n+' von '+held.length+'</span>':'<span class="meta">–</span>')+(miss>=2?' <span class="pill bad">fehlt zuletzt '+miss+'×</span>':miss===1?' <span class="pill warn">zuletzt gefehlt</span>':'')+'</span></div>';
+  });
+  return h+'</section>';
+}
+
+/* ---- Themenspeicher ---- */
+var TH_TYP=[['info','Information'],['diskussion','Diskussion'],['beschluss','Beschluss'],['wahl','Wahl'],['sonstiges','Sonstiges']];
+function vThemen(){
+  var plan=sorted().filter(function(s){return s.status==='geplant'||s.status==='eingeladen'});
+  var sel=plan.some(function(s){return s.id===ui.thsel})?ui.thsel:(plan[0]?plan[0].id:'');ui.thsel=sel;
+  var order={offen:0,eingeplant:1,erledigt:2};
+  var list=S.themen.slice().sort(function(a,b){return order[a.status]-order[b.status]});
+  var h='<div class="stack"><section class="card"><h2 style="margin-bottom:6px">Themenspeicher</h2><p class="meta" style="margin-bottom:10px">Themen und Ideen, die noch in keiner Sitzung dran sind. Mit einem Klick landen sie als TOP in einer geplanten Sitzung.</p>'+
+    '<div class="g2"><div><label class="lbl" for="th-text">Thema</label><input type="text" id="th-text" placeholder="z. B. Fehlzeitenregelung"></div><div><label class="lbl" for="th-von">Vorgeschlagen von</label><input type="text" id="th-von"></div></div>'+
+    '<div class="frow" style="margin-top:10px"><select id="th-typ" aria-label="Art des TOPs">'+opts(TH_TYP,'diskussion')+'</select><button type="button" class="btn primary" data-act="addth">+ Thema speichern</button>'+(S.themen.some(function(t){return /Fehlzeitenregelung/.test(t.text)})?'':'<button type="button" class="btn" data-act="thimport">Offene Themen aus der Niederschrift 15.09.2026 übernehmen</button>')+'</div></section>';
+  if(!list.length)h+='<section class="card"><p class="empty">Noch keine Themen.</p></section>';
+  list.forEach(function(t){
+    var c='data-th="'+t.id+'"',s=t.sid&&sess(t.sid);
+    h+='<section class="card"><div class="frow"><input type="text" class="grow" aria-label="Thema" '+c+' data-f="text" value="'+esc(t.text)+'"><span class="pill '+(t.status==='offen'?'warn':t.status==='eingeplant'?'accent':'good')+'">'+({offen:'Offen',eingeplant:'Eingeplant',erledigt:'Erledigt'})[t.status]+'</span></div>'+
+      '<div class="g2" style="margin-top:8px"><div><label class="lbl" for="tv-'+t.id+'">Vorgeschlagen von</label><input type="text" id="tv-'+t.id+'" '+c+' data-f="von" value="'+esc(t.von)+'"></div><div><label class="lbl" for="tt-'+t.id+'">Art</label><select id="tt-'+t.id+'" '+c+' data-f="typ">'+opts(TH_TYP,t.typ)+'</select></div></div>'+
+      '<label class="lbl" for="tn-'+t.id+'" style="margin-top:8px">Notiz</label><textarea class="box" id="tn-'+t.id+'" '+c+' data-f="notiz" style="min-height:60px">'+esc(t.notiz)+'</textarea><div class="frow" style="margin-top:8px">';
+    if(t.status==='offen'){
+      h+=plan.length?'<select aria-label="Sitzung" data-ui="thsel" class="grow">'+plan.map(function(x){return '<option value="'+x.id+'"'+(x.id===sel?' selected':'')+'>'+esc(rowDate(x.datum)+' · '+(x.titel||'Ohne Titel'))+'</option>'}).join('')+'</select><button type="button" class="btn sm primary" data-act="thplan" data-id="'+t.id+'">In Sitzung übernehmen</button>':'<span class="meta grow">Lege zuerst eine geplante Sitzung an.</span>';
+      h+='<button type="button" class="btn sm" data-act="thdone" data-id="'+t.id+'">Erledigt</button>';
+    }else{
+      h+=(s?'<span class="grow meta">In: '+esc(rowDate(s.datum)+' · '+(s.titel||''))+'</span><button type="button" class="btn sm" data-act="open" data-sid="'+s.id+'">Öffnen</button>':'<span class="grow"></span>')+'<button type="button" class="btn sm" data-act="thopen" data-id="'+t.id+'">Wieder öffnen</button>';
+    }
+    h+=cbtn('delth'+t.id,'Löschen','data-act="delth" data-id="'+t.id+'"')+'</div></section>';
+  });
+  return h+'</div>';
+}
+
+/* ---- Sitzungsmodus ---- */
+function hhmm(){var d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())}
+function mmss(sec){sec=Math.max(0,Math.floor(sec));var m=Math.floor(sec/60),s=sec%60;return pad(m)+':'+pad(s)}
+function lvRun(L){return L.paused?0:(Date.now()-L.ts)/1000}
+function lvTopSec(s,t){var L=s.live;return (L.sec[t.id]||0)+((s.tops[L.top]&&s.tops[L.top].id===t.id)?lvRun(L):0)}
+function lvTotal(s){var L=s.live,tot=0;Object.keys(L.sec).forEach(function(k){tot+=L.sec[k]});return tot+lvRun(L)}
+function rlSec(x){return (x.sec||0)+(x.t0?(Date.now()-x.t0)/1000:0)}
+function rlStopAll(s){s.live.rl.forEach(function(x){if(x.t0){x.sec=(x.sec||0)+(Date.now()-x.t0)/1000;x.t0=null}})}
+function lvBank(s){var L=s.live,t=s.tops[L.top];if(t&&!L.paused){L.sec[t.id]=(L.sec[t.id]||0)+(Date.now()-L.ts)/1000}L.ts=Date.now()}
+function vLive(){
+  var s=sess(ui.sid);
+  if(!s||!s.live||!s.live.on)return '<div class="stack"><section class="card"><p class="empty">Kein Sitzungsmodus aktiv.</p><button type="button" class="btn" data-act="back">Zurück</button></section></div>';
+  var L=s.live,sid=s.id,q=quorum(s),t=s.tops[L.top],n=s.tops.length;
+  var h='<div class="stack"><section class="card"><div class="frow"><div class="grow"><strong>'+esc(s.titel||'Sitzung')+'</strong><div class="meta">Beginn '+esc(pfv(s,'beginn',''))+' · Gesamt <span id="lv-tot" class="mono">'+mmss(lvTotal(s))+'</span>'+(L.paused?' · <b>pausiert</b>':'')+'</div></div>'+
+    '<button type="button" class="btn sm" data-act="livepause">'+(L.paused?'Weiter':'Pause')+'</button><button type="button" class="btn sm" data-act="livequit">Zur Sitzung</button>'+cbtn('liveend','Sitzung beenden','data-act="liveend"')+'</div></section>';
+  /* Anwesenheit */
+  var act=S.members.filter(function(m){return m.aktiv});
+  h+='<section class="card"><div class="vh"><h3>Anwesenheit</h3><span class="pill '+(q.ok?'good':'warn')+'">'+(q.ok?'Beschlussfähig':'Nicht beschlussfähig')+': '+q.present+' von '+q.N+', benötigt '+q.need+'</span></div><div class="frow" style="flex-wrap:wrap;gap:6px">'+
+    act.map(function(m){return '<button type="button" class="chip" data-act="anw" data-sid="'+sid+'" data-mid="'+m.id+'" data-v="ja" aria-pressed="'+(s.anw[m.id]==='ja')+'" title="'+esc(ksOf(m,s))+'">'+esc(m.name||'?')+(m.klasse?' · '+esc(m.klasse):'')+'</button>'}).join('')+'</div></section>';
+  /* TOP-Leiste */
+  h+='<section class="card"><div class="frow" style="flex-wrap:wrap;gap:6px">'+s.tops.map(function(x,i){return '<button type="button" class="chip'+(i===L.top?' cur':'')+(i<L.top?' done':'')+'" data-act="livetop" data-i="'+i+'" aria-pressed="'+(i===L.top)+'">'+(i+1)+'. '+esc((x.titel||'').slice(0,28))+'</button>'}).join('')+'</div></section>';
+  if(!t)return h+'<section class="card"><p class="empty">Keine Tagesordnung.</p></section></div>';
+  var el=lvTopSec(s,t),over=t.min>0&&el>t.min*60;
+  h+='<section class="card"><div class="meta">TOP '+(L.top+1)+' von '+n+(t.min?' · geplant '+t.min+' Min.':'')+'</div><div class="lv-top">'+esc(t.titel||'')+'</div>'+
+    '<div class="lv-timer'+(over?' over':'')+'" id="lv-top" data-min="'+(t.min||0)+'">'+mmss(el)+'</div>';
+  if(t.beschr)h+='<p class="meta" style="margin-top:8px;white-space:pre-wrap">'+esc(t.beschr)+'</p>';
+  h+='<label class="lbl" for="lv-notiz" style="margin-top:12px">Notizen (kommen ins Protokoll)</label><textarea class="box" id="lv-notiz" data-sid="'+sid+'" data-coll="tops" data-id="'+t.id+'" data-f="notiz" style="min-height:130px">'+esc(t.notiz)+'</textarea>';
+  /* Wahl */
+  if(t.typ==='wahl'){
+    var c='data-sid="'+sid+'" data-coll="tops" data-id="'+t.id+'" data-sub="w"',w=t.w||{};
+    function wi(k,l,num){var v=w[k]!==undefined?w[k]:(k==='leitung'?leitungName():'');return '<div><label class="lbl" for="lw-'+k+'">'+l+'</label><input type="'+(num?'number" min="0':'text')+'" id="lw-'+k+'" '+c+' data-f="'+k+'" value="'+esc(v)+'"></div>'}
+    h+='<h3 style="margin:16px 0 6px">Wahl</h3><div class="g2">'+wi('leitung','Wahlleitung')+wi('helfer1','Wahlhelfer/in 1')+wi('helfer2','Wahlhelfer/in 2')+wi('zeit','Wahlzeit')+wi('k1','Kandidat/in 1')+wi('k2','Kandidat/in 2')+wi('abg','Abgegebene Stimmen',1)+wi('ung','Ungültige Stimmen',1)+wi('gewaehlt','Gewählte Person')+'</div>'+
+      '<div class="frow" style="margin-top:8px"><span class="meta">Annahme der Wahl</span><button type="button" class="chip" data-act="wahlja" data-sid="'+sid+'" data-id="'+t.id+'" data-v="ja" aria-pressed="'+(w.annahme==='ja')+'">Ja</button><button type="button" class="chip" data-act="wahlja" data-sid="'+sid+'" data-id="'+t.id+'" data-v="nein" aria-pressed="'+(w.annahme==='nein')+'">Nein</button></div>';
+  }
+  h+='</section>';
+  /* Redeliste */
+  var present=act.filter(function(m){return s.anw[m.id]==='ja'});
+  h+='<section class="card"><div class="vh"><h3>Redeliste</h3>'+(L.rl.length?'<button type="button" class="btn sm" data-act="rlclear">Leeren</button>':'')+'</div>'+
+    '<div class="frow"><input type="text" id="rl-name" class="grow" list="rl-dl" placeholder="Name" aria-label="Name der Wortmeldung"><datalist id="rl-dl">'+present.map(function(m){return '<option value="'+esc(m.name)+'">'}).join('')+'</datalist><button type="button" class="btn primary" data-act="rladd">Hinzufügen</button></div>'+
+    '<div class="frow" style="margin-top:8px"><label class="meta" for="rl-limit">Redezeit-Limit (Sekunden, 0 = keins)</label><input type="number" min="0" id="rl-limit" style="width:6rem" data-sid="'+sid+'" data-sub="live" data-f="limit" value="'+(L.limit||0)+'"></div>';
+  if(L.rl.length){var nx=L.rl.findIndex(function(x){return !x.done});h+='<ul class="rl" style="margin-top:10px">'+L.rl.map(function(x,i){var sec=rlSec(x),ov=L.limit>0&&sec>L.limit;return '<li class="'+(x.done?'done':'')+'"><span class="nm grow">'+(i===nx&&!x.t0?'<b>▶ '+esc(x.name)+'</b>':x.t0?'<b>● '+esc(x.name)+'</b>':esc(x.name))+'</span><span class="mono rt'+(ov?' over':'')+'" id="rt-'+x.id+'">'+mmss(sec)+'</span>'+(x.done?'':'<button type="button" class="btn sm'+(x.t0?'':' primary')+'" data-act="'+(x.t0?'rlstop':'rlstart')+'" data-id="'+x.id+'">'+(x.t0?'■ Stop':'▶ Start')+'</button>')+'<button type="button" class="btn sm" data-act="rldone" data-id="'+x.id+'">'+(x.done?'Zurück':'Fertig')+'</button><button type="button" class="btn sm danger" data-act="rldel" data-id="'+x.id+'">×</button></li>'}).join('')+'</ul>'}
+  h+='</section>';
+  /* Beschlüsse */
+  var lk=s.beschluesse.filter(function(b){return b.top===t.id});
+  h+='<section class="card"><div class="vh"><h3>Beschlüsse zu diesem TOP</h3><button type="button" class="btn sm" data-act="lvbes">+ Beschluss</button></div>';
+  if(!lk.length)h+='<p class="empty">Noch kein Beschluss.</p>';
+  lk.forEach(function(b){
+    var cb='data-sid="'+sid+'" data-coll="beschluesse" data-id="'+b.id+'";';
+    cb='data-sid="'+sid+'" data-coll="beschluesse" data-id="'+b.id+'"';
+    h+='<div class="bes"><textarea rows="2" aria-label="Beschlusstext" '+cb+' data-f="text" placeholder="Wortlaut des Beschlusses">'+esc(b.text)+'</textarea><div class="frow" style="gap:16px;flex-wrap:wrap">'+
+      [['ja','Ja'],['nein','Nein'],['enth','Enthaltung']].map(function(x){return '<div><div class="meta">'+x[1]+'</div><div class="vgrp"><button type="button" class="vb" data-act="votep" data-sid="'+sid+'" data-id="'+b.id+'" data-f="'+x[0]+'" data-d="-1" aria-label="'+x[1]+' minus">−</button><span class="vcount" id="vc-'+b.id+'-'+x[0]+'">'+b[x[0]]+'</span><button type="button" class="vb plus" data-act="votep" data-sid="'+sid+'" data-id="'+b.id+'" data-f="'+x[0]+'" data-d="1" aria-label="'+x[1]+' plus">+</button></div></div>'}).join('')+
+      '</div><div class="frow" style="margin-top:8px"><span>'+bres(s,b)+'</span><button type="button" class="btn sm" data-act="einst" data-sid="'+sid+'" data-id="'+b.id+'">Einstimmig ('+q.present+')</button></div></div>';
+  });
+  h+='</section>';
+  /* Aufgabe */
+  h+='<section class="card"><h3 style="margin-bottom:6px">Aufgabe festhalten</h3><div class="frow"><input type="text" id="lv-task" class="grow" placeholder="Aufgabe"><input type="text" id="lv-wer" style="width:9rem" placeholder="Wer"><button type="button" class="btn primary" data-act="lvtask">Hinzufügen</button></div>';
+  var tk=s.aufgaben.filter(function(a){return a.top===t.id});
+  tk.forEach(function(a){h+='<div class="meta" style="margin-top:6px">• '+esc(a.text)+(a.wer?' · '+esc(a.wer):'')+'</div>'});
+  h+='</section>';
+  /* Navigation */
+  h+='<section class="card"><div class="frow"><button type="button" class="btn" data-act="livetop" data-i="'+(L.top-1)+'"'+(L.top<=0?' disabled':'')+'>← Zurück</button><span class="grow"></span>'+(L.top<n-1?'<button type="button" class="btn primary" data-act="livetop" data-i="'+(L.top+1)+'">Nächster TOP →</button>':'<span class="meta">Letzter TOP</span>')+'</div></section></div>';
+  return h;
+}
+setInterval(function(){
+  if(ui.view!=='live')return;
+  var s=sess(ui.sid);if(!s||!s.live||!s.live.on)return;
+  var a=$('#lv-tot');if(a)a.textContent=mmss(lvTotal(s));
+  var b=$('#lv-top'),t=s.tops[s.live.top];
+  s.live.rl.forEach(function(x){var r=$('#rt-'+x.id);if(r){var v=rlSec(x);r.textContent=mmss(v);r.classList.toggle('over',s.live.limit>0&&v>s.live.limit)}});
+  if(b&&t){var e=lvTopSec(s,t);b.textContent=mmss(e);var m=+b.dataset.min;b.classList.toggle('over',m>0&&e>m*60)}
+},1000);
+
+/* ---- Anwesenheits-Tracking ---- */
+function aSessions(y){return sorted().filter(function(s){return sjd(s.datum)===y&&(s.status==='gehalten'||s.status==='protokolliert')})}
+function aClassRep(s){var rep={};S.members.forEach(function(m){if(m.klasse&&s.anw[m.id]==='ja')rep[m.klasse]=true});return rep}
+function aData(y){
+  var ses=aSessions(y),reps=ses.map(aClassRep);
+  var ms=S.members.filter(function(m){return (ui.ainact||m.aktiv)&&m.rolle!=='Gast'});
+  var rows=ms.map(function(m){
+    var cells=ses.map(function(s,i){
+      var v=s.anw[m.id]||'',rv=m.klasse&&reps[i][m.klasse]&&v!=='ja';
+      return {v:v,rep:!!rv,sid:s.id};
+    });
+    var ja=0,en=0,ne=0,un=0,streak=0;
+    cells.forEach(function(c){if(c.v==='ja')ja++;else if(c.v==='entsch')en++;else if(c.v==='nein'){ne++;if(!c.rep)un++}});
+    for(var k=cells.length-1;k>=0;k--){if(cells[k].v==='nein')streak++;else if(cells[k].v==='')continue;else break}
+    var tot=ja+en+ne;
+    return {m:m,cells:cells,ja:ja,en:en,ne:ne,un:un,streak:streak,q:tot?Math.round(ja*100/tot):null,flag:streak>=2||ne>=3};
+  });
+  rows.sort(function(a,b){return (b.ne-a.ne)||(b.en-a.en)||String(a.m.name).localeCompare(String(b.m.name),'de')});
+  return {ses:ses,rows:rows,reps:reps};
+}
+function aCsv(y){
+  var d=aData(y);
+  var lines=[['Name','Klasse'].concat(d.ses.map(function(s){return d2(s.datum)})).concat(['Anwesend','Entschuldigt','Fehlt','Quote %']).join(';')];
+  d.rows.forEach(function(r){lines.push([r.m.name,r.m.klasse||''].concat(r.cells.map(function(c){return c.v==='ja'?'anwesend':c.v==='entsch'?'entschuldigt':c.v==='nein'?'fehlt':''})).concat([r.ja,r.en,r.ne,r.q===null?'':r.q]).join(';'))});
+  return '﻿'+lines.join('\n');
+}
+function vAnwes(){
+  var y=ensureSj('asj'),d=aData(y);
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>Anwesenheit</h2>'+sjOpts(y,'a-sj','asj')+'</div>'+
+    '<p class="meta" style="margin-bottom:10px">Wer kommt zu den Sitzungen, wer fehlt? Ausgewertet werden gehaltene Sitzungen mit Status „gehalten“ oder „protokolliert“. Ein Klick auf ein Feld ändert den Eintrag (✓ anwesend, E entschuldigt, ✗ fehlt, leer = nicht erfasst). Ein kleines <sup>v</sup> heißt: Die Klasse war trotzdem vertreten. Das sind personenbezogene Daten, nutze sie nur für die SV-Arbeit.</p>'+
+    '<div class="frow"><div class="seg" role="group" aria-label="Filter">'+[['','Alle'],['auf','Auffällige']].map(function(x){return '<button type="button" data-act="afilt" data-v="'+x[0]+'" aria-pressed="'+(ui.afilter===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'+
+    '<label class="frow meta" style="gap:6px"><input type="checkbox" data-act="ainact"'+(ui.ainact?' checked':'')+'>auch inaktive Mitglieder</label><span class="grow"></span>'+
+    (DL?'<button type="button" class="btn sm" data-act="acsv">Als CSV speichern</button>':'')+'<button type="button" class="btn sm" data-act="atxt">Als Text kopieren</button></div></section>';
+  if(!d.ses.length)return h+'<section class="card"><p class="empty">In diesem Schuljahr gibt es noch keine gehaltene Sitzung. Sobald du eine Sitzung beendest oder auf „gehalten“ setzt, erscheint sie hier.</p></section></div>';
+  var rows=d.rows.filter(function(r){return ui.afilter!=='auf'||r.flag});
+  var flagged=d.rows.filter(function(r){return r.flag});
+  h+='<section class="card"><div class="frow" style="gap:12px"><span><b>'+d.ses.length+'</b> <span class="meta">Sitzungen</span></span><span><b>'+flagged.length+'</b> <span class="meta">auffällig (mind. 2× in Folge oder 3× gefehlt)</span></span></div></section>';
+  h+='<section class="card"><div class="sheet"><table class="att"><thead><tr><th>Name</th>'+d.ses.map(function(s){var dd=dt(s.datum);return '<th title="'+esc(s.titel||'')+'">'+(dd?pad(dd.getDate())+'.'+pad(dd.getMonth()+1)+'.':'?')+'</th>'}).join('')+'<th>✓</th><th>E</th><th>✗</th><th title="Fehlt und Klasse war nicht vertreten">✗ ohne Vertr.</th><th>Quote</th></tr></thead><tbody>';
+  if(!rows.length)h+='<tr><td colspan="'+(d.ses.length+6)+'">Keine Auffälligen.</td></tr>';
+  rows.forEach(function(r){
+    h+='<tr><td>'+esc(r.m.name||'?')+(r.m.klasse?' <span class="meta">'+esc(r.m.klasse)+'</span>':'')+(r.flag?' <span class="pill bad">auffällig</span>':'')+'</td>'+r.cells.map(function(c){
+      var t=c.v==='ja'?'<span class="a-ja">✓</span>':c.v==='entsch'?'<span class="a-ent">E</span>':c.v==='nein'?'<span class="a-nein">✗</span>':'<span class="a-x">–</span>';
+      return '<td class="c" data-act="anwcyc" data-sid="'+c.sid+'" data-mid="'+r.m.id+'" title="Klicken zum Ändern">'+t+(c.rep&&c.v?'<sup>v</sup>':'')+'</td>'}).join('')+
+      '<td>'+r.ja+'</td><td>'+r.en+'</td><td>'+r.ne+'</td><td>'+r.un+'</td><td>'+(r.q===null?'–':r.q+' %')+'</td></tr>';
+  });
+  var cls=[];S.members.forEach(function(m){if(m.aktiv&&m.klasse&&cls.indexOf(m.klasse)<0)cls.push(m.klasse)});
+  h+='<tr><td><b>Klassen ohne Vertretung</b></td>'+d.ses.map(function(s,i){var n=cls.filter(function(k){return !d.reps[i][k]}).length;return '<td'+(n?' class="a-nein"':'')+' title="'+esc(cls.filter(function(k){return !d.reps[i][k]}).join(', '))+'">'+n+'</td>'}).join('')+'<td colspan="5"></td></tr>';
+  h+='</tbody></table></div></section></div>';
+  return h;
+}
+function protHTMLFile(s){
+  var css=($('#paper-css')||{}).textContent||'';
+  return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sitzungsprotokoll</title><style>'+css+'body{margin:0;padding:16px;background:#fff}@page{size:A4;margin:16mm}</style></head><body>'+protHTML(s,false)+'</body></html>';
+}
+
+function slug(s){return String(s||'vorlage').toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'vorlage'}
+function fillTpl(txt,s){
+  var q=quorum(s),d=dt(s.datum),st={ja:'anwesend',entsch:'entschuldigt',nein:'fehlt','':'offen'};
+  var map={
+    gremium:S.settings.name,titel:s.titel,datum:d?fDate.format(d):'',uhrzeit:d?fTime.format(d):'',ort:s.ort||'',heute:fD.format(new Date()),
+    tagesordnung:s.tops.map(function(t,i){return (i+1)+'. '+t.titel+(t.min?' ('+t.min+' Min)':'')}).join('\n'),
+    anwesenheit:S.members.filter(function(m){return m.aktiv}).map(function(m){return '- '+m.name+' ('+m.rolle+(m.stimm?'':', beratend')+'): '+st[s.anw[m.id]||'']}).join('\n')||'Keine Mitglieder erfasst.',
+    beschlussfaehigkeit:'Beschlussfähigkeit: '+(q.ok?'ja':'nein')+' ('+q.present+' von '+q.N+' Stimmberechtigten anwesend, benötigt '+q.need+')',
+    tops_notizen:s.tops.map(function(t,i){return '### TOP '+(i+1)+': '+t.titel+'\n\n'+(t.notiz?t.notiz+'\n':'')}).join('\n'),
+    beschluesse:s.beschluesse.length?s.beschluesse.map(function(b,i){return (i+1)+'. '+b.text+' (Ja '+b.ja+', Nein '+b.nein+', Enthaltung '+b.enth+': '+res(b).label+')'}).join('\n'):'Keine Beschlüsse.',
+    aufgaben:s.aufgaben.length?s.aufgaben.map(function(t){return '- ['+(t.done?'x':' ')+'] '+t.text+(t.wer?' ('+t.wer+')':'')+(t.frist?', bis '+fristLabel(t.frist):'')}).join('\n'):'Keine Aufgaben.',
+    notizen:s.protokoll||''
+  };
+  return String(txt||'').replace(/\{\{(\w+)\}\}/g,function(m,k){return Object.prototype.hasOwnProperty.call(map,k)?map[k]:m});
+}
+
+function topsTpl(){return [['Begrüßung und Feststellung der Beschlussfähigkeit',5,'info'],['Genehmigung des letzten Protokolls',5,'beschluss'],['Offene Aufgaben',10,'info'],['Verschiedenes',10,'info']].map(function(a){return {id:uid(),titel:a[0],min:a[1],typ:a[2],notiz:''}})}
+
+function seed(){
+  var now=new Date();
+  function at(days,h,mi){var d=new Date(now);d.setDate(d.getDate()+days);d.setHours(h,mi,0,0);return toLocal(d)}
+  function dd(days){var d=new Date(now);d.setDate(d.getDate()+days);return dstr(d)}
+  var m0={id:uid(),name:'Vorname Nachname',rolle:'Schulsprecher/in',stimm:true,aktiv:true};
+  var m1={id:uid(),name:'Beispiel-Mitglied 1',rolle:'Stellvertretung',stimm:true,aktiv:true,bsp:true};
+  var m2={id:uid(),name:'Beispiel-Mitglied 2',rolle:'Protokoll',stimm:true,aktiv:true,bsp:true};
+  var m3={id:uid(),name:'Beispiel-Mitglied 3',rolle:'Mitglied',stimm:true,aktiv:true,bsp:true,ksf:'Klassensprecher/in'};
+  var m4={id:uid(),name:'Beispiel-Mitglied 4',rolle:'Mitglied',stimm:true,aktiv:true,bsp:true,ksf:'Stellvertreter/in'};
+  var vl={id:uid(),name:'Beispiel-Verbindungslehrer/in',rolle:'Verbindungslehrer/in',stimm:false,aktiv:true,bsp:true};
+  var a1={}; a1[m0.id]='ja';a1[m1.id]='ja';a1[m2.id]='ja';a1[m3.id]='entsch';a1[m4.id]='ja';a1[vl.id]='ja';
+  var a2={}; a2[m0.id]='ja';a2[m1.id]='ja';a2[m3.id]='ja';
+  var past={id:uid(),bsp:true,titel:'SV-Sitzung (Beispiel)',datum:at(-14,18,0),ort:'',status:'protokolliert',
+    tops:[{id:uid(),titel:'Begrüßung und Feststellung der Beschlussfähigkeit',min:5,typ:'info',notiz:''},
+          {id:uid(),titel:'Genehmigung des letzten Protokolls',min:5,typ:'beschluss',notiz:''},
+          {id:uid(),titel:'Nutzung des Aufenthaltsraums am Abend',min:20,typ:'beschluss',notiz:'Wunsch vieler Mitschüler: länger geöffnet.'},
+          {id:uid(),titel:'Verschiedenes',min:10,typ:'info',notiz:''}],
+    anw:a1,
+    beschluesse:[{id:uid(),text:'Die SV bittet die Schulleitung, den Aufenthaltsraum bis 21:30 Uhr zu öffnen.',ja:4,nein:0,enth:0}],
+    aufgaben:[{id:uid(),text:'Antrag an die Schulleitung formulieren',wer:'Vorname Nachname',frist:dd(-3),done:false},
+              {id:uid(),text:'Aushang für die nächste Sitzung erstellen',wer:'Beispiel-Mitglied 2',frist:dd(-7),done:true}],
+    protokoll:''};
+  var next={id:uid(),bsp:true,titel:'SV-Sitzung (Beispiel)',datum:at(6,18,0),ort:'',status:'eingeladen',
+    tops:[{id:uid(),titel:'Begrüßung und Feststellung der Beschlussfähigkeit',min:5,typ:'info',notiz:''},
+          {id:uid(),titel:'Rückmeldung der Schulleitung zum Aufenthaltsraum',min:10,typ:'info',notiz:''},
+          {id:uid(),titel:'Planung der Weihnachtsfeier',min:25,typ:'diskussion',notiz:''},
+          {id:uid(),titel:'Verschiedenes',min:10,typ:'info',notiz:''}],
+    anw:a2,beschluesse:[],aufgaben:[],protokoll:''};
+  var later={id:uid(),bsp:true,titel:'SV-Sitzung (Beispiel)',datum:at(34,18,0),ort:'',status:'geplant',tops:topsTpl(),anw:{},beschluesse:[],aufgaben:[],protokoll:''};
+  return {settings:setDef('SV Musterschule'),members:[m0,m1,m2,m3,m4,vl],sessions:[past,next,later],vorlagen:defaultVorlagen(),projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],go:goDef(),berichte:{},v2:true,examples:true};
+}
+function blank(){return {settings:setDef('SV'),members:[],sessions:[],vorlagen:defaultVorlagen(),projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],go:goDef(),berichte:{},v2:true,examples:false}}
+function norm(o){
+  if(!o||!Array.isArray(o.sessions)||!Array.isArray(o.members))return null;
+  o.settings=Object.assign(setDef('SV'),o.settings||{});
+  if(!Array.isArray(o.vorlagen)){o.vorlagen=defaultVorlagen();o.v2=true}else if(!o.v2){o.vorlagen.push(srTemplate());o.v2=true}
+  o.vorlagen.forEach(function(v){v.id=v.id||uid();v.name=v.name||'';v.art=v.art||'text';v.inhalt=v.inhalt||''});
+  o.sessions.forEach(function(s){
+    s.id=s.id||uid();s.fg=s.fg||{st:'entwurf',vers:'',frist:'',gen:'',bem:''};s.tops=s.tops||[];s.anw=s.anw||{};s.beschluesse=s.beschluesse||[];s.aufgaben=s.aufgaben||[];
+    s.protokoll=s.protokoll||'';s.pdoc=s.pdoc||'';s.status=s.status||'geplant';s.titel=s.titel||'';s.ort=s.ort||'';s.datum=s.datum||'';
+    s.beschluesse.forEach(function(b){b.ja=+b.ja||0;b.nein=+b.nein||0;b.enth=+b.enth||0;b.text=b.text||'';b.wer=b.wer||'';b.frist=b.frist||''});
+    s.tops.forEach(function(t){t.min=+t.min||0;t.typ=t.typ||'info';t.notiz=t.notiz||'';t.titel=t.titel||'';t.beschr=t.beschr||''});
+  });
+  o.projekte=Array.isArray(o.projekte)?o.projekte:[];o.verteiler=Array.isArray(o.verteiler)?o.verteiler:[];
+  o.projekte.forEach(function(p){p.id=p.id||uid();p.name=p.name||'';p.ziel=p.ziel||'';p.termin=p.termin||'';p.status=p.status||'idee';p.lead=p.lead||'';p.notiz=p.notiz||'';p.sess=Array.isArray(p.sess)?p.sess:[];p.aufg=Array.isArray(p.aufg)?p.aufg:[];p.aufg.forEach(function(a){a.id=a.id||uid();a.text=a.text||'';a.wer=a.wer||'';a.frist=a.frist||'';a.done=!!a.done})});
+  o.antraege=Array.isArray(o.antraege)?o.antraege:[];o.berichte=(o.berichte&&typeof o.berichte==='object')?o.berichte:{};
+  o.antraege.forEach(function(a){a.id=a.id||uid();['titel','empf','datum','text','begr','bez','ein','frist','antw','antwt'].forEach(function(k){a[k]=a[k]||''});a.status=a.status||'entwurf'});
+  var gv=o.go&&o.go.v;o.go=Object.assign(goDef(),(o.go&&typeof o.go==='object')?o.go:{});o.go.ladung=Math.max(0,+o.go.ladung||0);o.go.protfrist=Math.max(0,+o.go.protfrist||0);
+  if(!gv){o.go.v=2;if(!o.go.text)o.go.text=GO_TEXT;if(o.go.protfrist===14)o.go.protfrist=0;o.go.ladung=7;o.settings.quorumRule='ge50'}
+  o.themen=Array.isArray(o.themen)?o.themen:[];o.themen.forEach(function(t){t.id=t.id||uid();t.text=t.text||'';t.von=t.von||'';t.typ=t.typ||'diskussion';t.notiz=t.notiz||'';t.status=t.status||'offen';t.sid=t.sid||''});
+  o.umfragen=Array.isArray(o.umfragen)?o.umfragen:[];
+  o.umfragen.forEach(function(u){u.id=u.id||uid();['frage','von','bis','ziel','notiz'].forEach(function(k){u[k]=u[k]||''});u.status=u.status||'offen';u.optionen=Array.isArray(u.optionen)?u.optionen:[];u.optionen.forEach(function(x){x.id=x.id||uid();x.text=x.text||'';x.n=Math.max(0,+x.n||0)})});
+  o.verteiler.forEach(function(v){v.id=v.id||uid();v.name=v.name||'';v.ids=Array.isArray(v.ids)?v.ids:[];v.extra=v.extra||''});
+  o.members.forEach(function(m){m.mail=m.mail||'';m.id=m.id||uid();m.name=m.name||'';m.rolle=m.rolle||'Mitglied';m.stimm=m.stimm!==false;m.aktiv=m.aktiv!==false;m.klasse=m.klasse||'';m.ksf=m.ksf||''});
+  return o;
+}
+
+var memOK=true;
+function load(){try{var r=localStorage.getItem(KEY);if(!r)return null;return norm(JSON.parse(r))}catch(e){return null}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){memOK=false}
+  if(typeof cloudMark==='function')cloudMark()}
+
+var S=load();
+if(!S){S=seed();save()}
+var tab='uebersicht';
+try{var t0=localStorage.getItem(KEY+'-tab');if(t0&&TABS.some(function(t){return t[0]===t0}))tab=t0}catch(e){}
+var ui={view:tab,sid:null,sj:'alle',q:'',who:'',confirm:null,md:null,json:false,pending:null,gen:null,psid:'',tsid:'',nsid:'',asj:'',afilter:'',ainact:false,bnid:'',thsel:'',uopen:'',psj:'',bsj:'',aopen:'',asel:'',astat:'',pj:'',pjsel:'',wsid:'',wtop:'',asid:'',vtab:'0',vedit:null,apSid:''};
+
+function sess(id){return S.sessions.find(function(s){return s.id===id})}
+function mem(id){return S.members.find(function(m){return m.id===id})}
+function voters(){return S.members.filter(function(m){return m.aktiv&&m.stimm})}
+function votingUnits(){
+  var u=[],byK={};
+  voters().forEach(function(m){
+    if(m.klasse){if(!byK[m.klasse]){byK[m.klasse]={key:m.klasse,m:[]};u.push(byK[m.klasse])}byK[m.klasse].m.push(m)}
+    else u.push({key:m.id,m:[m]});
+  });
+  return u;
+}
+function ksOf(m,s){
+  /* Klassenvertretung: eine Stimme pro Klasse, Stellvertretung nur bei Abwesenheit des Klassensprechers */
+  if(!m.klasse||!m.stimm||m.ksf!=='Stellvertreter/in')return '';
+  var ks=S.members.filter(function(x){return x.aktiv&&x.klasse===m.klasse&&x.ksf==='Klassensprecher/in'});
+  if(!ks.length)return '';
+  return ks.some(function(x){return s.anw[x.id]==='ja'})?'ohne Stimme (Klassensprecher/in anwesend)':'stimmberechtigt (Klassensprecher/in fehlt)';
+}
+function sorted(){return S.sessions.slice().sort(function(a,b){return (a.datum||'').localeCompare(b.datum||'')})}
+function quorum(s){
+  var v=votingUnits(),N=v.length,present=v.filter(function(u){return u.m.some(function(m){return s.anw[m.id]==='ja'})}).length,r=S.settings.quorumRule;
+  var need=r==='ge66'?Math.ceil(2*N/3):r==='ge50'?Math.ceil(N/2):Math.floor(N/2)+1;
+  return {N:N,present:present,need:need,wdh:!!s.wdh,ok:!!s.wdh||(N>0&&present>=need)};
+}
+function nextSession(){
+  var from=today()+'T00:00';
+  return sorted().find(function(s){return s.datum>=from&&(s.status==='geplant'||s.status==='eingeladen')});
+}
+function allTasks(){var out=[];S.sessions.forEach(function(s){s.aufgaben.forEach(function(t){out.push({id:t.id,text:t.text,wer:t.wer,frist:t.frist,done:t.done,sid:s.id,stitel:s.titel,sdatum:s.datum})})});return out}
+function byFrist(a,b){return (a.frist||'9999').localeCompare(b.frist||'9999')}
+function res(b){
+  if(b.ja+b.nein===0)return {k:'neutral',label:'Noch keine Stimmen'};
+  if(b.ja>b.nein)return {k:'good',label:'Angenommen'};
+  if(b.ja===b.nein)return {k:'bad',label:'Stimmengleichheit, abgelehnt'};
+  return {k:'bad',label:'Abgelehnt'};
+}
+function statusInfo(k){return STATUS.find(function(s){return s[0]===k})||STATUS[0]}
+function pill(k){var s=statusInfo(k);return '<span class="pill '+s[2]+'">'+s[1]+'</span>'}
+function opts(list,cur){return list.map(function(o){var v=Array.isArray(o)?o[0]:o,l=Array.isArray(o)?o[1]:o;return '<option value="'+esc(v)+'"'+(v===cur?' selected':'')+'>'+esc(l)+'</option>'}).join('')}
+function cbtn(key,label,attrs,cls){var armed=ui.confirm===key;return '<button type="button" class="btn sm danger '+(cls||'')+(armed?' armed':'')+'" '+attrs+'>'+(armed?'Sicher? Nochmal klicken':label)+'</button>'}
+
+/* ---------- Ansichten ---------- */
+function nav(){
+  var open=allTasks().filter(function(t){return !t.done}).length;
+  return '<nav class="nav" aria-label="Bereiche">'+TABS.map(function(t){
+    return '<button type="button" data-act="nav" data-v="'+t[0]+'"'+(ui.view===t[0]?' aria-current="page"':'')+'>'+t[1]+(t[0]==='aufgaben'&&open?' <span class="badge">'+open+'</span>':'')+'</button>';
+  }).join('')+'</nav>';
+}
+function bkGet(){try{return localStorage.getItem(KEY+'-bk')||''}catch(e){return ''}}
+function bkSet(){try{localStorage.setItem(KEY+'-bk',today())}catch(e){}}
+function bkDays(){var b=bkGet();if(!b)return null;return Math.floor((dt(today()+'T00:00')-dt(b+'T00:00'))/86400000)}
+function banner(){
+  var o='';
+  if(S.sessions.some(function(s){return !s.bsp})){
+    var snz='';try{snz=localStorage.getItem(KEY+'-snz')||''}catch(e){}
+    var dd=bkDays();
+    if(snz!==today()&&(dd===null||dd>=7))o+='<div class="banner"><span>'+(dd===null?'Du hast noch keine Sicherung gemacht.':'Die letzte Sicherung ist '+dd+' Tage alt.')+' Deine Daten liegen nur in diesem Browser.</span><span class="frow"><button type="button" class="btn sm primary" data-act="bkdo">Jetzt sichern</button><button type="button" class="btn sm" data-act="bksnz">Später</button></span></div>';
+  }
+  if(!S.examples)return o;
+  return o+'<div class="banner"><span>Du siehst Beispieldaten. Trage deine eigenen Sitzungen ein und entferne die Beispiele, wenn du soweit bist.</span><button type="button" class="btn sm" data-act="rmex">Beispieldaten entfernen</button></div>';
+}
+function sRow(s){
+  return '<button type="button" class="srow" data-act="open" data-sid="'+s.id+'"><span class="sdate mono">'+esc(rowDate(s.datum))+'</span><span><span class="st">'+esc(s.titel||'Ohne Titel')+'</span>'+(s.bsp?' <span class="tag">Beispiel</span>':'')+'<br><span class="meta">'+s.tops.length+' TOPs · '+s.beschluesse.length+' Beschlüsse · '+s.aufgaben.length+' Aufgaben</span></span>'+pill(s.status)+'</button>';
+}
+function taskRow(t,showSess){
+  var od=!t.done&&t.frist&&t.frist<today();
+  return '<div class="trow'+(t.done?' done':'')+'"><input type="checkbox" id="tk-'+t.id+'" data-sid="'+t.sid+'" data-coll="aufgaben" data-id="'+t.id+'" data-f="done" data-rr="1"'+(t.done?' checked':'')+'><div class="tmain"><label for="tk-'+t.id+'">'+(esc(t.text)||'<em>Ohne Text</em>')+'</label><div class="meta">'+(t.wer?esc(t.wer):'Niemand zugewiesen')+(t.frist?' · <span class="'+(od?'bad':'')+'">bis '+fristLabel(t.frist)+(od?' (überfällig)':'')+'</span>':'')+(showSess?' · <button type="button" class="link" data-act="open" data-sid="'+t.sid+'">'+esc(t.stitel||'Sitzung')+' ('+esc(shortD(t.sdatum))+')</button>':'')+'</div></div></div>';
+}
+function topSum(s){
+  var m=s.tops.reduce(function(a,t){return a+(t.min||0)},0),d=dt(s.datum),end='';
+  if(d){end=' · geplantes Ende ca. '+fTime.format(new Date(d.getTime()+m*60000))+' Uhr'}
+  return m+' Min gesamt'+end;
+}
+
+function vUeber(){
+  var ns=nextSession(),tasks=allTasks().filter(function(t){return !t.done}).sort(byFrist),left;
+  if(ns){
+    var n=daysUntil(ns.datum),q=quorum(ns),others=tasks.filter(function(t){return t.sid!==ns.id}).length;
+    left='<section class="card hero"><div class="eyebrow">Nächste Sitzung · <span class="mono">'+rel(n)+'</span></div><h2>'+esc(ns.titel||'Ohne Titel')+'</h2><p class="when">'+esc(dateLabel(ns.datum))+(ns.ort?' · '+esc(ns.ort):'')+'</p>'+
+      '<ul class="facts"><li><span class="mono">'+ns.tops.length+'</span> Tagesordnungspunkte, '+esc(topSum(ns))+'</li>'+
+      '<li><span class="mono">'+q.present+'/'+q.N+'</span> Stimmberechtigte zugesagt, benötigt <span class="mono">'+q.need+'</span> '+(q.ok?'<span class="pill good">Beschlussfähig</span>':'<span class="pill warn">Noch nicht beschlussfähig</span>')+'</li>'+
+      '<li><span class="mono">'+others+'</span> offene Aufgaben aus früheren Sitzungen</li></ul>'+
+      '<button type="button" class="btn primary" data-act="open" data-sid="'+ns.id+'">Sitzung öffnen</button></section>';
+  }else{
+    left='<section class="card hero"><div class="eyebrow">Nächste Sitzung</div><h2>Nichts geplant</h2><p class="when">Lege den nächsten Termin an. Dann siehst du hier Countdown, Tagesordnung und Beschlussfähigkeit.</p><button type="button" class="btn primary" data-act="newsess">Sitzung planen</button></section>';
+  }
+  var right='<section class="card"><div class="vh"><h3>Offene Aufgaben</h3><button type="button" class="link" data-act="nav" data-v="aufgaben">Alle ansehen</button></div>'+
+    (tasks.length?tasks.slice(0,6).map(function(t){return taskRow(t,false)}).join(''):'<p class="empty">Alles erledigt.</p>')+'</section>';
+  var from=today()+'T00:00',all=sorted(),up=all.filter(function(s){return s.datum>=from}),past=all.filter(function(s){return s.datum<from}).reverse();
+  var verlauf='<section class="card"><div class="vh"><h3>Sitzungen</h3><button type="button" class="btn sm" data-act="newsess">Neue Sitzung</button></div>'+
+    (up.length?'<div class="grp">Anstehend</div>'+up.map(sRow).join(''):'')+
+    (past.length?'<div class="grp">Vergangen</div>'+past.map(sRow).join(''):'')+
+    (!all.length?'<p class="empty">Noch keine Sitzung angelegt.</p>':'')+'</section>';
+  return '<div class="stack"><div class="cols">'+left+right+'</div>'+verlauf+'</div>';
+}
+
+function vSitz(){
+  if(ui.sid&&sess(ui.sid))return vDetail(sess(ui.sid));
+  ui.sid=null;
+  var years=[];S.sessions.forEach(function(s){var y=sj(s.datum);if(years.indexOf(y)<0)years.push(y)});
+  years.sort().reverse();
+  var list=sorted().filter(function(s){return ui.sj==='alle'||sj(s.datum)===ui.sj}).reverse();
+  return '<section class="card"><div class="vh"><h2>Sitzungen</h2><div class="frow"><label class="meta" for="sjsel">Schuljahr</label><select id="sjsel" data-ui="sj" style="width:auto">'+opts([['alle','Alle']].concat(years.map(function(y){return [y,y]})),ui.sj)+'</select><button type="button" class="btn primary" data-act="newsess">Neue Sitzung</button></div></div>'+
+    (list.length?list.map(sRow).join(''):'<p class="empty">Keine Sitzung in dieser Auswahl.</p>')+'</section>';
+}
+
+function bres(s,b){
+  var r=res(b),q=quorum(s),tot=b.ja+b.nein+b.enth,h='<span class="pill '+r.k+'">'+r.label+'</span>';
+  if(tot>q.present)h+=' <span class="meta bad">'+tot+' Stimmen bei '+q.present+' anwesenden Stimmberechtigten. Anwesenheit prüfen.</span>';
+  return h;
+}
+function vDetail(s){
+  var q=quorum(s),sid=s.id,carried=allTasks().filter(function(t){return !t.done&&t.sid!==sid});
+  function a(extra){return 'data-sid="'+sid+'" '+extra}
+  var h='<div class="stack">';
+  h+='<div class="frow"><button type="button" class="btn sm" data-act="back">← Alle Sitzungen</button>'+pill(s.status)+(s.bsp?'<span class="tag">Beispiel</span>':'')+'</div>';
+
+  h+='<section class="card"><h2 style="margin-bottom:12px">Eckdaten</h2><div class="g2">'+
+    '<div><label class="lbl" for="f-titel">Titel</label><input type="text" id="f-titel" '+a('data-f="titel"')+' value="'+esc(s.titel)+'"></div>'+
+    '<div><label class="lbl" for="f-datum">Beginn</label><input type="datetime-local" id="f-datum" '+a('data-f="datum"')+' value="'+esc(s.datum)+'"></div>'+
+    '<div><label class="lbl" for="f-ort">Ort</label><input type="text" id="f-ort" '+a('data-f="ort"')+' value="'+esc(s.ort)+'" placeholder="Raum oder Videolink"></div>'+
+    '<div><label class="lbl" for="f-status">Status</label><select id="f-status" '+a('data-f="status" data-rr="1"')+'>'+opts(STATUS.map(function(x){return [x[0],x[1]]}),s.status)+'</select></div></div></section>';
+
+  if(carried.length){
+    h+='<section class="card"><h3>Offen aus anderen Sitzungen</h3><p class="meta" style="margin-bottom:4px">Für TOP „Offene Aufgaben“. Abhaken markiert sie dort als erledigt.</p>'+carried.sort(byFrist).map(function(t){return taskRow(t,true)}).join('')+'</section>';
+  }
+
+  h+='<section class="card"><div class="vh"><h3>Tagesordnung</h3><div class="frow">'+(s.tops.length?'<button type="button" class="btn sm" data-act="tops2tpl" data-sid="'+sid+'">Als Vorlage speichern</button>':'')+'<button type="button" class="btn sm" data-act="addtop" data-sid="'+sid+'">+ TOP</button></div></div>';
+  if(!s.tops.length)h+='<p class="empty">Noch kein Tagesordnungspunkt.</p>';
+  s.tops.forEach(function(t,i){
+    var c='data-sid="'+sid+'" data-coll="tops" data-id="'+t.id+'"';
+    h+='<div class="toprow"><div class="frow"><span class="toplbl mono">TOP '+(i+1)+'</span>'+
+      '<input type="text" class="grow" aria-label="Titel TOP '+(i+1)+'" '+c+' data-f="titel" value="'+esc(t.titel)+'" placeholder="Titel">'+
+      '<input type="number" min="0" step="5" aria-label="Minuten TOP '+(i+1)+'" '+c+' data-f="min" value="'+t.min+'"><span class="meta">Min</span>'+
+      '<select aria-label="Art TOP '+(i+1)+'" style="width:9.5rem" '+c+' data-f="typ" data-rr="1">'+opts(TYPEN,t.typ)+'</select>'+
+      '<button type="button" class="btn sm" aria-label="TOP nach oben" data-act="topmove" data-dir="-1" data-sid="'+sid+'" data-id="'+t.id+'">↑</button>'+
+      '<button type="button" class="btn sm" aria-label="TOP nach unten" data-act="topmove" data-dir="1" data-sid="'+sid+'" data-id="'+t.id+'">↓</button>'+
+      '<button type="button" class="btn sm danger" aria-label="TOP löschen" data-act="deltop" data-sid="'+sid+'" data-id="'+t.id+'">×</button></div>'+
+      '<textarea rows="2" aria-label="Beschreibung TOP '+(i+1)+'" '+c+' data-f="beschr" placeholder="Beschreibung (steht im Protokoll unter dem TOP-Titel)">'+esc(t.beschr)+'</textarea>'+
+      '<textarea rows="2" aria-label="Ergebnis TOP '+(i+1)+'" '+c+' data-f="notiz" placeholder="Ergebnis / Anmerkungen">'+esc(t.notiz)+'</textarea></div>';
+  });
+  h+='<div class="sum mono" id="topsum">'+esc(topSum(s))+'</div></section>';
+
+  h+='<section class="card"><div class="vh"><h3>Anwesenheit</h3><span id="qpill" class="pill '+(q.ok?'good':'warn')+'">'+(q.ok?'Beschlussfähig':'Nicht beschlussfähig')+': '+q.present+' von '+q.N+', benötigt '+q.need+'</span></div>';
+  var act=S.members.filter(function(m){return m.aktiv});
+  if(!act.length)h+='<p class="empty">Noch keine Mitglieder. Lege sie unter „Gremium“ an.</p>';
+  act.forEach(function(m){
+    var cur=s.anw[m.id]||'';
+    h+='<div class="arow"><span>'+(esc(m.name)||'<em>Ohne Namen</em>')+' <span class="meta">'+esc(m.rolle)+(m.klasse?' · '+esc(m.klasse):'')+(m.stimm?'':' · beratend')+(ksOf(m,s)?' · '+ksOf(m,s):'')+'</span></span><div class="seg" role="group" aria-label="Anwesenheit '+esc(m.name)+'">'+
+      AV.map(function(x){return '<button type="button" data-act="anw" data-sid="'+sid+'" data-mid="'+m.id+'" data-v="'+x[0]+'" aria-pressed="'+(cur===x[0])+'">'+x[1]+'</button>'}).join('')+'</div></div>';
+  });
+  h+='<p class="meta" style="margin-top:8px">Vor der Sitzung zählt „Anwesend“ als Zusage. Beschlussregel ändern unter „Gremium“.</p></section>';
+
+  h+='<section class="card"><div class="vh"><h3>Beschlüsse</h3><button type="button" class="btn sm" data-act="addbes" data-sid="'+sid+'">+ Beschluss</button></div>';
+  h+='<label class="frow meta" style="gap:6px;margin:8px 0"><input type="checkbox" data-sid="'+sid+'" data-f="wdh" data-rr="1"'+(s.wdh?' checked':'')+'>Wiederholungssitzung nach Beschlussunfähigkeit (§ 9 Abs. 3 GO): beschlussfähig unabhängig von der Anwesenheit</label>';
+  if(!q.ok&&s.beschluesse.length)h+='<p class="meta bad">Nach den Einstellungen war die Sitzung nicht beschlussfähig.</p>';
+  if(!s.beschluesse.length)h+='<p class="empty">Noch kein Beschluss erfasst.</p>';
+  s.beschluesse.forEach(function(b,i){
+    var c='data-sid="'+sid+'" data-coll="beschluesse" data-id="'+b.id+'"';
+    h+='<div class="bes"><textarea rows="2" aria-label="Beschlusstext '+(i+1)+'" '+c+' data-f="text" placeholder="Wortlaut des Beschlusses">'+esc(b.text)+'</textarea>'+
+      '<div class="frow"><div class="votes">'+
+      '<label>Ja<input type="number" min="0" '+c+' data-f="ja" value="'+b.ja+'"></label>'+
+      '<label>Nein<input type="number" min="0" '+c+' data-f="nein" value="'+b.nein+'"></label>'+
+      '<label>Enthaltung<input type="number" min="0" '+c+' data-f="enth" value="'+b.enth+'"></label></div>'+
+      '<span id="bres-'+b.id+'">'+bres(s,b)+'</span>'+topSel(s,c,b.top)+'<input type="text" style="width:9rem" aria-label="Verantwortlich" '+c+' data-f="wer" value="'+esc(b.wer)+'" placeholder="Verantwortlich"><input type="date" aria-label="Frist" '+c+' data-f="frist" value="'+esc(b.frist)+'"><span style="flex:1"></span>'+
+      cbtn('delbes'+b.id,'Löschen','data-act="delbes" data-sid="'+sid+'" data-id="'+b.id+'"')+'</div></div>';
+  });
+  h+='</section>';
+
+  h+='<section class="card"><div class="vh"><h3>Aufgaben aus dieser Sitzung</h3><button type="button" class="btn sm" data-act="addaufg" data-sid="'+sid+'">+ Aufgabe</button></div>';
+  if(!s.aufgaben.length)h+='<p class="empty">Noch keine Aufgabe. Sie erscheint automatisch in den folgenden Sitzungen, bis sie erledigt ist.</p>';
+  s.aufgaben.forEach(function(t){
+    var c='data-sid="'+sid+'" data-coll="aufgaben" data-id="'+t.id+'"';
+    h+='<div class="trow"><input type="checkbox" aria-label="Erledigt" '+c+' data-f="done" data-rr="1"'+(t.done?' checked':'')+'><div class="frow grow" style="flex:1;min-width:0">'+
+      '<input type="text" class="grow" aria-label="Aufgabe" '+c+' data-f="text" value="'+esc(t.text)+'" placeholder="Aufgabe">'+
+      '<input type="text" list="members-dl" aria-label="Verantwortlich" style="width:10rem" '+c+' data-f="wer" value="'+esc(t.wer)+'" placeholder="Wer?">'+
+      '<input type="date" aria-label="Frist" style="width:9.5rem" '+c+' data-f="frist" value="'+esc(t.frist)+'">'+topSel(s,c,t.top)+
+      '<button type="button" class="btn sm danger" aria-label="Aufgabe löschen" data-act="delaufg" data-sid="'+sid+'" data-id="'+t.id+'">×</button></div></div>';
+  });
+  h+='<datalist id="members-dl">'+act.map(function(m){return '<option value="'+esc(m.name)+'">'}).join('')+'</datalist></section>';
+
+  h+='<section class="card"><h3 style="margin-bottom:8px">Weitere Notizen</h3><textarea rows="4" aria-label="Weitere Notizen" '+a('data-f="protokoll"')+' placeholder="Allgemeine Notizen zur Sitzung">'+esc(s.protokoll)+'</textarea></section>';
+
+  if(s.datum){
+    var gd=s.datum.slice(0,10),ld=addDays(gd,-GO().ladung),pd=addDays(gd,GO().protfrist);
+    if(s.status==='geplant')h+='<p class="meta" style="margin:0 0 8px"><span class="pill '+(ld<today()?'bad':'warn')+'">Ladungsfrist</span> Einladung spätestens bis '+esc(d2(ld+'T00:00'))+' ('+GO().ladung+' Tage vorher).</p>';
+    if(s.status==='gehalten'&&GO().protfrist>0&&fg(s).st==='entwurf')h+='<p class="meta" style="margin:0 0 8px"><span class="pill '+(pd<today()?'bad':'warn')+'">Protokollfrist</span> Protokoll verteilen bis '+esc(d2(pd+'T00:00'))+'.</p>';
+  }
+  var nth=S.themen.filter(function(t){return t.status==='offen'}).length;
+  if(nth&&(s.status==='geplant'||s.status==='eingeladen'))h+='<p class="meta" style="margin:0 0 8px"><span class="pill">Themenspeicher</span> '+nth+' offene'+(nth===1?'s Thema':' Themen')+'. <button type="button" class="btn sm" data-act="nav" data-v="themen">Ansehen</button></p>';
+  var prevS=sorted().filter(function(x){return x.id!==s.id&&x.datum<s.datum&&(x.status==='gehalten'||x.status==='protokolliert')}).pop();
+  if(prevS&&fg(prevS).st!=='genehmigt')h+='<p class="meta" style="margin:0 0 8px"><span class="pill warn">Offen</span> Das Protokoll der Sitzung vom '+esc(d2(prevS.datum))+' ist noch nicht genehmigt. Plane die Genehmigung als TOP ein.</p>';
+  h+='<section class="card"><div class="vh"><h3>Protokoll '+(s.tops.length?fgPill(s):'')+'</h3><div class="frow">'+(s.tops.length?'<button type="button" class="btn sm primary" data-act="livego" data-sid="'+sid+'">'+(s.live&&s.live.on?'Sitzungsmodus fortsetzen':'Sitzung starten')+'</button><button type="button" class="btn sm" data-act="protopen" data-sid="'+sid+'">Protokoll öffnen</button>':'')+'<button type="button" class="btn sm" data-act="tlopen" data-sid="'+sid+'">Teilnehmerliste</button>'+'<button type="button" class="btn sm" data-act="md" data-sid="'+sid+'">'+(ui.md===sid?'Schnelltext ausblenden':'Schnelltext')+'</button></div></div>';
+  if(ui.md===sid){
+    h+='<textarea class="box" id="mdbox" readonly aria-label="Protokoll als Markdown">'+esc(protokollMD(s))+'</textarea><div class="frow" style="margin-top:8px"><button type="button" class="btn primary" data-act="mdcopy" data-sid="'+sid+'">Kopieren</button>'+(DL?'<button type="button" class="btn" data-act="mdsave" data-sid="'+sid+'">Als .md speichern</button>':'')+'</div>';
+  }else h+='<p class="meta">Erzeugt aus Anwesenheit, Tagesordnung, Beschlüssen und Aufgaben.</p>';
+  h+='</section>';
+
+  h+='<div>'+cbtn('delsess'+sid,'Sitzung löschen','data-act="delsess" data-sid="'+sid+'"')+'</div></div>';
+  return h;
+}
+
+function protokollMD(s){
+  var q=quorum(s),L=[],st={ja:'anwesend',entsch:'entschuldigt',nein:'fehlt','':'offen'};
+  L.push('# Protokoll: '+s.titel,'','- **Gremium:** '+S.settings.name,'- **Datum:** '+dateLabel(s.datum));
+  if(s.ort)L.push('- **Ort:** '+s.ort);
+  L.push('','## Anwesenheit','');
+  S.members.filter(function(m){return m.aktiv}).forEach(function(m){L.push('- '+m.name+' ('+m.rolle+(m.stimm?'':', beratend')+'): '+st[s.anw[m.id]||''])});
+  L.push('','Beschlussfähigkeit: '+(q.ok?'ja':'nein')+' ('+q.present+' von '+q.N+' Stimmberechtigten anwesend, benötigt '+q.need+')','','## Tagesordnung','');
+  s.tops.forEach(function(t,i){L.push('### TOP '+(i+1)+': '+t.titel);if(t.notiz)L.push('',t.notiz);L.push('')});
+  if(s.beschluesse.length){L.push('## Beschlüsse','');s.beschluesse.forEach(function(b,i){L.push((i+1)+'. '+b.text+' (Ja '+b.ja+', Nein '+b.nein+', Enthaltung '+b.enth+': '+res(b).label+')')});L.push('')}
+  if(s.aufgaben.length){L.push('## Aufgaben','');s.aufgaben.forEach(function(t){L.push('- ['+(t.done?'x':' ')+'] '+t.text+(t.wer?' ('+t.wer+')':'')+(t.frist?', bis '+fristLabel(t.frist):''))});L.push('')}
+  if(s.protokoll)L.push('## Weitere Notizen','',s.protokoll,'');
+  return L.join('\n');
+}
+
+function tplById(id){return S.vorlagen.find(function(v){return v.id===id})}
+function artLabel(a){var x=ART.find(function(y){return y[0]===a});return x?x[1]:'Sonstiges'}
+function regen(){
+  var g=ui.gen,s=sess(g.sid),t=tplById(g.tid);
+  g.text=(s&&t)?fillTpl(t.inhalt,s):'';
+}
+function pickSession(){
+  var withTops=sorted().filter(function(s){return s.tops.length}),ns=nextSession();
+  return (ns&&ns.tops.length)?ns:withTops[withTops.length-1]||null;
+}
+function ensurePs(){
+  var cur=sess(ui.psid);
+  if(cur&&cur.tops.length)return cur;
+  var p=pickSession();ui.psid=p?p.id:'';return p;
+}
+function ensureGen(){
+  if(!ui.gen)ui.gen={sid:'',tid:'',text:null};
+  var g=ui.gen,cur=sess(g.sid);
+  if(!cur||!cur.tops.length){var p=pickSession();g.sid=p?p.id:'';g.text=null}
+  var tpls=S.vorlagen.filter(function(v){return v.art!=='tagesordnung'});
+  if(!g.tid||!tpls.some(function(v){return v.id===g.tid})){
+    var q=tpls.find(function(v){return v.art==='protokoll'})||tpls[0];
+    g.tid=q?q.id:'';g.text=null;
+  }
+  if(g.text===null||g.text===undefined)regen();
+}
+function vVorl(){
+  var ps=ensurePs();ensureGen();
+  var g=ui.gen,gt=tplById(g.tid),all=sorted().slice().reverse();
+  var tpls=S.vorlagen.filter(function(v){return v.art!=='tagesordnung'});
+  function sessOpts(cur){return all.map(function(s){
+    return '<option value="'+s.id+'"'+(s.id===cur?' selected':'')+(s.tops.length?'':' disabled')+'>'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel')+(s.tops.length?'':' (keine Tagesordnung)'))+'</option>';
+  }).join('')}
+
+  var h='<div class="stack"><!--S0--><section class="card"><div class="vh"><h2>Sitzungsprotokoll</h2></div>';
+  if(!ps)h+='<p class="empty">Noch keine Sitzung mit Tagesordnung. Lege zuerst unter „Sitzungen“ eine Tagesordnung an.</p>';
+  else{
+    h+='<p class="meta" style="margin-bottom:12px">Aufbau wie im Protokollformular: Kopfdaten, ein Abschnitt je TOP, Übersicht der Beschlüsse und Maßnahmen, Anlagen, Unterschriften. Was du hier einträgst, wird in der Sitzung gespeichert. Die Texte der TOPs änderst du unter „Sitzungen“.</p>'+
+      '<div class="frow" style="margin-bottom:12px"><label class="meta" for="ps-sel">Sitzung</label><select id="ps-sel" data-ui="psid" class="grow">'+sessOpts(ps.id)+'</select>'+
+      (DL?'<button type="button" class="btn primary" data-act="protsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="prothtml">HTML kopieren</button>')+
+      '<button type="button" class="btn" data-act="prottext">Als Text kopieren</button></div>'+
+      (DL?'<p class="meta" style="margin-bottom:12px">Für ein PDF: die gespeicherte Datei öffnen, drucken und „Als PDF speichern“ wählen. In Word lässt sie sich ebenfalls öffnen.</p>':'')+
+      fgPanel(ps)+'<div class="sheet">'+protHTML(ps,true)+'</div>';
+  }
+  h+='</section>';
+
+  var ts=ensureTs();
+  h+='<!--S1--><section class="card"><div class="vh"><h2>Teilnehmerliste</h2></div>';
+  if(!ts)h+='<p class="empty">Noch keine Sitzung angelegt.</p>';
+  else{
+    h+='<p class="meta" style="margin-bottom:12px">Mit Name, Klasse, Funktion (Klassensprecher/in oder Vertretung) und Unterschriftsfeld. Namen und Klassen pflegst du unter „Gremium“. Leere Zeilen sind für Gäste und Vertretungen frei. Die Anzahl der Zeilen legst du hier fest.</p>'+
+      '<div class="frow" style="margin-bottom:12px"><label class="meta" for="ts-sel">Sitzung</label><select id="ts-sel" data-ui="tsid" class="grow">'+all.map(function(s){return '<option value="'+s.id+'"'+(s.id===ts.id?' selected':'')+'>'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel'))+'</option>'}).join('')+'</select>'+
+      '<label class="meta" for="ts-rows">Zeilen</label><input type="number" id="ts-rows" min="0" max="200" data-s="tlRows" value="'+esc(S.settings.tlRows)+'">'+(DL?'<button type="button" class="btn primary" data-act="tlsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="tlhtml">HTML kopieren</button>')+'</div>'+
+      '<div class="sheet" id="tlsheet">'+tlHTML(ts)+'</div>';
+  }
+  h+='</section>';
+
+  h+='<!--S2--><section class="card"><h2 style="margin-bottom:4px">Text aus Vorlage</h2><p class="meta" style="margin-bottom:12px">Einladung, Antrag und eigene Textvorlagen. Platzhalter werden aus der Sitzung gefüllt. Danach kannst du den Text hier noch bearbeiten.</p>';
+  if(!all.some(function(s){return s.tops.length}))h+='<p class="empty">Noch keine Sitzung mit Tagesordnung.</p>';
+  else if(!tpls.length)h+='<p class="empty">Keine Textvorlage vorhanden. Lege unten eine an.</p>';
+  else{
+    h+='<div class="g2"><div><label class="lbl" for="g-sid">Sitzung</label><select id="g-sid" data-gensel="sid">'+sessOpts(g.sid)+'</select></div>'+
+      '<div><label class="lbl" for="g-tid">Vorlage</label><select id="g-tid" data-gensel="tid">'+tpls.map(function(v){return '<option value="'+v.id+'"'+(v.id===g.tid?' selected':'')+'>'+esc((v.name||'Ohne Namen')+' ('+artLabel(v.art)+')')+'</option>'}).join('')+'</select></div></div>'+
+      '<label class="lbl" for="gentext" style="margin-top:12px">Text</label><textarea class="box" id="gentext" data-gentext="1" style="min-height:260px">'+esc(g.text)+'</textarea>'+
+      '<div class="frow" style="margin-top:8px"><button type="button" class="btn primary" data-act="gencopy">Kopieren</button>'+(DL?'<button type="button" class="btn" data-act="gensavefile">Als Datei speichern</button>':'')+'<button type="button" class="btn" data-act="regen">Neu aus Vorlage</button></div>';
+  }
+  h+='</section>';
+
+  h+='<!--S3--><section class="card"><div class="vh"><h2>Meine Vorlagen</h2><button type="button" class="btn primary" data-act="newtpl">+ Neue Vorlage</button></div>'+
+    '<p class="meta">Tagesordnungs-Vorlagen übernimmst du in eine Sitzung. Textvorlagen enthalten Platzhalter, die aus der Sitzung gefüllt werden.</p>';
+  if(!S.vorlagen.length)h+='<p class="empty">Noch keine Vorlage.</p>';
+  S.vorlagen.forEach(function(t){
+    var open=ui.vedit===t.id,c='data-tp="'+t.id+'"';
+    h+='<div class="toprow"><div class="frow"><div class="grow"><strong>'+(esc(t.name)||'<em>Ohne Namen</em>')+'</strong> <span class="pill">'+artLabel(t.art)+'</span></div>'+
+      '<button type="button" class="btn sm" data-act="tpledit" data-id="'+t.id+'">'+(open?'Schließen':'Bearbeiten')+'</button>'+
+      '<button type="button" class="btn sm" data-act="tplcopy" data-id="'+t.id+'">Kopieren</button>'+
+      (DL?'<button type="button" class="btn sm" data-act="tpldl" data-id="'+t.id+'">Herunterladen</button>':'')+
+      (t.art!=='tagesordnung'?'<button type="button" class="btn sm" data-act="tplgen" data-id="'+t.id+'">Erstellen</button>':'')+
+      cbtn('deltpl'+t.id,'Löschen','data-act="deltpl" data-id="'+t.id+'"')+'</div>';
+    if(open){
+      h+='<div class="g2"><div><label class="lbl" for="tn-'+t.id+'">Name</label><input type="text" id="tn-'+t.id+'" '+c+' data-f="name" value="'+esc(t.name)+'"></div>'+
+        '<div><label class="lbl" for="ta-'+t.id+'">Art</label><select id="ta-'+t.id+'" '+c+' data-f="art" data-rr="1">'+opts(ART,t.art)+'</select></div></div>'+
+        '<div><label class="lbl" for="ti-'+t.id+'">Inhalt</label><textarea class="box" id="ti-'+t.id+'" '+c+' data-f="inhalt" style="min-height:220px">'+esc(t.inhalt)+'</textarea></div>';
+      if(t.art==='tagesordnung'){
+        var ap=sess(ui.apSid)?ui.apSid:'';
+        h+='<p class="meta">Eine Zeile pro TOP: Titel | Minuten | Art | Beschreibung. Art: info, diskussion, beschluss, wahl, sonstiges, ende. Zeilenwechsel in der Beschreibung mit //</p>'+
+          (all.length?'<div class="frow"><label class="meta" for="apsel-'+t.id+'">Auf Sitzung anwenden</label><select id="apsel-'+t.id+'" data-ui="apSid" class="grow">'+all.map(function(s){return '<option value="'+s.id+'"'+(s.id===ap?' selected':'')+'>'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel'))+'</option>'}).join('')+'</select>'+
+          '<button type="button" class="btn sm" data-act="tplapply" data-mode="append" data-id="'+t.id+'">Anhängen</button>'+
+          cbtn('tplrep'+t.id,'Ersetzen','data-act="tplapply" data-mode="replace" data-id="'+t.id+'"')+'</div>':'<p class="meta">Lege zuerst eine Sitzung an, um die Vorlage anzuwenden.</p>');
+      }else h+='<p class="meta">Platzhalter: <span class="mono">'+esc(PLATZ)+'</span></p>';
+    }
+    h+='</div>';
+  });
+  h+='</section>';
+
+  var wr=ensureW();
+  h+='<!--S4--><section class="card"><div class="vh"><h2>Wahlniederschrift</h2></div>';
+  if(!wr.s)h+='<p class="empty">Keine Sitzung mit Wahl-TOP. Lege unter „Sitzungen“ einen Tagesordnungspunkt vom Typ „Wahl“ an.</p>';
+  else{
+    var wl=all.filter(function(s){return wahlTops(s).length}),wts=wahlTops(wr.s);
+    h+='<p class="meta" style="margin-bottom:12px">Eigenes Dokument zur Wahl, das du dem Protokoll als Anlage beilegst. Wahlleitung, Helfer, Kandidaten und Annahme teilst du dir mit dem Protokoll.</p>'+
+      '<div class="frow" style="margin-bottom:12px"><label class="meta" for="w-sel">Sitzung</label><select id="w-sel" data-ui="wsid" class="grow">'+wl.map(function(s){return '<option value="'+s.id+'"'+(s.id===wr.s.id?' selected':'')+'>'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel'))+'</option>'}).join('')+'</select>'+
+      (wts.length>1?'<label class="meta" for="w-top">Wahl</label><select id="w-top" data-ui="wtop">'+wts.map(function(t){return '<option value="'+t.id+'"'+(t.id===wr.t.id?' selected':'')+'>'+esc(t.titel||'Wahl')+'</option>'}).join('')+'</select>':'')+
+      (DL?'<button type="button" class="btn primary" data-act="wnsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="wnhtml">HTML kopieren</button>')+'</div>'+
+      '<div class="sheet">'+wnHTML(wr.s,wr.t,true)+'</div>';
+  }
+  h+='</section>';
+
+  var as=ensureA();
+  h+='<!--S5--><section class="card"><div class="vh"><h2>Einladung und Aushang</h2></div>';
+  if(!as)h+='<p class="empty">Noch keine Sitzung angelegt.</p>';
+  else{
+    h+='<div class="frow" style="margin-bottom:12px"><label class="meta" for="a-sel">Sitzung</label><select id="a-sel" data-ui="asid" class="grow">'+all.map(function(s){return '<option value="'+s.id+'"'+(s.id===as.id?' selected':'')+'>'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel'))+'</option>'}).join('')+'</select></div>'+
+      '<h3 style="margin:0 0 6px">Einladung (Text für Mail oder Messenger)</h3>'+
+      '<textarea class="box" id="einltext" style="min-height:260px">'+esc(einlText(as))+'</textarea>'+
+      '<div class="frow" style="margin:8px 0 18px"><button type="button" class="btn primary" data-act="einlcopy">Kopieren</button>'+(DL?'<button type="button" class="btn" data-act="einlsave">Als Textdatei speichern</button>':'')+'</div>'+
+      '<h3 style="margin:0 0 6px">Aushang (A4 zum Ausdrucken)</h3>'+
+      '<div class="frow" style="margin-bottom:12px">'+(DL?'<button type="button" class="btn primary" data-act="ahsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="ahhtml">HTML kopieren</button>')+'</div>'+
+      '<div class="sheet">'+ahHTML(as,true)+'</div>';
+  }
+  h+='</section>';
+  h+='<!--S9--><section class="card"><div class="vh"><h2>Moderationsskript</h2></div>';
+  if(!as)h+='<p class="empty">Noch keine Sitzung angelegt.</p>';
+  else h+='<div class="frow" style="margin-bottom:12px"><label class="meta" for="sk-sel">Sitzung</label><select id="sk-sel" data-ui="asid" class="grow">'+all.map(function(x){return '<option value="'+x.id+'"'+(x.id===as.id?' selected':'')+'>'+esc(rowDate(x.datum)+' · '+(x.titel||'Ohne Titel'))+'</option>'}).join('')+'</select></div><p class="meta" style="margin-bottom:10px">Aus der Tagesordnung der oben gewählten Sitzung erstellt: Zeitplan und fertige Sätze für jeden TOP. Du kannst den Text unten direkt ändern. Er wird bei jedem Neuerstellen überschrieben.</p>'+
+    '<textarea class="box" id="skrtext" style="min-height:420px">'+esc(skriptText(as))+'</textarea>'+
+    '<div class="frow" style="margin:8px 0 0"><button type="button" class="btn primary" data-act="skrcopy">Kopieren</button>'+(DL?'<button type="button" class="btn" data-act="skrsave">Als Textdatei</button><button type="button" class="btn" data-act="skrhtml">Zum Ausdrucken (HTML)</button>':'')+'<button type="button" class="btn" data-act="skrnew">Neu erstellen</button></div>';
+  h+='</section>';
+  var bn=ensureBn();
+  h+='<!--S8--><section class="card"><div class="vh"><h2>Beschluss-Aushang</h2></div>';
+  if(!bn)h+='<p class="empty">Noch keine Sitzung angelegt.</p>';
+  else{
+    h+='<p class="meta" style="margin-bottom:12px">Ein Aushang für die Schülerschaft mit den Beschlüssen einer Sitzung (GO § 11 Abs. 3). Wähle aus, was veröffentlicht wird. Vertrauliches, das einzelne Personen betrifft, bleibt draußen (§ 11 Abs. 4).</p>'+
+      '<div class="frow" style="margin-bottom:12px"><label class="meta" for="bn-sel">Sitzung</label><select id="bn-sel" data-ui="bnid" class="grow">'+all.map(function(s){return '<option value="'+s.id+'"'+(s.id===bn.id?' selected':'')+'>'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel'))+'</option>'}).join('')+'</select>'+
+      (DL?'<button type="button" class="btn primary" data-act="bnsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="bnhtml">HTML kopieren</button>')+'</div>';
+    if(!bn.beschluesse.length)h+='<p class="empty">In dieser Sitzung wurden keine Beschlüsse erfasst.</p>';
+    bn.beschluesse.forEach(function(b){h+='<label class="frow" style="gap:8px;margin-bottom:6px"><input type="checkbox" data-sid="'+bn.id+'" data-coll="beschluesse" data-id="'+b.id+'" data-f="pub" data-rr="1"'+(b.pub!==false?' checked':'')+'><span>'+esc((b.text||'(ohne Text)').slice(0,140))+'</span></label>'});
+    h+='<label class="lbl" for="bn-h" style="margin-top:12px">Hinweiszeile</label><input type="text" id="bn-h" data-sid="'+bn.id+'" data-sub="pf" data-f="bes_hinweis" data-rr="1" value="'+esc(pfv(bn,'bes_hinweis','Fragen und Anregungen gern an die SV.'))+'">'+
+      '<div class="sheet" style="margin-top:14px">'+bnHTML(bn)+'</div>';
+  }
+  h+='</section>';
+  var nss=ensureNs();
+  h+='<!--S7--><section class="card"><div class="vh"><h2>Niederschrift</h2></div>';
+  if(!nss)h+='<p class="empty">Noch keine Sitzung angelegt.</p>';
+  else{
+    var nc='data-sid="'+nss.id+'" data-sub="pf"';
+    h+='<p class="meta" style="margin-bottom:12px">Die ausgefüllte Fassung nach der Sitzung: Anwesenheit nach Klassen, Text und Beschluss je TOP, Übersicht, Unterschriften. Sie entsteht aus den Daten der Sitzung. Notizen mit „- “ am Zeilenanfang werden zu Aufzählungen, Zeilen wie „2.1 Titel“ zu Unterpunkten.</p>'+
+      '<div class="frow" style="margin-bottom:12px"><label class="meta" for="ns-sel">Sitzung</label><select id="ns-sel" data-ui="nsid" class="grow">'+all.map(function(s){return '<option value="'+s.id+'"'+(s.id===nss.id?' selected':'')+'>'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel'))+'</option>'}).join('')+'</select>'+
+      (DL?'<button type="button" class="btn primary" data-act="nssave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="nshtml">HTML kopieren</button>')+'</div>'+
+      '<div class="g2"><div><label class="lbl" for="ns-b">Sitzungsbeginn</label><input type="text" id="ns-b" '+nc+' data-f="beginn" data-rr="1" value="'+esc(pfv(nss,'beginn',t2(nss.datum)))+'"></div>'+
+      '<div><label class="lbl" for="ns-e">Sitzungsende (Uhrzeit)</label><input type="text" id="ns-e" '+nc+' data-f="ende" data-rr="1" value="'+esc(pfv(nss,'ende',''))+'" placeholder="21:09"></div></div>'+
+      '<label class="lbl" for="ns-p" style="margin-top:12px">Protokollführung</label><input type="text" id="ns-p" '+nc+' data-f="protokoll" data-rr="1" value="'+esc(pfv(nss,'protokoll',''))+'">'+
+      '<label class="lbl" for="ns-a" style="margin-top:12px">Anlagen (eine pro Zeile)</label><textarea class="box" id="ns-a" '+nc+' data-f="anlagen" data-rr="1" style="min-height:60px">'+esc(pfv(nss,'anlagen',''))+'</textarea>'+
+      '<div class="sheet" style="margin-top:14px">'+nsHTML(nss)+'</div>';
+  }
+  h+='</section>';
+  var by=ensureSj('bsj');
+  h+='<!--S6--><section class="card"><div class="vh"><h2>Jahresbericht</h2>'+sjOpts(by,'b-sj','bsj')+'</div><p class="meta" style="margin-bottom:12px">Wird aus Sitzungen, Beschlüssen, Aufgaben, Projekten und Anträgen des Schuljahres erstellt. Einleitung und Fazit schreibst du selbst.</p>'+
+    '<div class="frow" style="margin-bottom:12px">'+(DL?'<button type="button" class="btn primary" data-act="bsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="bhtml">HTML kopieren</button>')+'</div><div class="sheet">'+berichtHTML(by,true)+'</div></section>';
+  var pieces=h.replace('<div class="stack">','').split(/<!--S(\d)-->/),parts={};
+  for(var i=1;i<pieces.length;i+=2)parts[pieces[i]]=pieces[i+1];
+  var VT=[['0','Protokoll'],['7','Niederschrift'],['8','Beschluss-Aushang'],['1','Teilnehmerliste'],['4','Wahlniederschrift'],['5','Einladung & Aushang'],['9','Moderationsskript'],['6','Jahresbericht'],['2','Textvorlagen'],['3','Meine Vorlagen']];
+  var cur=VT.some(function(x){return x[0]===ui.vtab})?ui.vtab:'0';
+  return '<div class="stack"><div class="seg tabs" role="group" aria-label="Dokumente" style="align-self:flex-start;max-width:100%;overflow-x:auto">'+VT.map(function(x){return '<button type="button" data-act="vtab" data-v="'+x[0]+'" aria-pressed="'+(cur===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'+parts[cur]+'</div>';
+}
+
+function vAufg(){
+  var all=allTasks(),who=[];
+  all.forEach(function(t){if(t.wer&&who.indexOf(t.wer)<0)who.push(t.wer)});
+  who.sort();
+  if(ui.who&&who.indexOf(ui.who)<0)ui.who='';
+  var f=all.filter(function(t){return !ui.who||t.wer===ui.who});
+  var od=f.filter(function(t){return !t.done&&t.frist&&t.frist<today()}).sort(byFrist);
+  var open=f.filter(function(t){return !t.done&&!(t.frist&&t.frist<today())}).sort(byFrist);
+  var done=f.filter(function(t){return t.done});
+  function grp(title,list){return list.length?'<div class="grp">'+title+' · '+list.length+'</div>'+list.map(function(t){return taskRow(t,true)}).join(''):''}
+  return '<section class="card"><div class="vh"><h2>Aufgaben</h2><div class="frow"><label class="meta" for="whosel">Zuständig</label><select id="whosel" data-ui="who" style="width:auto">'+opts([['','Alle']].concat(who.map(function(w){return [w,w]})),ui.who)+'</select></div></div>'+
+    (f.length?grp('Überfällig',od)+grp('Offen',open)+grp('Erledigt',done):'<p class="empty">Noch keine Aufgaben. Sie entstehen in der jeweiligen Sitzung.</p>')+'</section>';
+}
+
+function beschlList(){
+  var q=ui.q.trim().toLowerCase(),rows=[];
+  S.sessions.forEach(function(s){s.beschluesse.forEach(function(b){rows.push({s:s,b:b})})});
+  rows.sort(function(x,y){return (y.s.datum||'').localeCompare(x.s.datum||'')});
+  var f=rows.filter(function(r){return !q||(r.b.text+' '+r.s.titel).toLowerCase().indexOf(q)>=0});
+  if(!f.length)return '<p class="empty">'+(rows.length?'Kein Beschluss passt zur Suche.':'Noch keine Beschlüsse erfasst. Sie entstehen in der jeweiligen Sitzung.')+'</p>';
+  return f.map(function(r){var x=res(r.b);return '<div class="brow"><div class="meta mono">'+esc(shortD(r.s.datum))+' · <button type="button" class="link" data-act="open" data-sid="'+r.s.id+'">'+esc(r.s.titel||'Sitzung')+'</button></div><p>'+(esc(r.b.text)||'<em>Ohne Text</em>')+'</p><div class="frow"><span class="pill '+x.k+'">'+x.label+'</span><span class="meta mono">Ja '+r.b.ja+' · Nein '+r.b.nein+' · Enth. '+r.b.enth+'</span></div></div>'}).join('');
+}
+function vBesch(){
+  return '<section class="card"><div class="vh"><h2>Beschlüsse</h2></div><label class="lbl" for="bsearch">Suchen</label><input type="text" id="bsearch" data-search="1" value="'+esc(ui.q)+'" placeholder="Stichwort im Beschluss oder Sitzungstitel"><div id="res">'+beschlList()+'</div></section>';
+}
+
+function vGremium(){
+  var h='<div class="stack"><section class="card"><h2 style="margin-bottom:12px">Gremium</h2><div class="g2">'+
+    '<div><label class="lbl" for="s-name">Name</label><input type="text" id="s-name" data-s="name" value="'+esc(S.settings.name)+'"></div>'+
+    '<div><label class="lbl" for="s-ort">Standardort für neue Sitzungen</label><input type="text" id="s-ort" data-s="ort" value="'+esc(S.settings.ort)+'"></div>'+
+    '<div><label class="lbl" for="s-schule">Schule (im Protokoll)</label><input type="text" id="s-schule" data-s="schule" value="'+esc(S.settings.schule)+'"></div>'+
+    '<div><label class="lbl" for="s-pg">Bezeichnung im Protokoll</label><input type="text" id="s-pg" data-s="protGremium" value="'+esc(S.settings.protGremium)+'" placeholder="z. B. Schülerrates"></div>'+
+    '<div><label class="lbl" for="s-leit">Sitzungsleitung (Name, Funktion)</label><input type="text" id="s-leit" data-s="leitung" value="'+esc(S.settings.leitung)+'"></div>'+
+    '<div><label class="lbl" for="s-rule">Beschlussfähig bei</label><select id="s-rule" data-s="quorumRule" data-rr="1">'+opts(RULES,S.settings.quorumRule)+'</select></div></div></section>';
+  h+=vKl();
+  h+='<section class="card"><div class="vh"><h3>Mitglieder</h3><button type="button" class="btn sm" data-act="addmem">+ Mitglied</button></div>';
+  if(!S.members.length)h+='<p class="empty">Noch keine Mitglieder.</p>';
+  S.members.forEach(function(m){
+    var c='data-m="'+m.id+'"';
+    h+='<div class="toprow"><div class="frow"><input type="text" class="grow" aria-label="Name" '+c+' data-f="name" value="'+esc(m.name)+'" placeholder="Name">'+
+      '<input type="text" aria-label="Klasse" style="width:6rem" '+c+' data-f="klasse" value="'+esc(m.klasse)+'" placeholder="Klasse">'+
+      '<input type="email" aria-label="E-Mail" style="width:13rem" '+c+' data-f="mail" value="'+esc(m.mail)+'" placeholder="E-Mail (optional)">'+
+      '<select aria-label="Funktion in der Klasse" style="width:11.5rem" '+c+' data-f="ksf">'+opts([['','Funktion in der Klasse'],['Klassensprecher/in','Klassensprecher/in'],['Stellvertreter/in','Stellvertreter/in']],m.ksf)+'</select>'+
+      '<select aria-label="Rolle" style="width:12rem" '+c+' data-f="rolle" data-rr="1">'+opts(ROLLEN,m.rolle)+'</select>'+
+      '<label class="frow meta" style="gap:6px"><input type="checkbox" '+c+' data-f="stimm" data-rr="1"'+(m.stimm?' checked':'')+'>stimmberechtigt</label>'+
+      '<label class="frow meta" style="gap:6px"><input type="checkbox" '+c+' data-f="aktiv" data-rr="1"'+(m.aktiv?' checked':'')+'>aktiv</label>'+
+      cbtn('delmem'+m.id,'Löschen','data-act="delmem" data-id="'+m.id+'"')+'</div></div>';
+  });
+  h+='<p class="meta" style="margin-top:8px">Pro Klasse zählt eine Stimme. Die Stellvertretung stimmt nur, wenn der/die Klassensprecher/in fehlt. Setze dafür Klasse und Funktion in der Klasse und lass „stimmberechtigt“ bei beiden angehakt. Zum Schuljahreswechsel Mitglieder auf „nicht aktiv“ setzen statt löschen. So bleiben alte Protokolle vollständig.</p></section>'+vGO()+vVert()+'</div>';
+  return h;
+}
+
+function vDaten(){
+  var json=JSON.stringify(S,null,2),h='<div class="stack">';
+  h+='<section class="card"><h2 style="margin-bottom:8px">Daten</h2><p>Alle Daten liegen nur in diesem Browser. Sichere sie regelmäßig als Datei, besonders vor dem Löschen von Browserdaten.</p>'+(memOK?'':'<p class="bad" style="margin-top:8px">Der Browser lässt hier kein Speichern zu. Änderungen gehen beim Schließen verloren. Exportiere die Daten.</p>')+'</section>';
+  h+=vCloud();
+  h+='<section class="card"><h3 style="margin-bottom:8px">Sicherung exportieren</h3><p class="meta" style="margin-bottom:8px">Letzte Sicherung: '+(bkGet()?esc(d2(bkGet()+'T00:00')):'noch nie')+'. Der Planer erinnert dich nach 7 Tagen.</p><div class="frow">'+(DL?'<button type="button" class="btn primary" data-act="jsonsave">Als Datei speichern</button>':'')+'<button type="button" class="btn'+(DL?'':' primary')+'" data-act="jsoncopy">Kopieren</button><button type="button" class="btn" data-act="jsonshow">'+(ui.json?'Text ausblenden':'Text anzeigen')+'</button></div>'+
+    (ui.json?'<textarea class="box" id="jsonbox" readonly style="margin-top:10px" aria-label="Sicherung als JSON">'+esc(json)+'</textarea>':'')+'</section>';
+  h+='<section class="card"><h3 style="margin-bottom:8px">Sicherung einlesen</h3>';
+  if(ui.pending){
+    h+='<p>Gefunden: '+ui.pending.sessions.length+' Sitzungen und '+ui.pending.members.length+' Mitglieder. Die aktuellen Daten werden ersetzt.</p><div class="frow" style="margin-top:10px"><button type="button" class="btn primary" data-act="impapply">Daten ersetzen</button><button type="button" class="btn" data-act="impcancel">Abbrechen</button></div>';
+  }else{
+    h+='<label class="lbl" for="impfile">Datei auswählen</label><input type="file" id="impfile" accept=".json,application/json"><label class="lbl" for="impbox" style="margin-top:12px">Oder Text einfügen</label><textarea class="box" id="impbox" style="min-height:90px" placeholder="Inhalt einer Sicherung einfügen"></textarea><div style="margin-top:8px"><button type="button" class="btn" data-act="imptext">Text einlesen</button></div>';
+  }
+  h+='</section>';
+  h+='<section class="card"><h3 style="margin-bottom:8px">Aufräumen</h3><div class="frow">'+(S.examples?'<button type="button" class="btn" data-act="rmex">Beispieldaten entfernen</button>':'')+cbtn('reset','Alles löschen','data-act="reset"')+'</div></section></div>';
+  return h;
+}
+
+/* ---------- Rendern ---------- */
+var VIEWS={uebersicht:vUeber,sitzungen:vSitz,vorlagen:vVorl,aufgaben:vAufg,live:vLive,anwesenheit:vAnwes,themen:vThemen,projekte:vProj,antraege:vAnt,umfragen:vUmf,plan:vPlan,beschluesse:vBesch,gremium:vGremium,daten:vDaten};
+function render(top){
+  var y=window.scrollY;
+  $('#gname').textContent=S.settings.name||'';
+  $('#app').innerHTML=nav()+banner()+(VIEWS[ui.view]||vUeber)();
+  window.scrollTo(0,top?0:y);
+  try{localStorage.setItem(KEY+'-tab',ui.view)}catch(e){}
+}
+function refreshDerived(){
+  var ae=document.activeElement;if(ae&&ae.dataset&&ae.dataset.uf){var uu=S.umfragen.find(function(x){return x.id===ae.dataset.uf}),ux=$('#ufres-'+ae.dataset.uf);if(uu&&ux)ux.innerHTML=ufRes(uu)}
+  var sid=ui.view==='vorlagen'?ui.psid:(ui.view==='sitzungen'?ui.sid:'');
+  var s=sid&&sess(sid);if(!s)return;
+  var a=$('#topsum');if(a)a.textContent=topSum(s);
+  s.beschluesse.forEach(function(b){
+    var x=$('#bres-'+b.id);if(x)x.innerHTML=bres(s,b);
+    var y=$('#dres-'+b.id);if(y)y.innerHTML=dresHTML(b);
+  });
+  var o=$('#ovw');if(o)o.innerHTML=ovwRows(s);
+}
+
+/* ---------- Speichern, Kopieren ---------- */
+var DL={save:function(o){return new Promise(function(res,rej){
+  if(window.Neutralino&&window.NL_OS){
+    Neutralino.os.showSaveDialog('Speichern unter',{defaultPath:String(o.filename)}).then(function(p){
+      if(!p){res();return}
+      return Neutralino.filesystem.writeFile(p,String(o.data)).then(function(){res()});
+    }).catch(rej);return;
+  }
+  try{
+    var ext=(String(o.filename).split('.').pop()||'').toLowerCase(),mt={html:'text/html',json:'application/json',csv:'text/csv',txt:'text/plain',md:'text/markdown'}[ext]||'application/octet-stream';
+    var blob=new Blob([o.data],{type:mt+';charset=utf-8'}),a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download=o.filename;document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);res();
+  }catch(e){rej(e)}
+})}};
+
+/* ---------- Cloud-Abgleich (Supabase, optional) ---------- */
+var CL={on:false,client:null,user:null,state:'login',base:null,busy:false,seq:0,timer:null,cid:'c'+Math.random().toString(36).slice(2,10),row:null,rend:false,ch:null,poll:null,last:'',err:''};
+var CLB=KEY+'-cloudbase';
+function jeq(a,b){return JSON.stringify(a)===JSON.stringify(b)}
+function isObj(x){return x&&typeof x==='object'&&!Array.isArray(x)}
+function idArr(a){return Array.isArray(a)&&a.every(function(x){return isObj(x)&&typeof x.id==='string'})}
+function idMap(a){var m={};(a||[]).forEach(function(x){m[x.id]=x});return m}
+function merge3(b,l,r){
+  if(jeq(l,b))return r;
+  if(jeq(r,b)||jeq(l,r))return l;
+  if(isObj(l)&&isObj(r)){
+    var bb=isObj(b)?b:{},o={};
+    Object.keys(l).concat(Object.keys(r)).forEach(function(k){
+      if(k in o)return;
+      var inl=k in l,inr=k in r,inb=k in bb;
+      if(inl&&inr)o[k]=merge3(bb[k],l[k],r[k]);
+      else if(inl){if(!(inb&&jeq(l[k],bb[k])))o[k]=l[k]}
+      else{if(!(inb&&jeq(r[k],bb[k])))o[k]=r[k]}
+    });
+    return o;
+  }
+  if(idArr(l)&&idArr(r)){
+    var bm=idMap(isArr(b)?b:[]),lm=idMap(l),rm=idMap(r),out=[],seen={};
+    l.forEach(function(x){
+      seen[x.id]=1;
+      if(x.id in rm)out.push(merge3(bm[x.id],x,rm[x.id]));
+      else if(!(x.id in bm&&jeq(x,bm[x.id])))out.push(x);
+    });
+    r.forEach(function(x){
+      if(seen[x.id])return;
+      if(x.id in bm&&jeq(x,bm[x.id]))return;
+      out.push(x);
+    });
+    return out;
+  }
+  return l;
+}
+function isArr(x){return Array.isArray(x)}
+function clone(x){return JSON.parse(JSON.stringify(x))}
+function clBaseSave(){try{if(CL.base)localStorage.setItem(CLB,JSON.stringify(CL.base));else localStorage.removeItem(CLB)}catch(e){}}
+function clTime(){var d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())}
+function cloudStatus(st,err){
+  if(st)CL.state=st;CL.err=err||'';
+  var el=$('#cpill');if(!el)return;
+  if(!CL.on){el.style.display='none';return}
+  var t={login:'Cloud: nicht angemeldet',choose:'Cloud: Auswahl nötig',ok:'Cloud: synchron',pending:'Cloud: speichert …',offline:'Cloud: offline',sync:'Cloud: gleicht ab …'}[CL.state]||'';
+  el.textContent=t;el.style.display='';
+  el.style.background=CL.state==='ok'?'var(--good-soft)':(CL.state==='offline'||CL.state==='choose')?'var(--warn-soft)':'var(--surface2)';
+  el.style.color=CL.state==='ok'?'var(--good)':(CL.state==='offline'||CL.state==='choose')?'var(--warn)':'var(--ink2)';
+  if(ui.view==='daten'&&!clTyping())cloudRender();
+}
+function clTyping(){var ae=document.activeElement;return !!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))}
+function cloudRender(){if(clTyping()){CL.rend=true;return}CL.rend=false;render()}
+document.addEventListener('focusout',function(){setTimeout(function(){if(CL.rend&&!clTyping()){CL.rend=false;render()}},80)});
+function cloudInit(){
+  if(!(window.SV_CLOUD&&window.supabase&&window.supabase.createClient))return;
+  CL.on=true;
+  try{CL.client=window.supabase.createClient(window.SV_CLOUD.url,window.SV_CLOUD.key,{auth:{persistSession:true,autoRefreshToken:true}})}catch(e){CL.on=false;return}
+  try{var b=localStorage.getItem(CLB);if(b)CL.base=JSON.parse(b)}catch(e){CL.base=null}
+  cloudStatus('login');
+  CL.client.auth.getSession().then(function(r){
+    CL.user=r&&r.data&&r.data.session?r.data.session.user:null;
+    if(CL.user)cloudStart();else cloudStatus('login');
+  },function(){cloudStatus('offline')});
+  CL.client.auth.onAuthStateChange(function(ev,ses){
+    var u=ses&&ses.user||null;
+    if(ev==='SIGNED_OUT'){CL.user=null;cloudStop();cloudStatus('login')}
+    else if(u&&!CL.user){CL.user=u;cloudStart()}
+  });
+  window.addEventListener('online',function(){if(CL.user)cloudStart()});
+  window.addEventListener('focus',function(){if(CL.user&&CL.base)cloudPull()});
+  document.addEventListener('visibilitychange',function(){if(document.hidden&&CL.base&&CL.state==='pending')cloudPush()});
+}
+function cloudStop(){
+  clearTimeout(CL.timer);clearInterval(CL.poll);CL.poll=null;
+  if(CL.ch){try{CL.client.removeChannel(CL.ch)}catch(e){}CL.ch=null}
+}
+function cloudFetch(){
+  return CL.client.from('sv_state').select('data,updated_at,updated_by').eq('id','main').maybeSingle();
+}
+function cloudStart(){
+  cloudStatus('sync');
+  cloudFetch().then(function(r){
+    if(r.error){cloudStatus('offline',r.error.message);return}
+    CL.row=r.data;
+    if(!CL.base||!r.data){cloudStatus('choose');return}
+    cloudSubscribe();cloudPull(true);
+  },function(){cloudStatus('offline')});
+}
+function cloudSubscribe(){
+  cloudStop();
+  try{
+    CL.ch=CL.client.channel('sv-main').on('postgres_changes',{event:'*',schema:'public',table:'sv_state',filter:'id=eq.main'},function(p){
+      if(p&&p.new&&p.new.updated_by===CL.cid)return;
+      cloudPull();
+    }).subscribe();
+  }catch(e){}
+  CL.poll=setInterval(function(){if(CL.user&&CL.base&&!CL.busy)cloudPull()},20000);
+}
+function cloudApplyRemote(row){
+  var m=merge3(CL.base?CL.base.data:{},clone(S),row.data);
+  S=norm(m);
+  CL.base={data:row.data,rev:row.updated_at};clBaseSave();
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){memOK=false}
+  CL.last=clTime();
+  if(!jeq(S,norm(clone(row.data))))cloudMark();
+  else cloudStatus('ok');
+  cloudRender();
+}
+function cloudPull(force){
+  if(!CL.user||!CL.base||CL.busy)return;
+  cloudFetch().then(function(r){
+    if(r.error){cloudStatus('offline',r.error.message);return}
+    if(!r.data)return;
+    if(!force&&CL.base&&r.data.updated_at===CL.base.rev){if(CL.state!=='pending')cloudStatus('ok');return}
+    if(CL.busy)return;
+    cloudApplyRemote(r.data);
+  },function(){cloudStatus('offline')});
+}
+function cloudMark(){
+  if(!CL||!CL.on||!CL.user||!CL.base)return;
+  CL.seq++;
+  clearTimeout(CL.timer);CL.timer=setTimeout(cloudPush,700);
+  if(CL.state!=='pending')cloudStatus('pending');
+}
+function cloudPush(){
+  if(!CL.on||!CL.user||!CL.base)return;
+  if(CL.busy){clearTimeout(CL.timer);CL.timer=setTimeout(cloudPush,500);return}
+  CL.busy=true;
+  var seq=CL.seq,payload=clone(S),rev=CL.base.rev;
+  CL.client.from('sv_state').update({data:payload,updated_by:CL.cid,updated_at:new Date().toISOString()}).eq('id','main').eq('updated_at',rev).select('updated_at').then(function(r){
+    CL.busy=false;
+    if(r.error){cloudStatus('offline',r.error.message);clearTimeout(CL.timer);CL.timer=setTimeout(cloudPush,15000);return}
+    if(r.data&&r.data.length){
+      CL.base={data:payload,rev:r.data[0].updated_at};clBaseSave();CL.last=clTime();
+      if(seq!==CL.seq){CL.timer=setTimeout(cloudPush,300)}else cloudStatus('ok');
+    }else{
+      /* Jemand anderes war schneller: zusammenführen und erneut senden */
+      cloudFetch().then(function(q){
+        if(q.error||!q.data){cloudStatus('offline',q.error&&q.error.message);return}
+        cloudApplyRemote(q.data);
+      },function(){cloudStatus('offline')});
+    }
+  },function(){CL.busy=false;cloudStatus('offline');clearTimeout(CL.timer);CL.timer=setTimeout(cloudPush,15000)});
+}
+function cloudTake(){
+  if(!CL.row)return;
+  try{localStorage.setItem(KEY+'-prevlocal',JSON.stringify(S))}catch(e){}
+  S=norm(clone(CL.row.data));
+  CL.base={data:CL.row.data,rev:CL.row.updated_at};clBaseSave();
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+  CL.last=clTime();cloudSubscribe();cloudStatus('ok');cloudRender();toast('Cloud-Daten übernommen');
+}
+function cloudUpload(){
+  var payload=clone(S),now=new Date().toISOString();
+  cloudStatus('sync');
+  var q=CL.row
+    ?CL.client.from('sv_state').update({data:payload,updated_by:CL.cid,updated_at:now}).eq('id','main').select('updated_at')
+    :CL.client.from('sv_state').insert({id:'main',data:payload,updated_by:CL.cid,updated_at:now}).select('updated_at');
+  q.then(function(r){
+    if(r.error||!r.data||!r.data.length){cloudStatus('offline',r.error?r.error.message:'Speichern nicht erlaubt');toast('Hochladen fehlgeschlagen');return}
+    CL.row={data:payload,updated_at:r.data[0].updated_at};
+    CL.base={data:payload,rev:r.data[0].updated_at};clBaseSave();
+    CL.last=clTime();cloudSubscribe();cloudStatus('ok');cloudRender();toast('Daten in der Cloud gespeichert');
+  },function(){cloudStatus('offline')});
+}
+function vCloud(){
+  if(!CL.on)return '';
+  var h='<section class="card"><h3 style="margin-bottom:8px">Cloud-Abgleich (gemeinsam arbeiten)</h3>';
+  if(!CL.user){
+    h+='<p class="meta" style="margin-bottom:10px">Melde dich an, damit du und deine Protokollführung dieselben Daten live bearbeitet. Die Zugangsdaten bekommst du vom Schulsprecher. Ohne Anmeldung arbeitest du nur lokal.</p>'+
+      '<label class="lbl" for="cl-mail">E-Mail</label><input type="email" id="cl-mail" autocomplete="username"><label class="lbl" for="cl-pw" style="margin-top:8px">Passwort</label><input type="password" id="cl-pw" autocomplete="current-password">'+
+      '<div class="frow" style="margin-top:10px"><button type="button" class="btn primary" data-act="cllogin">Anmelden</button></div>'+(CL.state==='offline'?'<p class="bad" style="margin-top:8px">Keine Verbindung.</p>':'');
+  }else if(CL.state==='choose'){
+    h+='<p style="margin-bottom:10px">Angemeldet als <b>'+esc(CL.user.email||'')+'</b>. Dieses Gerät ist noch nicht mit der Cloud verbunden. Was soll passieren?</p><div class="frow">'+
+      (CL.row?'<button type="button" class="btn primary" data-act="cltake">Cloud-Daten hierher laden</button>':'')+
+      '<button type="button" class="btn'+(CL.row?'':' primary')+'" data-act="clup">'+(CL.row?'Meine Daten in die Cloud hochladen (ersetzt Cloud-Daten)':'Meine Daten in die Cloud hochladen')+'</button><button type="button" class="btn" data-act="cllogout">Abmelden</button></div>'+
+      (CL.row?'<p class="meta" style="margin-top:10px">„Hierher laden“ ersetzt die Daten auf diesem Gerät. Ein Rückfall-Stand bleibt lokal gespeichert.</p>':'');
+  }else{
+    h+='<p>Angemeldet als <b>'+esc(CL.user.email||'')+'</b>. '+(CL.state==='ok'?'<span class="pill good">synchron</span>':CL.state==='offline'?'<span class="pill warn">offline, wird später gesendet</span>':'<span class="pill">'+(CL.state==='pending'?'speichert …':'gleicht ab …')+'</span>')+'</p>'+
+      (CL.last?'<p class="meta" style="margin-top:6px">Letzter Abgleich: '+CL.last+' Uhr. Änderungen von anderen erscheinen automatisch.</p>':'')+
+      (CL.err?'<p class="bad" style="margin-top:6px">'+esc(CL.err)+'</p>':'')+
+      '<div class="frow" style="margin-top:10px"><button type="button" class="btn" data-act="clpull">Jetzt abgleichen</button><button type="button" class="btn" data-act="cllogout">Abmelden</button></div>';
+  }
+  return h+'</section>';
+}
+var tt;
+function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('on')},3200)}
+function saveFile(name,data,ok){
+  if(!DL){toast('Speichern ist hier nicht verfügbar. Nutze Kopieren.');return}
+  DL.save({filename:name,data:data}).then(function(){toast('Datei gespeichert');if(ok)ok()},function(e){
+    if(e&&e.code==='declined')return;
+    toast('Speichern nicht möglich. Nutze Kopieren.');
+  });
+}
+function copyText(txt,sel){
+  function fallback(){var ta=$(sel);if(ta){ta.focus();ta.select();toast('Text markiert. Jetzt Strg+C oder Kopieren im Menü.')}else toast('Kopieren nicht möglich')}
+  try{navigator.clipboard.writeText(txt).then(function(){toast('Kopiert')},fallback)}catch(e){fallback()}
+}
+function readImport(file){
+  if(!file)return;
+  var r=new FileReader();
+  r.onload=function(){try{var o=norm(JSON.parse(r.result));if(!o)throw new Error('x');ui.pending=o;render()}catch(e){toast('Das ist keine gültige Sicherung')}};
+  r.onerror=function(){toast('Datei konnte nicht gelesen werden')};
+  r.readAsText(file);
+}
+
+/* ---------- Aktionen ---------- */
+var pc=null;
+function needConfirm(key){if(pc===key)return true;ui.confirm=key;render();return false}
+var A={
+  nav:function(d){ui.view=d.v;ui.sid=null;ui.md=null;return true},
+  open:function(d){ui.view='sitzungen';ui.sid=d.sid;ui.md=null;return true},
+  back:function(){ui.sid=null;ui.md=null;return true},
+  newsess:function(){
+    var b=new Date();b.setDate(b.getDate()+7);b.setHours(18,0,0,0);
+    var s={id:uid(),titel:'SV-Sitzung',datum:toLocal(b),ort:S.settings.ort||'',status:'geplant',tops:topsTpl(),anw:{},beschluesse:[],aufgaben:[],protokoll:''};
+    S.sessions.push(s);ui.view='sitzungen';ui.sid=s.id;ui.md=null;save();return true;
+  },
+  delsess:function(d){if(!needConfirm('delsess'+d.sid))return 'skip';S.sessions=S.sessions.filter(function(x){return x.id!==d.sid});ui.sid=null;save();return true},
+  addtop:function(d){sess(d.sid).tops.push({id:uid(),titel:'',min:5,typ:'info',notiz:''});save()},
+  deltop:function(d){var s=sess(d.sid);s.tops=s.tops.filter(function(t){return t.id!==d.id});save()},
+  topmove:function(d){var s=sess(d.sid),i=s.tops.findIndex(function(t){return t.id===d.id}),j=i+(+d.dir);if(i<0||j<0||j>=s.tops.length)return;var t=s.tops[i];s.tops[i]=s.tops[j];s.tops[j]=t;save()},
+  anw:function(d){var s=sess(d.sid);s.anw[d.mid]=s.anw[d.mid]===d.v?'':d.v;save()},
+  addbes:function(d){sess(d.sid).beschluesse.push({id:uid(),text:'',ja:0,nein:0,enth:0});save()},
+  delbes:function(d){if(!needConfirm('delbes'+d.id))return 'skip';var s=sess(d.sid);s.beschluesse=s.beschluesse.filter(function(b){return b.id!==d.id});save()},
+  addaufg:function(d){sess(d.sid).aufgaben.push({id:uid(),text:'',wer:'',frist:'',done:false});save()},
+  delaufg:function(d){var s=sess(d.sid);s.aufgaben=s.aufgaben.filter(function(t){return t.id!==d.id});save()},
+  md:function(d){ui.md=ui.md===d.sid?null:d.sid},
+  mdcopy:function(d){copyText(protokollMD(sess(d.sid)),'#mdbox');return 'skip'},
+  mdsave:function(d){var s=sess(d.sid);saveFile('protokoll-'+(s.datum||today()).slice(0,10)+'.md',protokollMD(s));return 'skip'},
+  addmem:function(){S.members.push({id:uid(),name:'',rolle:'Mitglied',stimm:true,aktiv:true});save()},
+  delmem:function(d){if(!needConfirm('delmem'+d.id))return 'skip';S.members=S.members.filter(function(m){return m.id!==d.id});save()},
+  tops2tpl:function(d){var s=sess(d.sid);S.vorlagen.push({id:uid(),name:(s.titel||'Sitzung')+' – Tagesordnung',art:'tagesordnung',inhalt:tops2lines(s)});save();toast('Als Vorlage gespeichert (Reiter Vorlagen)');return 'skip'},
+  regen:function(){regen()},
+  gencopy:function(){copyText(ui.gen.text||'','#gentext');return 'skip'},
+  gensavefile:function(){
+    var g=ui.gen,s=sess(g.sid),t=tplById(g.tid),day=((s&&s.datum)||today()).slice(0,10);
+    if(!g.text){toast('Das Dokument ist leer');return 'skip'}
+    saveFile((t&&t.art==='protokoll'?'protokoll':slug(t&&t.name))+'-'+day+(t&&t.art==='protokoll'?'.md':'.txt'),g.text);return 'skip';
+  },
+  newtpl:function(){var v={id:uid(),name:'Neue Vorlage',art:'text',inhalt:''};S.vorlagen.push(v);ui.vedit=v.id;save()},
+  tpledit:function(d){ui.vedit=ui.vedit===d.id?null:d.id},
+  tplcopy:function(d){var t=tplById(d.id);copyText(t?t.inhalt:'','#none');return 'skip'},
+  tpldl:function(d){var t=tplById(d.id);if(!t||!t.inhalt){toast('Die Vorlage ist leer');return 'skip'}saveFile(slug(t.name)+(t.art==='protokoll'?'.md':'.txt'),t.inhalt);return 'skip'},
+  tplgen:function(d){ui.vtab='2';ui.gen={sid:ui.gen?ui.gen.sid:'',tid:d.id,text:null};return true},
+  deltpl:function(d){if(!needConfirm('deltpl'+d.id))return 'skip';S.vorlagen=S.vorlagen.filter(function(v){return v.id!==d.id});if(ui.vedit===d.id)ui.vedit=null;save()},
+  tplapply:function(d){
+    var el=$('#apsel-'+d.id),s=sess(el?el.value:''),t=tplById(d.id);
+    if(!s||!t){toast('Keine Sitzung ausgewählt');return 'skip'}
+    var tops=parseTops(t.inhalt);
+    if(!tops.length){toast('Die Vorlage enthält keine Zeilen');return 'skip'}
+    if(d.mode==='replace'&&s.tops.length&&!needConfirm('tplrep'+d.id))return 'skip';
+    s.tops=d.mode==='replace'?tops:s.tops.concat(tops);save();toast(tops.length+' TOPs in die Sitzung übernommen');
+  },
+  vtab:function(d){ui.vtab=d.v},
+  goreset:function(){if(!needConfirm('goreset'))return 'skip';GO().text=GO_TEXT;save()},
+  addth:function(){var t=($('#th-text')||{}).value||'';t=t.trim();if(!t){toast('Bitte ein Thema eintragen');return 'skip'}S.themen.push({id:uid(),text:t,von:(($('#th-von')||{}).value||'').trim(),typ:($('#th-typ')||{}).value||'diskussion',notiz:'',status:'offen',sid:''});save()},
+  delth:function(d){if(!needConfirm('delth'+d.id))return 'skip';S.themen=S.themen.filter(function(t){return t.id!==d.id});save()},
+  thdone:function(d){var t=S.themen.find(function(x){return x.id===d.id});if(t){t.status='erledigt';save()}},
+  thopen:function(d){var t=S.themen.find(function(x){return x.id===d.id});if(t){t.status='offen';t.sid='';save()}},
+  thplan:function(d){
+    var t=S.themen.find(function(x){return x.id===d.id}),s=sess(ui.thsel);if(!t||!s)return 'skip';
+    var top={id:uid(),titel:t.text,min:10,typ:t.typ,beschr:t.notiz||'',notiz:''},i=s.tops.findIndex(function(x){return x.typ==='ende'});
+    if(i<0)s.tops.push(top);else s.tops.splice(i,0,top);
+    t.status='eingeplant';t.sid=s.id;save();toast('Als TOP übernommen');
+  },
+  thimport:function(){
+    ['Fehlzeitenregelung wieder aufgreifen','Zusätzliche SV-Sitzung pro Semester','Klassenwarts-Wahl künftig einführen'].forEach(function(x,i){
+      if(!S.themen.some(function(t){return t.text===x}))S.themen.push({id:uid(),text:x,von:'Sitzung vom 15.09.2026',typ:i===0?'diskussion':'diskussion',notiz:i===0?'Aus TOP 6: soll wieder als Thema aufgegriffen werden.':'Anregung aus der Beratung zur Geschäftsordnung (TOP 5).',status:'offen',sid:''});
+    });save();
+  },
+  bnsave:function(){var s=ensureBn();if(s)saveFile('beschluss-aushang-'+(s.datum||today()).slice(0,10)+'.html',docFile(bnHTML(s),'Beschluss-Aushang'));return 'skip'},
+  bnhtml:function(){var s=ensureBn();if(s)copyText(docFile(bnHTML(s),'Beschluss-Aushang'),'#none');return 'skip'},
+  livego:function(d){
+    var s=sess(d.sid);if(!s)return 'skip';
+    if(!s.live||!s.live.on){var now=Date.now();s.live={on:true,top:0,ts:now,paused:false,sec:{},rl:[]};s.pf=s.pf||{};s.pf.beginn=hhmm()+' Uhr';if(!s.tops.length)toast('Die Tagesordnung ist noch leer');save()}
+    ui.view='live';ui.sid=s.id;ui.md=null;
+    try{if(navigator.wakeLock)navigator.wakeLock.request('screen').catch(function(){})}catch(e){}
+    return true},
+  livequit:function(){ui.view='sitzungen';return true},
+  livepause:function(){var s=sess(ui.sid);if(!s||!s.live)return 'skip';var L=s.live;if(L.paused){L.paused=false;L.ts=Date.now()}else{lvBank(s);rlStopAll(s);L.paused=true}save()},
+  livetop:function(d){var s=sess(ui.sid);if(!s||!s.live)return 'skip';var i=+d.i;if(i<0||i>=s.tops.length||i===s.live.top)return 'skip';lvBank(s);s.live.top=i;s.live.rl=[];save()},
+  liveend:function(){
+    var s=sess(ui.sid);if(!s||!s.live)return 'skip';
+    if(!needConfirm('liveend'))return 'skip';
+    lvBank(s);s.live.on=false;s.pf=s.pf||{};s.pf.ende=hhmm();
+    if(s.status==='geplant'||s.status==='eingeladen')s.status='gehalten';
+    save();ui.view='sitzungen';ui.sid=s.id;toast('Sitzung beendet. Ende '+s.pf.ende+' Uhr eingetragen.');return true},
+  rladd:function(){var s=sess(ui.sid),el=$('#rl-name');if(!s||!s.live||!el)return 'skip';var v=el.value.trim();if(!v)return 'skip';s.live.rl.push({id:uid(),name:v,done:false,sec:0,t0:null});save()},
+  rlstart:function(d){var s=sess(ui.sid);if(!s||!s.live||s.live.paused)return 'skip';rlStopAll(s);var x=s.live.rl.find(function(r){return r.id===d.id});if(x){x.t0=Date.now();x.done=false}save()},
+  rlstop:function(d){var s=sess(ui.sid);if(!s||!s.live)return 'skip';rlStopAll(s);save()},
+  rldone:function(d){var s=sess(ui.sid);if(!s||!s.live)return 'skip';var x=s.live.rl.find(function(r){return r.id===d.id});if(x){if(x.t0){x.sec=(x.sec||0)+(Date.now()-x.t0)/1000;x.t0=null}x.done=!x.done;save()}},
+  rldel:function(d){var s=sess(ui.sid);if(!s||!s.live)return 'skip';s.live.rl=s.live.rl.filter(function(r){return r.id!==d.id});save()},
+  rlclear:function(){var s=sess(ui.sid);if(s&&s.live){s.live.rl=[];save()}},
+  lvbes:function(){var s=sess(ui.sid);if(!s||!s.live)return 'skip';var t=s.tops[s.live.top];if(!t)return 'skip';s.beschluesse.push({id:uid(),text:'',ja:0,nein:0,enth:0,wer:'',frist:'',top:t.id});save()},
+  votep:function(d){
+    var s=sess(d.sid),b=s&&s.beschluesse.find(function(x){return x.id===d.id});if(!b)return 'skip';
+    b[d.f]=Math.max(0,(+b[d.f]||0)+(+d.d));save()},
+  einst:function(d){var s=sess(d.sid),b=s&&s.beschluesse.find(function(x){return x.id===d.id});if(!b)return 'skip';b.ja=quorum(s).present;b.nein=0;b.enth=0;save()},
+  lvtask:function(){
+    var s=sess(ui.sid),a=$('#lv-task'),w=$('#lv-wer');if(!s||!s.live||!a)return 'skip';
+    var v=a.value.trim();if(!v)return 'skip';var t=s.tops[s.live.top];
+    s.aufgaben.push({id:uid(),text:v,wer:(w&&w.value.trim())||'',frist:'',done:false,top:t?t.id:''});save()},
+  afilt:function(d){ui.afilter=d.v},
+  ainact:function(){ui.ainact=!ui.ainact},
+  anwcyc:function(d){var s=sess(d.sid);if(!s)return 'skip';var o=['','ja','entsch','nein'],c=s.anw[d.mid]||'';s.anw[d.mid]=o[(o.indexOf(c)+1)%o.length];save()},
+  acsv:function(){var y=ensureSj('asj');saveFile('anwesenheit-'+y.replace('/','-')+'.csv',aCsv(y));return 'skip'},
+  atxt:function(){var y=ensureSj('asj');copyText(aCsv(y).replace('﻿','').replace(/;/g,'\t'),'#none');return 'skip'},
+  nssave:function(){var s=ensureNs();if(s)saveFile('niederschrift-'+(s.datum||today()).slice(0,10)+'.html',docFile(nsHTML(s),'Niederschrift'));return 'skip'},
+  nshtml:function(){var s=ensureNs();if(s)copyText(docFile(nsHTML(s),'Niederschrift'),'#none');return 'skip'},
+  impsess1:function(){if(sess('hist-2026-09-15')&&!needConfirm('impsess1'))return 'skip';var id=doImp1();ui.view='sitzungen';ui.sid=id;ui.md=null;toast('Sitzung vom 15.09.2026 eingelesen');return true},
+  gosave:function(){saveFile('geschaeftsordnung.html',docFile(goHTML(),'Geschäftsordnung'));return 'skip'},
+  gohtml:function(){copyText(docFile(goHTML(),'Geschäftsordnung'),'#none');return 'skip'},
+  adduf:function(){var u={id:uid(),frage:'Neue Umfrage',von:today(),bis:'',ziel:'',notiz:'',status:'offen',optionen:[]};S.umfragen.push(u);ui.uopen=u.id;save()},
+  deluf:function(d){if(!needConfirm('deluf'+d.id))return 'skip';S.umfragen=S.umfragen.filter(function(u){return u.id!==d.id});ui.uopen='';save()},
+  ufopen:function(d){ui.uopen=ui.uopen===d.id?'':d.id},
+  ufgo:function(d){ui.view='umfragen';ui.uopen=d.id;return true},
+  ufopt:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u){u.optionen.push({id:uid(),text:'',n:0});save()}},
+  ufoptdel:function(d){var u=S.umfragen.find(function(x){return x.id===d.uid});if(u){u.optionen=u.optionen.filter(function(x){return x.id!==d.id});save()}},
+  ufpreset:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u)return 'skip';var l=d.v==='jn'?['Ja','Nein','Enthaltung']:['1 (sehr schlecht)','2','3','4','5 (sehr gut)'];u.optionen=l.map(function(t){return {id:uid(),text:t,n:0}});save()},
+  ufsave:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u)saveFile('umfrage-ergebnis-'+(u.bis||u.von||today())+'.html',docFile(ufHTML(u),'Umfrage'));return 'skip'},
+  ufhtml:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u)copyText(docFile(ufHTML(u),'Umfrage'),'#none');return 'skip'},
+  addant:function(){var a={id:uid(),titel:'Neuer Antrag',empf:'Schulleitung',datum:today(),text:'',begr:'',bez:'',status:'entwurf',ein:'',frist:'',antw:'',antwt:''};S.antraege.push(a);ui.aopen=a.id;ui.astat='';save()},
+  antfrom:function(){var r=besByRef(ui.asel);if(!r)return 'skip';var t=r.b.text||'';var a={id:uid(),titel:t.slice(0,60),empf:'Schulleitung',datum:today(),text:t,begr:'',bez:ui.asel,status:'entwurf',ein:'',frist:'',antw:'',antwt:''};S.antraege.push(a);ui.aopen=a.id;ui.astat='';save()},
+  delant:function(d){if(!needConfirm('delant'+d.id))return 'skip';S.antraege=S.antraege.filter(function(a){return a.id!==d.id});ui.aopen='';save()},
+  antopen:function(d){ui.aopen=ui.aopen===d.id?'':d.id},
+  astat:function(d){ui.astat=d.v},
+  antst:function(d){var a=S.antraege.find(function(x){return x.id===d.id});if(!a)return 'skip';a.status=d.v;if(d.v==='eingereicht'&&!a.ein)a.ein=today();if((d.v==='genehmigt'||d.v==='abgelehnt'||d.v==='umgesetzt')&&!a.antw)a.antw=today();save()},
+  antsave:function(d){var a=S.antraege.find(function(x){return x.id===d.id});if(a)saveFile('antrag-'+(a.datum||today())+'.html',docFile(antHTML(a),'Antrag'));return 'skip'},
+  anthtml:function(d){var a=S.antraege.find(function(x){return x.id===d.id});if(a)copyText(docFile(antHTML(a),'Antrag'),'#none');return 'skip'},
+  pjgo:function(d){ui.view='projekte';ui.pj=d.id;return true},
+  ango:function(d){ui.view='antraege';ui.aopen=d.id;ui.astat='';return true},
+  bsave:function(){saveFile('jahresbericht-'+ensureSj('bsj').replace('/','-')+'.html',docFile(berichtHTML(ensureSj('bsj'),false),'Jahresbericht'));return 'skip'},
+  bhtml:function(){copyText(docFile(berichtHTML(ensureSj('bsj'),false),'Jahresbericht'),'#none');return 'skip'},
+  addpj:function(){var p={id:uid(),name:'Neues Projekt',ziel:'',termin:'',status:'idee',lead:'',notiz:'',sess:[],aufg:[]};S.projekte.push(p);ui.pj=p.id;save()},
+  delpj:function(d){if(!needConfirm('delpj'+d.id))return 'skip';S.projekte=S.projekte.filter(function(p){return p.id!==d.id});ui.pj='';save()},
+  pjopen:function(d){ui.pj=ui.pj===d.id?'':d.id},
+  pjlink:function(d){var p=pjById(d.id);if(p&&ui.pjsel&&p.sess.indexOf(ui.pjsel)<0){p.sess.push(ui.pjsel);save()}},
+  pjunlink:function(d){var p=pjById(d.pid);if(p){p.sess=p.sess.filter(function(x){return x!==d.id});save()}},
+  addpjt:function(d){var p=pjById(d.id);if(p){p.aufg.push({id:uid(),text:'',wer:'',frist:'',done:false});save()}},
+  delpjt:function(d){var p=pjById(d.pid);if(p){p.aufg=p.aufg.filter(function(a){return a.id!==d.id});save()}},
+  addvt:function(){S.verteiler.push({id:uid(),name:'Neuer Verteiler',ids:[],extra:''});save()},
+  delvt:function(d){if(!needConfirm('delvt'+d.id))return 'skip';S.verteiler=S.verteiler.filter(function(v){return v.id!==d.id});save()},
+  vtmem:function(d){var v=S.verteiler.find(function(x){return x.id===d.id});if(!v)return 'skip';var i=v.ids.indexOf(d.m2);if(i<0)v.ids.push(d.m2);else v.ids.splice(i,1);save()},
+  vtcopy:function(d){
+    if(d.k==='mail'){var m=vtMails(d.id);if(!m.length){toast('Keine E-Mail-Adressen hinterlegt');return 'skip'}copyText(m.join('; '),'#none')}
+    else copyText(vtList(d.id).map(function(x){return x.name}).filter(Boolean).join('\n'),'#none');
+    return 'skip'},
+  fgset:function(d){var s=sess(d.sid);if(!s)return 'skip';var f=fg(s);f.st=d.v;if(d.v==='verteilt'&&!f.vers)f.vers=today();if(d.v==='genehmigt'&&!f.gen)f.gen=today();save()},
+  fgcopy:function(d){var s=sess(d.sid);if(s)copyText(fgText(s),'#none');return 'skip'},
+  wnsave:function(){var r=ensureW();if(!r.s)return 'skip';saveFile('wahlniederschrift-'+(r.s.datum||today()).slice(0,10)+'.html',docFile(wnHTML(r.s,r.t,false),'Wahlniederschrift'));return 'skip'},
+  wnhtml:function(){var r=ensureW();if(r.s)copyText(docFile(wnHTML(r.s,r.t,false),'Wahlniederschrift'),'#none');return 'skip'},
+  ahsave:function(){var s=ensureA();if(!s)return 'skip';saveFile('aushang-'+(s.datum||today()).slice(0,10)+'.html',docFile(ahHTML(s,false),'Aushang'));return 'skip'},
+  ahhtml:function(){var s=ensureA();if(s)copyText(docFile(ahHTML(s,false),'Aushang'),'#none');return 'skip'},
+  cllogin:function(){
+    var m=($('#cl-mail')||{}).value||'',pw=($('#cl-pw')||{}).value||'';
+    if(!m||!pw){toast('E-Mail und Passwort eingeben');return 'skip'}
+    cloudStatus('sync');
+    CL.client.auth.signInWithPassword({email:m.trim(),password:pw}).then(function(r){
+      if(r.error){cloudStatus('login');toast('Anmeldung fehlgeschlagen: '+(/invalid/i.test(r.error.message)?'E-Mail oder Passwort falsch':r.error.message));return}
+      CL.user=r.data.user;cloudStart();
+    },function(){cloudStatus('offline');toast('Keine Verbindung')});
+    return 'skip'},
+  cllogout:function(){cloudStop();CL.base=null;clBaseSave();CL.client.auth.signOut().then(function(){CL.user=null;cloudStatus('login');cloudRender()});return 'skip'},
+  cltake:function(){cloudTake();return 'skip'},
+  clup:function(){cloudUpload();return 'skip'},
+  clpull:function(){cloudPull(true);toast('Abgleich gestartet');return 'skip'},
+  skrcopy:function(){var el=$('#skrtext');if(el)copyText(el.value,'#skrtext');return 'skip'},
+  skrsave:function(){var s=ensureA(),el=$('#skrtext');if(s&&el)saveFile('moderationsskript-'+(s.datum||today()).slice(0,10)+'.txt',el.value);return 'skip'},
+  skrhtml:function(){var s=ensureA();if(!s)return 'skip';saveFile('moderationsskript-'+(s.datum||today()).slice(0,10)+'.html',docFile(skriptHTML(s),'Moderationsskript'));return 'skip'},
+  skrnew:function(){var s=ensureA(),el=$('#skrtext');if(s&&el){el.value=skriptText(s);toast('Skript neu erstellt')}return 'skip'},
+  einlcopy:function(){var el=$('#einltext');if(el)copyText(el.value,'#einltext');return 'skip'},
+  einlsave:function(){var s=ensureA(),el=$('#einltext');if(s&&el)saveFile('einladung-'+(s.datum||today()).slice(0,10)+'.txt',el.value);return 'skip'},
+  tlopen:function(d){ui.vtab='1';ui.tsid=d.sid;ui.view='vorlagen';ui.sid=null;return true},
+  tlsave:function(){var s=sess(ui.tsid);if(!s)return 'skip';saveFile('teilnehmerliste-'+(s.datum||today()).slice(0,10)+'.html',docFile(tlHTML(s),'Teilnehmerliste'));return 'skip'},
+  tlhtml:function(){var s=sess(ui.tsid);if(s)copyText(docFile(tlHTML(s),'Teilnehmerliste'),'#none');return 'skip'},
+  protopen:function(d){ui.vtab='0';ui.psid=d.sid;ui.view='vorlagen';ui.sid=null;return true},
+  protsave:function(){var s=sess(ui.psid);if(!s)return 'skip';saveFile('sitzungsprotokoll-'+(s.datum||today()).slice(0,10)+'.html',protHTMLFile(s));return 'skip'},
+  prothtml:function(){var s=sess(ui.psid);if(s)copyText(protHTMLFile(s),'#none');return 'skip'},
+  prottext:function(){var s=sess(ui.psid);if(s)copyText(protokollMD(s),'#none');return 'skip'},
+  wahlja:function(d){var s=sess(d.sid),t=s&&s.tops.find(function(x){return x.id===d.id});if(!t)return 'skip';t.w=t.w||{};t.w.annahme=t.w.annahme===d.v?'':d.v;save()},
+  besfor:function(d){sess(d.sid).beschluesse.push({id:uid(),text:'',ja:0,nein:0,enth:0,top:d.id});save()},
+  rmex:function(){S.sessions=S.sessions.filter(function(s){return !s.bsp});S.members=S.members.filter(function(m){return !m.bsp});S.examples=false;if(ui.sid&&!sess(ui.sid))ui.sid=null;save()},
+  jsonshow:function(){ui.json=!ui.json},
+  jsoncopy:function(){copyText(JSON.stringify(S,null,2),'#jsonbox');bkSet();if(!ui.json){ui.json=true;render()}return 'skip'},
+  jsonsave:function(){saveFile('sv-planer-sicherung-'+today()+'.json',JSON.stringify(S,null,2),function(){bkSet();render()});return 'skip'},
+  bkdo:function(){if(DL){saveFile('sv-planer-sicherung-'+today()+'.json',JSON.stringify(S,null,2),function(){bkSet();render()});return 'skip'}ui.view='daten';ui.json=true;return true},
+  bksnz:function(){try{localStorage.setItem(KEY+'-snz',today())}catch(e){}},
+  imptext:function(){var v=($('#impbox')||{}).value||'';try{var o=norm(JSON.parse(v));if(!o)throw new Error('x');ui.pending=o}catch(e){toast('Das ist keine gültige Sicherung');return 'skip'}},
+  impapply:function(){S=ui.pending;ui.pending=null;ui.sid=null;save();toast('Daten ersetzt')},
+  impcancel:function(){ui.pending=null},
+  reset:function(){if(!needConfirm('reset'))return 'skip';S=blank();ui.sid=null;save();toast('Alle Daten gelöscht')}
+};
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-act]');if(!b)return;
+  var f=A[b.dataset.act];if(!f)return;
+  pc=ui.confirm;ui.confirm=null;
+  var r=f(b.dataset,b);
+  if(r==='skip')return;
+  render(r===true);
+});
+
+function setField(el){
+  var o=null,d=el.dataset;
+  if(d.m)o=mem(d.m);
+  else if(d.sid){o=sess(d.sid);if(o&&d.coll)o=o[d.coll].find(function(x){return x.id===d.id})}
+  else if(d.pj){o=S.projekte.find(function(x){return x.id===d.pj});if(o&&d.coll)o=o[d.coll].find(function(x){return x.id===d.id})}
+  else if(d.vt)o=S.verteiler.find(function(x){return x.id===d.vt});
+  else if(d.go)o=GO();
+  else if(d.th)o=S.themen.find(function(x){return x.id===d.th});
+  else if(d.uf){o=S.umfragen.find(function(x){return x.id===d.uf});if(o&&d.coll)o=o[d.coll].find(function(x){return x.id===d.id})}
+  else if(d.ant)o=S.antraege.find(function(x){return x.id===d.ant});
+  else if(d.bj){o=S.berichte[d.bj]=S.berichte[d.bj]||{einl:'',fazit:''}}
+  else if(d.s)o=S.settings;
+  else if(d.tp)o=tplById(d.tp);
+  if(!o)return;
+  if(d.sub){o[d.sub]=o[d.sub]||{};o=o[d.sub]}
+  var f=d.f||d.s,v;
+  if(el.type==='checkbox')v=el.checked;
+  else if(el.type==='number')v=Math.max(0,Math.round(Number(el.value)||0));
+  else v=el.value;
+  o[f]=v;save();
+}
+document.addEventListener('input',function(e){
+  var t=e.target,d=t.dataset;
+  if(d.search!==undefined){ui.q=t.value;$('#res').innerHTML=beschlList();return}
+  if(d.gentext!==undefined){if(ui.gen)ui.gen.text=t.value;return}
+  if(d.rr)return;
+  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);refreshDerived();if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts)}}
+});
+document.addEventListener('change',function(e){
+  var t=e.target,d=t.dataset;
+  if(d.ui){ui[d.ui]=t.value;render();return}
+  if(d.gensel){ui.gen[d.gensel]=t.value;regen();render();return}
+  if(t.id==='impfile'){readImport(t.files&&t.files[0]);return}
+  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);if(d.rr)render();else refreshDerived()}
+});
+
+render();
+try{if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js')}catch(e){}
+try{cloudInit()}catch(e){}
+try{
+  if(window.claude&&claude.use){
+    claude.use('downloads').then(function(x){
+      DL=x||null;
+      var ae=document.activeElement;
+      if(DL&&(!ae||ae===document.body))render();
+    },function(){DL=null});
+  }
+}catch(e){}
+})();
+</script>
