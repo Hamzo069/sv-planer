@@ -150,6 +150,9 @@ textarea.box{font-family:var(--f-mono);font-size:13px;min-height:220px}
 </style>
 <style id="paper-css">
 .sheet{overflow-x:auto;max-width:100%}
+.sgb{font:inherit;font-size:12px;font-weight:600;border:1px dashed #0E6B58;color:#0E6B58;background:#effaf6;border-radius:8px;padding:6px 10px;cursor:pointer;touch-action:manipulation}
+.sgx{display:block;margin-left:auto;font:inherit;font-size:10px;border:0;background:none;color:#8a8f98;text-decoration:underline;cursor:pointer;padding:2px 0}
+.sgi{display:block;max-height:56px;max-width:100%}
 .seg.tabs button{padding:8px 14px;white-space:nowrap;font-weight:600}
 .seg.tabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .paper{background:#fff;color:#111;font-family:'DejaVu Sans','Segoe UI',Arial,sans-serif;font-size:10.5pt;line-height:1.45;padding:28px 34px;max-width:820px;min-width:640px;margin-inline:auto;border:1px solid #cfd6d2}
@@ -182,7 +185,7 @@ textarea.box{font-family:var(--f-mono);font-size:13px;min-height:220px}
 .paper table.sig td{width:25%}
 .paper table.tl th{background:#EDEDED;font-weight:700;font-size:9.5pt}
 .paper table.tl td{height:34px;vertical-align:middle}
-@media print{.paper{border:0;padding:0;min-width:0;max-width:none}.paper table.tl th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{.sgb,.sgx{display:none!important}.paper{border:0;padding:0;min-width:0;max-width:none}.paper table.tl th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 
 <div class="wrap">
@@ -272,6 +275,55 @@ function sessNo(s){
   return i<0?l.length+1:i+1;
 }
 function leitungName(){return String(S.settings.leitung||'').split(',')[0].trim()}
+function SG(){return S.sigs||(S.sigs={})}
+function sgHTML(key,lab){var u=SG()[key];
+  if(u)return '<img class="sgi" alt="Unterschrift" src="'+u+'"><button type="button" class="sgx" data-act="sigdel" data-key="'+esc(key)+'">Unterschrift entfernen</button>';
+  return '<button type="button" class="sgb" data-act="sign" data-key="'+esc(key)+'" data-lab="'+esc(lab||'Unterschrift')+'">✍ Unterschreiben</button>'}
+function sigClose(){var w=document.getElementById('sigmodal');if(w)w.remove();document.removeEventListener('keydown',sigKey)}
+function sigKey(e){if(e.key==='Escape')sigClose()}
+function sigOpen(key,lab){
+  sigClose();
+  var def=null;try{def=localStorage.getItem(KEY+'-mysig')}catch(e){}
+  var w=document.createElement('div');w.id='sigmodal';
+  w.style.cssText='position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:12px;overflow:auto';
+  w.innerHTML='<div style="background:#fff;color:#111;border-radius:14px;padding:14px;width:min(680px,100%);box-shadow:0 10px 40px rgba(0,0,0,.4)"><div style="font-weight:700;margin-bottom:8px">Unterschrift: '+esc(lab)+'</div><canvas id="sigc" style="width:100%;height:220px;border:1px solid #999;border-radius:8px;background:#fff;touch-action:none;display:block;cursor:crosshair"></canvas><div id="sigmsg" style="font-size:12px;color:#555;margin:6px 0">Mit Apple Pencil oder Finger im Feld unterschreiben.</div><label style="font-size:13px;display:flex;gap:6px;align-items:center;margin-bottom:10px"><input type="checkbox" id="sigmy"> Als Standard-Unterschrift auf diesem Gerät merken</label><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="sigclr">Löschen</button>'+(def?'<button type="button" class="btn" id="sigdef">Gespeicherte verwenden</button>':'')+'<span style="flex:1"></span><button type="button" class="btn" id="sigcan">Abbrechen</button><button type="button" class="btn primary" id="sigok">Übernehmen</button></div></div>';
+  document.body.appendChild(w);
+  document.addEventListener('keydown',sigKey);
+  var c=document.getElementById('sigc'),r=c.getBoundingClientRect(),ratio=Math.max(1,window.devicePixelRatio||1);
+  c.width=Math.round(r.width*ratio);c.height=Math.round(r.height*ratio);
+  var x=c.getContext('2d');x.scale(ratio,ratio);x.lineCap='round';x.lineJoin='round';x.strokeStyle='#111';x.fillStyle='#111';
+  var down=false,lx=0,ly=0,ink=false,pen=false;
+  function pt(e){var b=c.getBoundingClientRect();return [e.clientX-b.left,e.clientY-b.top]}
+  function lw(e){return e.pointerType==='pen'&&e.pressure>0?1.1+e.pressure*2.6:2}
+  c.addEventListener('pointerdown',function(e){
+    if(e.pointerType==='pen')pen=true;
+    if(pen&&e.pointerType==='touch')return;
+    e.preventDefault();down=true;try{c.setPointerCapture(e.pointerId)}catch(_){}
+    var q=pt(e);lx=q[0];ly=q[1];ink=true;x.beginPath();x.arc(lx,ly,lw(e)/2,0,6.2832);x.fill()});
+  c.addEventListener('pointermove',function(e){
+    if(!down)return;if(pen&&e.pointerType==='touch')return;e.preventDefault();
+    var ev=(e.getCoalescedEvents&&e.getCoalescedEvents())||[];if(!ev.length)ev=[e];
+    ev.forEach(function(g){var q=pt(g);x.lineWidth=lw(g);x.beginPath();x.moveTo(lx,ly);x.lineTo(q[0],q[1]);x.stroke();lx=q[0];ly=q[1]})});
+  function up(){down=false}
+  c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);c.addEventListener('pointerleave',up);
+  document.getElementById('sigclr').onclick=function(){x.clearRect(0,0,r.width,r.height);ink=false};
+  document.getElementById('sigcan').onclick=sigClose;
+  w.addEventListener('pointerdown',function(e){if(e.target===w)sigClose()});
+  var d=document.getElementById('sigdef');
+  if(d)d.onclick=function(){SG()[key]=def;save();sigClose();render()};
+  document.getElementById('sigok').onclick=function(){
+    if(!ink){var m=document.getElementById('sigmsg');m.textContent='Bitte zuerst unterschreiben.';m.style.color='#b3261e';return}
+    var W=c.width,H=c.height,id=x.getImageData?c.getContext('2d').getImageData(0,0,W,H).data:null,x0=W,y0=H,x1=0,y1=0,i,j;
+    for(j=0;j<H;j++)for(i=0;i<W;i++){if(id[(j*W+i)*4+3]>20){if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j}}
+    var pad=Math.round(6*ratio);x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(W-1,x1+pad);y1=Math.min(H-1,y1+pad);
+    var cw=x1-x0+1,ch=y1-y0+1,sc=Math.min(1,520/cw,170/ch),o=document.createElement('canvas');
+    o.width=Math.max(1,Math.round(cw*sc));o.height=Math.max(1,Math.round(ch*sc));
+    o.getContext('2d').drawImage(c,x0,y0,cw,ch,0,0,o.width,o.height);
+    var url=o.toDataURL('image/png');
+    SG()[key]=url;
+    if(document.getElementById('sigmy').checked){try{localStorage.setItem(KEY+'-mysig',url)}catch(e){}}
+    save();sigClose();render()};
+}
 function dresHTML(b){
   var r=res(b);
   return (r.label==='Angenommen'?'☒':'☐')+' angenommen &nbsp; '+(r.k==='bad'?'☒':'☐')+' abgelehnt';
@@ -352,12 +404,12 @@ function protHTML(s,edit){
   else h+='<ol>'+anl.split('\n').filter(function(l){return l.trim()}).map(function(l){return '<li>'+esc(l)+'</li>'}).join('')+'</ol>';
 
   var ln=String(pfv(s,'leitung',S.settings.leitung||'')).split(',')[0].trim(),pn=pfv(s,'protokoll',protMem?protMem.name:'');
-  h+='<table class="sig" style="margin-top:18px"><tr><td>Sitzungsleitung</td><td>Protokollführung</td></tr><tr><td><span class="ul" style="min-width:12rem"></span></td><td><span class="ul" style="min-width:12rem"></span></td></tr><tr><td>'+esc(ln)+'&nbsp;</td><td>'+esc(pn)+'&nbsp;</td></tr></table></div>';
+  h+='<table class="sig" style="margin-top:18px"><tr><td>Sitzungsleitung</td><td>Protokollführung</td></tr><tr><td>'+sgHTML(sid+':leit','Sitzungsleitung')+'<span class="ul" style="min-width:12rem"></span></td><td>'+sgHTML(sid+':prot','Protokollführung')+'<span class="ul" style="min-width:12rem"></span></td></tr><tr><td>'+esc(ln)+'&nbsp;</td><td>'+esc(pn)+'&nbsp;</td></tr></table></div>';
   return h;
 }
 function docFile(inner,title){
   var css=($('#paper-css')||{}).textContent||'';
-  return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+css+'body{margin:0;padding:16px;background:#fff}@page{size:A4;margin:16mm}</style></head><body>'+inner+'</body></html>';
+  return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+css+'body{margin:0;padding:16px;background:#fff}.sgb,.sgx{display:none!important}@page{size:A4;margin:16mm}</style></head><body>'+inner+'</body></html>';
 }
 function ensureTs(){
   var cur=sess(ui.tsid);if(cur)return cur;
@@ -370,10 +422,10 @@ function tlHTML(s){
   function box(on){return on?'☒':'☐'}
   var h='<div class="paper"><h1>Teilnehmerliste</h1><div class="sub">'+esc(sub)+'</div>';
   h+='<table>'+row('Schule',pfv(s,'schule',S.settings.schule||''))+row('Datum',pfv(s,'datum',d2(s.datum)))+row('Uhrzeit',pfv(s,'uhrzeit',t2(s.datum)))+row('Ort',pfv(s,'ort',s.ort||''))+'</table>';
-  var rows=S.members.filter(function(m){return m.aktiv}).map(function(m){return {n:m.name,k:m.klasse,f:m.ksf}});
+  var rows=S.members.filter(function(m){return m.aktiv}).map(function(m){return {id:m.id,n:m.name,k:m.klasse,f:m.ksf}});
   var want=Math.max(parseInt(S.settings.tlRows,10)||0,rows.length+4);while(rows.length<want)rows.push({n:'',k:'',f:''});
   h+='<table class="tl" style="margin-top:14px"><thead><tr><th style="width:7%">Nr.</th><th style="width:27%">Name</th><th style="width:11%">Klasse</th><th style="width:24%">Klassensprecher/in oder Vertretung</th><th>Unterschrift</th></tr></thead><tbody>'+
-    rows.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+esc(r.n)+'&nbsp;</td><td>'+esc(r.k)+'&nbsp;</td><td>'+box(r.f==='Klassensprecher/in')+' Klassensprecher/in<br>'+box(r.f==='Stellvertreter/in')+' Vertretung</td><td>&nbsp;</td></tr>'}).join('')+'</tbody></table></div>';
+    rows.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+esc(r.n)+'&nbsp;</td><td>'+esc(r.k)+'&nbsp;</td><td>'+box(r.f==='Klassensprecher/in')+' Klassensprecher/in<br>'+box(r.f==='Stellvertreter/in')+' Vertretung</td><td>'+(r.id?sgHTML('tl:'+s.id+':'+r.id,r.n||'Teilnehmer/in'):'&nbsp;')+'&nbsp;</td></tr>'}).join('')+'</tbody></table></div>';
   return h;
 }
 
@@ -437,7 +489,7 @@ function wnHTML(s,t,edit){
   if(edit){o+='<table class="ebox"><tr><td><textarea rows="3" '+c+' data-sub="w" data-f="bem" aria-label="Bemerkungen">'+esc(t.w&&t.w.bem||'')+'</textarea></td></tr></table>'}
   else o+=(t.w&&t.w.bem)?'<table class="ebox"><tr><td>'+esc(t.w.bem)+'</td></tr></table>':'<table class="ebox"><tr><td></td></tr><tr><td></td></tr></table>';
   function nm(k,def){var v=(t.w&&t.w[k]!==undefined)?t.w[k]:def;return esc(v||'')}
-  o+='<h3>Unterschriften</h3><table class="sig"><tr><td>Wahlleitung<br>'+nm('leitung',leitungName())+'</td><td>Wahlhelfer/in 1<br>'+nm('helfer1','')+'</td><td>Wahlhelfer/in 2<br>'+nm('helfer2','')+'</td><td>Gewählte Person<br>'+nm('gewaehlt','')+'</td></tr><tr><td></td><td></td><td></td><td></td></tr></table></div>';
+  o+='<h3>Unterschriften</h3><table class="sig"><tr><td>Wahlleitung<br>'+nm('leitung',leitungName())+'</td><td>Wahlhelfer/in 1<br>'+nm('helfer1','')+'</td><td>Wahlhelfer/in 2<br>'+nm('helfer2','')+'</td><td>Gewählte Person<br>'+nm('gewaehlt','')+'</td></tr><tr><td>'+sgHTML('wn:'+s.id+':'+t.id+':l','Wahlleitung')+'</td><td>'+sgHTML('wn:'+s.id+':'+t.id+':h1','Wahlhelfer/in 1')+'</td><td>'+sgHTML('wn:'+s.id+':'+t.id+':h2','Wahlhelfer/in 2')+'</td><td>'+sgHTML('wn:'+s.id+':'+t.id+':g','Gewählte Person')+'</td></tr></table></div>';
   return o;
 }
 function ahHTML(s,edit){
@@ -713,7 +765,7 @@ function antHTML(a){
   o+=bez;
   if(a.frist)o+='<p>Wir bitten um Rückmeldung bis zum '+esc(d2(a.frist+'T00:00'))+'.</p>';
   o+='<p>Mit freundlichen Grüßen</p><p style="margin-top:34px">'+esc(S.settings.leitung||'')+'</p>';
-  o+='<h3>Entscheidung</h3><table style="margin-left:0;width:100%"><tr><td class="k">Entscheidung</td><td>☐ genehmigt &nbsp; ☐ abgelehnt &nbsp; ☐ mit Änderungen</td></tr><tr><td class="k">Anmerkung</td><td>&nbsp;<br>&nbsp;</td></tr><tr><td class="k">Datum, Unterschrift</td><td style="height:56px">&nbsp;</td></tr></table></div>';
+  o+='<h3>Entscheidung</h3><table style="margin-left:0;width:100%"><tr><td class="k">Entscheidung</td><td>☐ genehmigt &nbsp; ☐ abgelehnt &nbsp; ☐ mit Änderungen</td></tr><tr><td class="k">Anmerkung</td><td>&nbsp;<br>&nbsp;</td></tr><tr><td class="k">Datum, Unterschrift</td><td style="height:56px">'+sgHTML('an:'+a.id,'Antrag')+'&nbsp;</td></tr></table></div>';
   return o;
 }
 function vAnt(){
@@ -775,7 +827,7 @@ function berichtHTML(y,edit){
   var offen=aufg.filter(function(x){return !x.t.done});
   if(offen.length)o+='<h3>Offene Aufgaben</h3>'+tbl(['Aufgabe','Wer','Frist'],offen.map(function(x){return [x.t.text,x.t.wer,x.t.frist?d2(x.t.frist+'T00:00'):'']}),['','22%','18%']);
   o+='<h3>Fazit und Ausblick</h3>'+box('fazit','Fazit und Ausblick');
-  o+='<table class="sig" style="margin-top:18px"><tr><td>Ort, Datum</td><td>Unterschrift</td></tr><tr><td></td><td></td></tr></table></div>';
+  o+='<table class="sig" style="margin-top:18px"><tr><td>Ort, Datum</td><td>Unterschrift</td></tr><tr><td></td><td>'+sgHTML('bj:'+y,'Jahresbericht')+'</td></tr></table></div>';
   return o;
 }
 
@@ -915,7 +967,7 @@ function nsHTML(s){
   o+='<h3>Übersicht der gefassten Beschlüsse und Maßnahmen</h3><table style="margin-left:0;width:100%"><thead><tr><th style="width:9%">TOP</th><th>Beschluss / Maßnahme</th><th style="width:22%">Verantwortlich</th><th style="width:15%">Frist</th></tr></thead><tbody>'+ovwRows(s)+'</tbody></table>';
   var anl=pfv(s,'anlagen','');
   if(anl.trim())o+='<h3>Anlagen</h3><ol>'+anl.split('\n').filter(function(l){return l.trim()}).map(function(l){return '<li>'+esc(l)+'</li>'}).join('')+'</ol>';
-  o+='<table class="sig" style="margin-top:18px"><tr><td>Sitzungsleitung</td><td>Protokollführung</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>'+esc(ln)+'&nbsp;</td><td>'+esc(pn)+'&nbsp;</td></tr></table></div>';
+  o+='<table class="sig" style="margin-top:18px"><tr><td>Sitzungsleitung</td><td>Protokollführung</td></tr><tr><td>'+sgHTML(s.id+':ns:leit','Sitzungsleitung')+'&nbsp;</td><td>'+sgHTML(s.id+':ns:prot','Protokollführung')+'&nbsp;</td></tr><tr><td>'+esc(ln)+'&nbsp;</td><td>'+esc(pn)+'&nbsp;</td></tr></table></div>';
   return o;
 }
 
@@ -1106,7 +1158,7 @@ function vAnwes(){
 }
 function protHTMLFile(s){
   var css=($('#paper-css')||{}).textContent||'';
-  return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sitzungsprotokoll</title><style>'+css+'body{margin:0;padding:16px;background:#fff}@page{size:A4;margin:16mm}</style></head><body>'+protHTML(s,false)+'</body></html>';
+  return '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sitzungsprotokoll</title><style>'+css+'body{margin:0;padding:16px;background:#fff}.sgb,.sgx{display:none!important}@page{size:A4;margin:16mm}</style></head><body>'+protHTML(s,false)+'</body></html>';
 }
 
 function slug(s){return String(s||'vorlage').toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'vorlage'}
@@ -1893,6 +1945,8 @@ function readImport(file){
 var pc=null;
 function needConfirm(key){if(pc===key)return true;ui.confirm=key;render();return false}
 var A={
+  sign:function(d){sigOpen(d.key,d.lab);return 'skip'},
+  sigdel:function(d){delete SG()[d.key];save()},
   nav:function(d){ui.view=d.v;ui.sid=null;ui.md=null;return true},
   open:function(d){ui.view='sitzungen';ui.sid=d.sid;ui.md=null;return true},
   back:function(){ui.sid=null;ui.md=null;return true},
