@@ -152,6 +152,7 @@ textarea.box{font-family:var(--f-mono);font-size:13px;min-height:220px}
 .sheet{overflow-x:auto;max-width:100%}
 .sgb{font:inherit;font-size:12px;font-weight:600;border:1px dashed #0E6B58;color:#0E6B58;background:#effaf6;border-radius:8px;padding:6px 10px;cursor:pointer;touch-action:manipulation}
 .sgx{display:block;margin-left:auto;font:inherit;font-size:10px;border:0;background:none;color:#8a8f98;text-decoration:underline;cursor:pointer;padding:2px 0}
+.sgf{display:block;font:inherit;border:0;background:none;color:inherit;padding:4px 0;min-height:30px;cursor:pointer;text-align:left;touch-action:manipulation}
 .sgi{display:block;max-height:56px;max-width:100%}
 .seg.tabs button{padding:8px 14px;white-space:nowrap;font-weight:600}
 .seg.tabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
@@ -416,16 +417,17 @@ function ensureTs(){
   var all=sorted(),p=nextSession()||all[all.length-1]||null;
   ui.tsid=p?p.id:'';return p;
 }
-function tlHTML(s){
+function tlHTML(s,edit){
   var sub=pfv(s,'untertitel',sessNo(s)+'. Sitzung des '+(S.settings.protGremium||'Schülerrates')+' – Schuljahr '+sj(s.datum));
   function row(k,v){return '<tr><td class="k">'+k+'</td><td>'+(v?esc(v):'&nbsp;')+'</td></tr>'}
   function box(on){return on?'☒':'☐'}
+  function fbtn(id,v,l,cur){return '<button type="button" class="sgf" data-act="tlf" data-sid="'+s.id+'" data-id="'+id+'" data-v="'+v+'" aria-pressed="'+(cur===v)+'">'+box(cur===v)+' '+l+'</button>'}
   var h='<div class="paper"><h1>Teilnehmerliste</h1><div class="sub">'+esc(sub)+'</div>';
   h+='<table>'+row('Schule',pfv(s,'schule',S.settings.schule||''))+row('Datum',pfv(s,'datum',d2(s.datum)))+row('Uhrzeit',pfv(s,'uhrzeit',t2(s.datum)))+row('Ort',pfv(s,'ort',s.ort||''))+'</table>';
-  var rows=S.members.filter(function(m){return m.aktiv}).map(function(m){return {id:m.id,n:m.name,k:m.klasse,f:m.ksf}});
+  var rows=S.members.filter(function(m){return m.aktiv}).map(function(m){return {id:m.id,n:m.name,k:m.klasse,f:(s.tlf&&s.tlf[m.id]!==undefined)?s.tlf[m.id]:m.ksf}});
   var want=Math.max(parseInt(S.settings.tlRows,10)||0,rows.length+4);while(rows.length<want)rows.push({n:'',k:'',f:''});
   h+='<table class="tl" style="margin-top:14px"><thead><tr><th style="width:7%">Nr.</th><th style="width:27%">Name</th><th style="width:11%">Klasse</th><th style="width:24%">Klassensprecher/in oder Vertretung</th><th>Unterschrift</th></tr></thead><tbody>'+
-    rows.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+esc(r.n)+'&nbsp;</td><td>'+esc(r.k)+'&nbsp;</td><td>'+box(r.f==='Klassensprecher/in')+' Klassensprecher/in<br>'+box(r.f==='Stellvertreter/in')+' Vertretung</td><td>'+(r.id?sgHTML('tl:'+s.id+':'+r.id,r.n||'Teilnehmer/in'):'&nbsp;')+'&nbsp;</td></tr>'}).join('')+'</tbody></table></div>';
+    rows.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+esc(r.n)+'&nbsp;</td><td>'+esc(r.k)+'&nbsp;</td><td>'+(edit&&r.id?fbtn(r.id,'Klassensprecher/in','Klassensprecher/in',r.f)+fbtn(r.id,'Stellvertreter/in','Vertretung',r.f):box(r.f==='Klassensprecher/in')+' Klassensprecher/in<br>'+box(r.f==='Stellvertreter/in')+' Vertretung')+'</td><td>'+(r.id?sgHTML('tl:'+s.id+':'+r.id,r.n||'Teilnehmer/in'):'&nbsp;')+'&nbsp;</td></tr>'}).join('')+'</tbody></table></div>';
   return h;
 }
 
@@ -1513,10 +1515,10 @@ function vVorl(){
   h+='<!--S1--><section class="card"><div class="vh"><h2>Teilnehmerliste</h2></div>';
   if(!ts)h+='<p class="empty">Noch keine Sitzung angelegt.</p>';
   else{
-    h+='<p class="meta" style="margin-bottom:12px">Mit Name, Klasse, Funktion (Klassensprecher/in oder Vertretung) und Unterschriftsfeld. Namen und Klassen pflegst du unter „Gremium“. Leere Zeilen sind für Gäste und Vertretungen frei. Die Anzahl der Zeilen legst du hier fest.</p>'+
+    h+='<p class="meta" style="margin-bottom:12px">Funktion (Klassensprecher/in oder Vertretung) antippen und mit „✍ Unterschreiben“ direkt in der App unterschreiben, z. B. mit dem Apple Pencil. Die Funktion gilt nur für diese Sitzung. Namen und Klassen pflegst du unter „Gremium“. Leere Zeilen sind für Gäste frei und werden ausgedruckt. Die Anzahl der Zeilen legst du hier fest.</p>'+
       '<div class="frow" style="margin-bottom:12px"><label class="meta" for="ts-sel">Sitzung</label><select id="ts-sel" data-ui="tsid" class="grow">'+all.map(function(s){return '<option value="'+s.id+'"'+(s.id===ts.id?' selected':'')+'>'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel'))+'</option>'}).join('')+'</select>'+
       '<label class="meta" for="ts-rows">Zeilen</label><input type="number" id="ts-rows" min="0" max="200" data-s="tlRows" value="'+esc(S.settings.tlRows)+'">'+(DL?'<button type="button" class="btn primary" data-act="tlsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="tlhtml">HTML kopieren</button>')+'</div>'+
-      '<div class="sheet" id="tlsheet">'+tlHTML(ts)+'</div>';
+      '<div class="sheet" id="tlsheet">'+tlHTML(ts,true)+'</div>';
   }
   h+='</section>';
 
@@ -1945,6 +1947,7 @@ function readImport(file){
 var pc=null;
 function needConfirm(key){if(pc===key)return true;ui.confirm=key;render();return false}
 var A={
+  tlf:function(d){var s=sess(d.sid);if(!s)return 'skip';s.tlf=s.tlf||{};var m=mem(d.id)||{};var cur=s.tlf[d.id]!==undefined?s.tlf[d.id]:m.ksf;s.tlf[d.id]=(cur===d.v)?'':d.v;save()},
   sign:function(d){sigOpen(d.key,d.lab);return 'skip'},
   sigdel:function(d){delete SG()[d.key];save()},
   nav:function(d){ui.view=d.v;ui.sid=null;ui.md=null;return true},
@@ -2165,7 +2168,7 @@ document.addEventListener('input',function(e){
   if(d.search!==undefined){ui.q=t.value;$('#res').innerHTML=beschlList();return}
   if(d.gentext!==undefined){if(ui.gen)ui.gen.text=t.value;return}
   if(d.rr)return;
-  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);refreshDerived();if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts)}}
+  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);refreshDerived();if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
 });
 document.addEventListener('change',function(e){
   var t=e.target,d=t.dataset;
