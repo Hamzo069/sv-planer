@@ -4,6 +4,8 @@
 <title>SV-Planer</title>
 <script>window.SV_CLOUD={url:'https://nrtpytnvbeosvuztmsgm.supabase.co',key:'sb_publishable_oU-geWGpwIOLAtoeGthfkA_Z9zs8P_U'};</script>
 <script src="supabase.js"></script>
+<script src="html2canvas.min.js"></script>
+<script src="jspdf.umd.min.js"></script>
 
 <style>
 /* Layout: schmale Kopfzeile, Tab-Leiste, eine Arbeitsspalte (Übersicht: Hauptkarte + Aufgaben nebeneinander). */
@@ -1085,7 +1087,9 @@ function vLive(){
   /* Redeliste */
   var present=act.filter(function(m){return s.anw[m.id]==='ja'});
   h+='<section class="card"><div class="vh"><h3>Redeliste</h3>'+(L.rl.length?'<button type="button" class="btn sm" data-act="rlclear">Leeren</button>':'')+'</div>'+
-    '<div class="frow"><input type="text" id="rl-name" class="grow" list="rl-dl" placeholder="Name" aria-label="Name der Wortmeldung"><datalist id="rl-dl">'+present.map(function(m){return '<option value="'+esc(m.name)+'">'}).join('')+'</datalist><button type="button" class="btn primary" data-act="rladd">Hinzufügen</button></div>'+
+    '<div class="meta" style="margin-bottom:4px">Anwesende antippen, um sie auf die Redeliste zu setzen</div><div class="frow" style="flex-wrap:wrap;gap:6px">'+
+    (present.length?present.map(function(m){var on=L.rl.some(function(x){return x.name===m.name&&!x.done});return '<button type="button" class="chip" data-act="rlpick" data-n="'+esc(m.name)+'" aria-pressed="'+on+'">'+esc(m.name||'?')+'</button>'}).join(''):'<span class="meta">Niemand als anwesend eingetragen.</span>')+'</div>'+
+    '<div class="frow" style="margin-top:8px"><input type="text" id="rl-name" class="grow" placeholder="Gast / andere Person (Name eintippen)" aria-label="Name der Wortmeldung"><button type="button" class="btn primary" data-act="rladd">Hinzufügen</button></div>'+
     '<div class="frow" style="margin-top:8px"><label class="meta" for="rl-limit">Redezeit-Limit (Sekunden, 0 = keins)</label><input type="number" min="0" id="rl-limit" style="width:6rem" data-sid="'+sid+'" data-sub="live" data-f="limit" value="'+(L.limit||0)+'"></div>';
   if(L.rl.length){var nx=L.rl.findIndex(function(x){return !x.done});h+='<ul class="rl" style="margin-top:10px">'+L.rl.map(function(x,i){var sec=rlSec(x),ov=L.limit>0&&sec>L.limit;return '<li class="'+(x.done?'done':'')+'"><span class="nm grow">'+(i===nx&&!x.t0?'<b>▶ '+esc(x.name)+'</b>':x.t0?'<b>● '+esc(x.name)+'</b>':esc(x.name))+'</span><span class="mono rt'+(ov?' over':'')+'" id="rt-'+x.id+'">'+mmss(sec)+'</span>'+(x.done?'':'<button type="button" class="btn sm'+(x.t0?'':' primary')+'" data-act="'+(x.t0?'rlstop':'rlstart')+'" data-id="'+x.id+'">'+(x.t0?'■ Stop':'▶ Start')+'</button>')+'<button type="button" class="btn sm" data-act="rldone" data-id="'+x.id+'">'+(x.done?'Zurück':'Fertig')+'</button><button type="button" class="btn sm danger" data-act="rldel" data-id="'+x.id+'">×</button></li>'}).join('')+'</ul>'}
   h+='</section>';
@@ -1733,6 +1737,7 @@ function render(top){
   var y=window.scrollY;
   $('#gname').textContent=S.settings.name||'';
   $('#app').innerHTML=nav()+banner()+(VIEWS[ui.view]||vUeber)();
+  try{addPdfButtons()}catch(e){}
   window.scrollTo(0,top?0:y);
   try{localStorage.setItem(KEY+'-tab',ui.view)}catch(e){}
 }
@@ -1750,15 +1755,17 @@ function refreshDerived(){
 
 /* ---------- Speichern, Kopieren ---------- */
 var DL={save:function(o){return new Promise(function(res,rej){
+  var bin=typeof o.data!=='string';
   if(window.Neutralino&&window.NL_OS){
     Neutralino.os.showSaveDialog('Speichern unter',{defaultPath:String(o.filename)}).then(function(p){
       if(!p){res();return}
+      if(bin)return new Response(o.data).arrayBuffer().then(function(buf){return Neutralino.filesystem.writeBinaryFile(p,buf)}).then(function(){res()});
       return Neutralino.filesystem.writeFile(p,String(o.data)).then(function(){res()});
     }).catch(rej);return;
   }
   try{
-    var ext=(String(o.filename).split('.').pop()||'').toLowerCase(),mt={html:'text/html',json:'application/json',csv:'text/csv',txt:'text/plain',md:'text/markdown'}[ext]||'application/octet-stream';
-    var blob=new Blob([o.data],{type:mt+';charset=utf-8'}),a=document.createElement('a');
+    var ext=(String(o.filename).split('.').pop()||'').toLowerCase(),mt={html:'text/html',json:'application/json',csv:'text/csv',txt:'text/plain',md:'text/markdown',pdf:'application/pdf'}[ext]||'application/octet-stream';
+    var blob=bin?o.data:new Blob([o.data],{type:mt+';charset=utf-8'}),a=document.createElement('a');
     a.href=URL.createObjectURL(blob);a.download=o.filename;document.body.appendChild(a);a.click();
     setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);res();
   }catch(e){rej(e)}
@@ -1952,6 +1959,63 @@ function vCloud(){
 }
 var tt;
 function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('on')},3200)}
+/* ---- PDF ---- */
+function pdfIOS(){return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}
+function pdfPrintFallback(html){
+  try{var f=document.createElement('iframe');f.style.cssText='position:fixed;left:-10000px;top:0;width:800px;height:600px;border:0';f.onload=function(){try{f.contentWindow.focus();f.contentWindow.print()}catch(e){toast('Drucken nicht möglich')}setTimeout(function(){f.remove()},60000)};document.body.appendChild(f);f.srcdoc=html.replace('</head>','<style>.sgb,.sgx{display:none!important}</style></head>')}catch(e){toast('PDF nicht möglich')}
+}
+function pdfDeliver(blob,name){
+  if(window.Neutralino&&window.NL_OS&&DL){DL.save({filename:name,data:blob}).then(function(){toast('PDF gespeichert')},function(){toast('Speichern nicht möglich')});return}
+  var file=null;try{file=new File([blob],name,{type:'application/pdf'})}catch(e){}
+  if(pdfIOS()&&file&&navigator.canShare&&navigator.canShare({files:[file]})){
+    var w=document.createElement('div');w.id='pdfmodal';w.style.cssText='position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    w.innerHTML='<div style="background:#fff;color:#111;border-radius:14px;padding:18px;width:min(420px,100%);text-align:center"><div style="font-weight:700;margin-bottom:6px">PDF ist fertig</div><div style="font-size:13px;color:#555;margin-bottom:14px">'+esc(name)+'<br>Im nächsten Schritt „In Dateien sichern“, Drucken oder per Mail senden wählen.</div><button type="button" class="btn primary" id="pdfshare" style="width:100%;margin-bottom:8px">PDF speichern / teilen</button><button type="button" class="btn" id="pdfclose" style="width:100%">Schließen</button></div>';
+    document.body.appendChild(w);
+    document.getElementById('pdfclose').onclick=function(){w.remove()};
+    document.getElementById('pdfshare').onclick=function(){navigator.share({files:[file],title:name}).then(function(){w.remove()},function(e){if(e&&e.name==='AbortError')return;w.remove();toast('Teilen nicht möglich')})};
+    return}
+  try{var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);toast('PDF heruntergeladen')}catch(e){toast('PDF nicht möglich')}
+}
+function makePDF(html,name){
+  if(!window.html2canvas||!(window.jspdf&&window.jspdf.jsPDF)){pdfPrintFallback(html);return}
+  toast('PDF wird erstellt …');
+  var CW=688,fr=document.createElement('iframe');
+  fr.style.cssText='position:fixed;left:-10000px;top:0;width:'+CW+'px;height:1200px;border:0;background:#fff';
+  document.body.appendChild(fr);
+  function fail(e){try{fr.remove()}catch(_){}toast('PDF konnte nicht erstellt werden');try{console.error(e)}catch(_){}}
+  fr.onload=function(){
+    var d=fr.contentDocument;
+    var go=function(){try{
+      var h=Math.max(d.body.scrollHeight,d.documentElement.scrollHeight);fr.style.height=h+'px';
+      var sc=Math.max(1,Math.min(2,Math.sqrt(1.2e7/(CW*h))));
+      var cand=[];[].forEach.call(d.querySelectorAll('tr,p,li,img,.sub'),function(el){if(el.closest('thead'))return;cand.push(Math.round((el.getBoundingClientRect().bottom+(d.defaultView.scrollY||0))*sc))});
+      window.html2canvas(d.body,{scale:sc,backgroundColor:'#fff',useCORS:true,width:CW,windowWidth:CW,logging:false}).then(function(cv){
+        var J=window.jspdf.jsPDF,pdf=new J({unit:'mm',format:'a4',compress:true}),M=14,PW=210-2*M,PH=297-2*M,W=cv.width,Hp=Math.floor(PH/PW*W),y=0,pages=[];
+        while(y<cv.height){var end=y+Hp;if(end>=cv.height)end=cv.height;else{var best=0;cand.forEach(function(c){if(c>y+Hp*0.5&&c<=end&&c>best)best=c});if(best)end=best}
+          pages.push([y,end]);y=end}
+        pages.forEach(function(pg,i){
+          if(i)pdf.addPage();
+          var sl=document.createElement('canvas');sl.width=W;sl.height=pg[1]-pg[0];var cx=sl.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,sl.width,sl.height);cx.drawImage(cv,0,pg[0],W,sl.height,0,0,W,sl.height);
+          pdf.addImage(sl.toDataURL('image/jpeg',0.92),'JPEG',M,M,PW,sl.height*PW/W);
+          pdf.setFontSize(8);pdf.setTextColor(120);pdf.text('Seite '+(i+1)+' von '+pages.length,105,292,{align:'center'});
+        });
+        var blob=pdf.output('blob');fr.remove();pdfDeliver(blob,name);
+      }).catch(fail);
+    }catch(e){fail(e)}};
+    var imgs=[].slice.call(d.images||[]);
+    Promise.all(imgs.map(function(i){return i.decode?i.decode().catch(function(){}):Promise.resolve()})).then(function(){return d.fonts&&d.fonts.ready}).then(function(){setTimeout(go,60)},go);
+  };
+  fr.srcdoc=html.replace('</head>','<style>html,body{margin:0!important;padding:0!important;background:#fff!important}.paper{border:0!important;padding:0!important;min-width:0!important;max-width:none!important;width:100%!important;margin:0!important}.sgb,.sgx{display:none!important}</style></head>');
+}
+var PDFMAP={ahsave:'ahpdf',ahhtml:'ahpdf',antsave:'antpdf',anthtml:'antpdf',bsave:'bpdf',bhtml:'bpdf',bnsave:'bnpdf',bnhtml:'bnpdf',gosave:'gopdf',gohtml:'gopdf',nssave:'nspdf',nshtml:'nspdf',protsave:'protpdf',prothtml:'protpdf',skrsave:'skrpdf',skrhtml:'skrpdf',tlsave:'tlpdf',tlhtml:'tlpdf',ufsave:'ufpdf',ufhtml:'ufpdf',wnsave:'wnpdf',wnhtml:'wnpdf',einlcopy:'einlpdf'};
+function addPdfButtons(){
+  [].forEach.call(document.querySelectorAll('button[data-act]'),function(b){
+    var pa=PDFMAP[b.dataset.act];if(!pa)return;
+    var par=b.parentNode;if(par.querySelector('[data-act="'+pa+'"]'))return;
+    var c=document.createElement('button');c.type='button';c.className='btn';c.textContent='Als PDF';
+    Object.keys(b.dataset).forEach(function(k){c.dataset[k]=b.dataset[k]});c.dataset.act=pa;
+    b.parentNode.insertBefore(c,b.nextSibling)});
+}
 function saveFile(name,data,ok){
   if(!DL){toast('Speichern ist hier nicht verfügbar. Nutze Kopieren.');return}
   DL.save({filename:name,data:data}).then(function(){toast('Datei gespeichert');if(ok)ok()},function(e){
@@ -1974,7 +2038,14 @@ function readImport(file){
 /* ---------- Aktionen ---------- */
 var pc=null;
 function needConfirm(key){if(pc===key)return true;ui.confirm=key;render();return false}
+function pdfRun(save,d,b){var orig=saveFile,cap=null;saveFile=function(n,h){cap={n:n,h:h}};try{A[save](d,b)}finally{saveFile=orig}
+  if(cap&&/\.html$/.test(cap.n))makePDF(cap.h,cap.n.replace(/\.html$/,'.pdf'));else toast('PDF nicht möglich');return 'skip'}
 var A={
+  ahpdf:function(d,b){return pdfRun('ahsave',d,b)},antpdf:function(d,b){return pdfRun('antsave',d,b)},bpdf:function(d,b){return pdfRun('bsave',d,b)},bnpdf:function(d,b){return pdfRun('bnsave',d,b)},gopdf:function(d,b){return pdfRun('gosave',d,b)},
+  nspdf:function(d,b){return pdfRun('nssave',d,b)},protpdf:function(d,b){return pdfRun('protsave',d,b)},skrpdf:function(d,b){return pdfRun('skrhtml',d,b)},tlpdf:function(d,b){return pdfRun('tlsave',d,b)},ufpdf:function(d,b){return pdfRun('ufsave',d,b)},wnpdf:function(d,b){return pdfRun('wnsave',d,b)},
+  einlpdf:function(){var s=ensureA(),el=$('#einltext');if(!s||!el)return 'skip';makePDF(docFile('<div class="paper" style="white-space:pre-wrap">'+esc(el.value)+'</div>','Einladung'),'einladung-'+(s.datum||today()).slice(0,10)+'.pdf');return 'skip'},
+  rlpick:function(d){var s=sess(ui.sid);if(!s||!s.live)return 'skip';var x=s.live.rl.find(function(r){return r.name===d.n&&!r.done});
+    if(x){if(x.t0)return 'skip';s.live.rl=s.live.rl.filter(function(r){return r!==x})}else s.live.rl.push({id:uid(),name:d.n,done:false,sec:0,t0:null});save()},
   odw:function(d){var o=OD();if(d.frei){o.frei=!o.frei;if(o.frei)o.wer=''}else{o.frei=false;o.wer=o.wer===d.n?'':d.n}},
   oda:function(d){OD().art=d.v},
   odg:function(d){var o=OD();o.grund=o.grund===d.v?'':d.v},
