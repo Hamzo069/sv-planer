@@ -327,6 +327,14 @@ function sigOpen(key,lab){
     if(document.getElementById('sigmy').checked){try{localStorage.setItem(KEY+'-mysig',url)}catch(e){}}
     save();sigClose();render()};
 }
+var GROLLEN=['Schulleitung','Lehrkraft','Verbindungslehrer/in','Schüler/in','Sonstige'];
+function GA(s){return s.gaeste||(s.gaeste=[])}
+function gTxt(s){var l=(s.gaeste||[]).map(function(g){return g.name+(g.rolle?' ('+g.rolle+')':'')});var n=parseInt(s.gaesteN,10)||0;if(n>0)l.push(n+(n===1?' weiterer Gast':' weitere Gäste')+' ohne Namen');return l.join(', ')}
+function gaesteHTML(s){var sid=s.id;
+  return '<div class="meta" style="margin:12px 0 4px">Gäste (optional, zählen nicht für die Beschlussfähigkeit)</div>'+
+    (GA(s).length?'<div class="frow" style="flex-wrap:wrap;gap:6px">'+GA(s).map(function(g){return '<button type="button" class="chip" data-act="gdel" data-sid="'+sid+'" data-id="'+g.id+'" aria-pressed="true" title="Gast entfernen">'+esc(g.name)+(g.rolle?' · '+esc(g.rolle):'')+' ×</button>'}).join('')+'</div>':'')+
+    '<div class="frow" style="margin-top:8px;flex-wrap:wrap"><input type="text" id="g-name" class="grow" placeholder="Name des Gasts" aria-label="Name des Gasts"><select id="g-rolle" aria-label="Rolle des Gasts"><option value="">Rolle (optional)</option>'+GROLLEN.map(function(r){return '<option>'+r+'</option>'}).join('')+'</select><button type="button" class="btn" data-act="gadd" data-sid="'+sid+'">Gast hinzufügen</button></div>'+
+    '<div class="frow" style="margin-top:8px"><label class="meta" for="g-n">Weitere Gäste ohne Namen (Anzahl)</label><input type="number" min="0" id="g-n" style="width:5rem" data-sid="'+sid+'" data-f="gaesteN" value="'+esc(s.gaesteN||'')+'"></div>'}
 var ORDARTEN=['Ordnungsruf','Verwarnung','Wortentzug','Ausschluss vom TOP','Ausschluss von der Sitzung'];
 var ORDGRUENDE=['Störung der Sitzung','Dazwischenreden / Zwischenrufe','Beleidigung / unsachlicher Ton','Handynutzung','Reden ohne Wortmeldung','Überschreiten der Redezeit','Wiederholter Verstoß trotz Ermahnung'];
 function OD(){return ui.od||(ui.od={wer:'',frei:false,gast:'',art:ORDARTEN[0],grund:'',gtxt:''})}
@@ -361,7 +369,7 @@ function protHTML(s,edit){
   var sub=sessNo(s)+'. Sitzung des '+(S.settings.protGremium||'Schülerrates')+' – Schuljahr '+sj(s.datum);
   h+='<div class="paper'+(edit?' edit':'')+'"><h1>Sitzungsprotokoll</h1><div class="sub">'+(edit?inp('untertitel',sub,'Untertitel'):esc(pfv(s,'untertitel',sub)))+'</div>';
   h+='<table>'+row('Schule',inp('schule',S.settings.schule||'','Schule'))+row('Datum',inp('datum',d2(s.datum),'Datum'))+row('Uhrzeit',inp('uhrzeit',t2(s.datum),'Uhrzeit'))+row('Ort',inp('ort',s.ort||'','Ort'))+row('Sitzungsleitung',inp('leitung',S.settings.leitung||'','Sitzungsleitung'))+row('Protokollführung',inp('protokoll',protMem?protMem.name:'','Protokollführung'))+'</table>';
-  h+='<h3>Hinweis zur Anwesenheit</h3><p>Die Anwesenheit wird in einer separaten Anwesenheitsliste dokumentiert. Diese ist Bestandteil der Sitzungsunterlagen und wird als Anlage beigefügt.</p>';
+  h+='<h3>Hinweis zur Anwesenheit</h3><p>Die Anwesenheit wird in einer separaten Anwesenheitsliste dokumentiert. Diese ist Bestandteil der Sitzungsunterlagen und wird als Anlage beigefügt.</p>'+(gTxt(s)?'<p><b>Gäste:</b> '+esc(gTxt(s))+'</p>':'');
 
   var LAB={info:'Ergebnis / Anmerkungen:',diskussion:'Ergebnisse / Beschlüsse:',beschluss:'Änderungsanträge / wesentliche Beratungsergebnisse:',wahl:'Ergebnis / Anmerkungen:',sonstiges:'Thema / Ergebnis:'};
   function ebox(t,i){
@@ -437,9 +445,10 @@ function tlHTML(s,edit){
   var h='<div class="paper"><h1>Teilnehmerliste</h1><div class="sub">'+esc(sub)+'</div>';
   h+='<table>'+row('Schule',pfv(s,'schule',S.settings.schule||''))+row('Datum',pfv(s,'datum',d2(s.datum)))+row('Uhrzeit',pfv(s,'uhrzeit',t2(s.datum)))+row('Ort',pfv(s,'ort',s.ort||''))+'</table>';
   var rows=S.members.filter(function(m){return m.aktiv}).map(function(m){return {id:m.id,n:m.name,k:m.klasse,f:(s.tlf&&s.tlf[m.id]!==undefined)?s.tlf[m.id]:m.ksf}});
+  GA(s).forEach(function(g){rows.push({id:g.id,n:g.name,k:'Gast',f:'',gst:true,g:g.rolle})});
   var want=Math.max(parseInt(S.settings.tlRows,10)||0,rows.length+4);while(rows.length<want)rows.push({n:'',k:'',f:''});
   h+='<table class="tl" style="margin-top:14px"><thead><tr><th style="width:7%">Nr.</th><th style="width:27%">Name</th><th style="width:11%">Klasse</th><th style="width:24%">Klassensprecher/in oder Vertretung</th><th>Unterschrift</th></tr></thead><tbody>'+
-    rows.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+esc(r.n)+'&nbsp;</td><td>'+esc(r.k)+'&nbsp;</td><td>'+(edit&&r.id?fbtn(r.id,'Klassensprecher/in','Klassensprecher/in',r.f)+fbtn(r.id,'Stellvertreter/in','Vertretung',r.f):box(r.f==='Klassensprecher/in')+' Klassensprecher/in<br>'+box(r.f==='Stellvertreter/in')+' Vertretung')+'</td><td>'+(r.id?sgHTML('tl:'+s.id+':'+r.id,r.n||'Teilnehmer/in'):'&nbsp;')+'&nbsp;</td></tr>'}).join('')+'</tbody></table></div>';
+    rows.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+esc(r.n)+'&nbsp;</td><td>'+esc(r.k)+'&nbsp;</td><td>'+(r.gst?'Gast'+(r.g?'<br>'+esc(r.g):''):edit&&r.id?fbtn(r.id,'Klassensprecher/in','Klassensprecher/in',r.f)+fbtn(r.id,'Stellvertreter/in','Vertretung',r.f):box(r.f==='Klassensprecher/in')+' Klassensprecher/in<br>'+box(r.f==='Stellvertreter/in')+' Vertretung')+'</td><td>'+(r.id?sgHTML('tl:'+s.id+':'+r.id,r.n||'Teilnehmer/in'):'&nbsp;')+'&nbsp;</td></tr>'}).join('')+'</tbody></table></div>';
   return h;
 }
 
@@ -960,6 +969,7 @@ function nsHTML(s){
   o+=order.length?'<table style="margin-left:0;width:100%"><tr><td style="width:18%"><b>Klasse</b></td><td><b>Klassensprecher*innen bzw. Stellvertretung</b></td></tr>'+order.map(function(k){return '<tr><td>'+esc(k)+'</td><td>'+esc(groups[k].join(', '))+'</td></tr>'}).join('')+'</table>':'<p>Keine Anwesenheit erfasst.</p>';
   var abs=S.members.filter(function(m){return m.aktiv&&m.klasse&&s.anw[m.id]!=='ja'});
   if(abs.length)o+='<p style="margin-top:6px"><b>Nicht anwesend:</b> '+esc(abs.map(function(m){return m.name+' ('+m.klasse+')'}).join(', '))+'</p>';
+  if(gTxt(s))o+='<p style="margin-top:6px"><b>Gäste:</b> '+esc(gTxt(s))+'</p>';
   var q=quorum(s);
   o+='<p>'+esc(pfv(s,'eroeff','Der Schülersprecher eröffnet die Sitzung um '+beginn+' und stellt fest, dass die Einladung ordnungsgemäß ergangen und die Beschlussfähigkeit '+(q.ok?'gegeben':'nicht gegeben')+' ist. Einwendungen gegen die Tagesordnung werden keine vorgetragen, somit ist diese genehmigt. Die Anwesenheit ist in der beigefügten Anwesenheitsliste dokumentiert.'))+'</p>';
   s.tops.forEach(function(t,i){
@@ -1067,7 +1077,7 @@ function vLive(){
   /* Anwesenheit */
   var act=S.members.filter(function(m){return m.aktiv});
   h+='<section class="card"><div class="vh"><h3>Anwesenheit</h3><span class="pill '+(q.ok?'good':'warn')+'">'+(q.ok?'Beschlussfähig':'Nicht beschlussfähig')+': '+q.present+' von '+q.N+', benötigt '+q.need+'</span></div><div class="frow" style="flex-wrap:wrap;gap:6px">'+
-    act.map(function(m){return '<button type="button" class="chip" data-act="anw" data-sid="'+sid+'" data-mid="'+m.id+'" data-v="ja" aria-pressed="'+(s.anw[m.id]==='ja')+'" title="'+esc(ksOf(m,s))+'">'+esc(m.name||'?')+(m.klasse?' · '+esc(m.klasse):'')+'</button>'}).join('')+'</div></section>';
+    act.map(function(m){return '<button type="button" class="chip" data-act="anw" data-sid="'+sid+'" data-mid="'+m.id+'" data-v="ja" aria-pressed="'+(s.anw[m.id]==='ja')+'" title="'+esc(ksOf(m,s))+'">'+esc(m.name||'?')+(m.klasse?' · '+esc(m.klasse):'')+'</button>'}).join('')+'</div>'+gaesteHTML(s)+'</section>';
   /* TOP-Leiste */
   h+='<section class="card"><div class="frow" style="flex-wrap:wrap;gap:6px">'+s.tops.map(function(x,i){return '<button type="button" class="chip'+(i===L.top?' cur':'')+(i<L.top?' done':'')+'" data-act="livetop" data-i="'+i+'" aria-pressed="'+(i===L.top)+'">'+(i+1)+'. '+esc((x.titel||'').slice(0,28))+'</button>'}).join('')+'</div></section>';
   if(!t)return h+'<section class="card"><p class="empty">Keine Tagesordnung.</p></section></div>';
@@ -1086,9 +1096,10 @@ function vLive(){
   h+='</section>';
   /* Redeliste */
   var present=act.filter(function(m){return s.anw[m.id]==='ja'});
+  var presentN=present.map(function(m){return m.name||'?'}).concat(GA(s).map(function(g){return g.name}));
   h+='<section class="card"><div class="vh"><h3>Redeliste</h3>'+(L.rl.length?'<button type="button" class="btn sm" data-act="rlclear">Leeren</button>':'')+'</div>'+
-    '<div class="meta" style="margin-bottom:4px">Anwesende antippen, um sie auf die Redeliste zu setzen</div><div class="frow" style="flex-wrap:wrap;gap:6px">'+
-    (present.length?present.map(function(m){var on=L.rl.some(function(x){return x.name===m.name&&!x.done});return '<button type="button" class="chip" data-act="rlpick" data-n="'+esc(m.name)+'" aria-pressed="'+on+'">'+esc(m.name||'?')+'</button>'}).join(''):'<span class="meta">Niemand als anwesend eingetragen.</span>')+'</div>'+
+    '<div class="meta" style="margin-bottom:4px">Anwesende und Gäste antippen, um sie auf die Redeliste zu setzen</div><div class="frow" style="flex-wrap:wrap;gap:6px">'+
+    (presentN.length?presentN.map(function(nm){var on=L.rl.some(function(x){return x.name===nm&&!x.done});return '<button type="button" class="chip" data-act="rlpick" data-n="'+esc(nm)+'" aria-pressed="'+on+'">'+esc(nm)+'</button>'}).join(''):'<span class="meta">Niemand als anwesend eingetragen.</span>')+'</div>'+
     '<div class="frow" style="margin-top:8px"><input type="text" id="rl-name" class="grow" placeholder="Gast / andere Person (Name eintippen)" aria-label="Name der Wortmeldung"><button type="button" class="btn primary" data-act="rladd">Hinzufügen</button></div>'+
     '<div class="frow" style="margin-top:8px"><label class="meta" for="rl-limit">Redezeit-Limit (Sekunden, 0 = keins)</label><input type="number" min="0" id="rl-limit" style="width:6rem" data-sid="'+sid+'" data-sub="live" data-f="limit" value="'+(L.limit||0)+'"></div>';
   if(L.rl.length){var nx=L.rl.findIndex(function(x){return !x.done});h+='<ul class="rl" style="margin-top:10px">'+L.rl.map(function(x,i){var sec=rlSec(x),ov=L.limit>0&&sec>L.limit;return '<li class="'+(x.done?'done':'')+'"><span class="nm grow">'+(i===nx&&!x.t0?'<b>▶ '+esc(x.name)+'</b>':x.t0?'<b>● '+esc(x.name)+'</b>':esc(x.name))+'</span><span class="mono rt'+(ov?' over':'')+'" id="rt-'+x.id+'">'+mmss(sec)+'</span>'+(x.done?'':'<button type="button" class="btn sm'+(x.t0?'':' primary')+'" data-act="'+(x.t0?'rlstop':'rlstart')+'" data-id="'+x.id+'">'+(x.t0?'■ Stop':'▶ Start')+'</button>')+'<button type="button" class="btn sm" data-act="rldone" data-id="'+x.id+'">'+(x.done?'Zurück':'Fertig')+'</button><button type="button" class="btn sm danger" data-act="rldel" data-id="'+x.id+'">×</button></li>'}).join('')+'</ul>'}
@@ -1114,8 +1125,8 @@ function vLive(){
   var od=OD();
   function odc(act,label,on,extra){return '<button type="button" class="chip" data-act="'+act+'" '+(extra||'')+' aria-pressed="'+(!!on)+'">'+esc(label)+'</button>'}
   h+='<section class="card"><div class="vh"><h3>Ordnungsmaßnahmen</h3><span class="meta">Sitzungsleitung</span></div>'+
-    '<div class="meta" style="margin-bottom:4px">Person (Anwesende)</div><div class="frow" style="flex-wrap:wrap;gap:6px">'+
-    (present.length?present.map(function(m){return odc('odw',m.name||'?',!od.frei&&od.wer===m.name,'data-n="'+esc(m.name)+'"')}).join(''):'<span class="meta">Niemand als anwesend eingetragen.</span>')+
+    '<div class="meta" style="margin-bottom:4px">Person (Anwesende und Gäste)</div><div class="frow" style="flex-wrap:wrap;gap:6px">'+
+    (presentN.length?presentN.map(function(nm){return odc('odw',nm,!od.frei&&od.wer===nm,'data-n="'+esc(nm)+'"')}).join(''):'<span class="meta">Niemand als anwesend eingetragen.</span>')+
     odc('odw','Gast / andere Person',od.frei,'data-n="" data-frei="1"')+'</div>'+
     (od.frei?'<div class="frow" style="margin-top:8px"><input type="text" id="od-gast" class="grow" placeholder="Name der Person" aria-label="Name der Person" value="'+esc(od.gast)+'"></div>':'')+
     '<div class="meta" style="margin:10px 0 4px">Maßnahme</div><div class="frow" style="flex-wrap:wrap;gap:6px">'+ORDARTEN.map(function(a){return odc('oda',a,od.art===a,'data-v="'+esc(a)+'"')}).join('')+'</div>'+
@@ -1432,6 +1443,7 @@ function vDetail(s){
     h+='<div class="arow"><span>'+(esc(m.name)||'<em>Ohne Namen</em>')+' <span class="meta">'+esc(m.rolle)+(m.klasse?' · '+esc(m.klasse):'')+(m.stimm?'':' · beratend')+(ksOf(m,s)?' · '+ksOf(m,s):'')+'</span></span><div class="seg" role="group" aria-label="Anwesenheit '+esc(m.name)+'">'+
       AV.map(function(x){return '<button type="button" data-act="anw" data-sid="'+sid+'" data-mid="'+m.id+'" data-v="'+x[0]+'" aria-pressed="'+(cur===x[0])+'">'+x[1]+'</button>'}).join('')+'</div></div>';
   });
+  h+=gaesteHTML(s);
   h+='<p class="meta" style="margin-top:8px">Vor der Sitzung zählt „Anwesend“ als Zusage. Beschlussregel ändern unter „Gremium“.</p></section>';
 
   h+='<section class="card"><div class="vh"><h3>Beschlüsse</h3><button type="button" class="btn sm" data-act="addbes" data-sid="'+sid+'">+ Beschluss</button></div>';
@@ -1489,6 +1501,7 @@ function protokollMD(s){
   if(s.ort)L.push('- **Ort:** '+s.ort);
   L.push('','## Anwesenheit','');
   S.members.filter(function(m){return m.aktiv}).forEach(function(m){L.push('- '+m.name+' ('+m.rolle+(m.stimm?'':', beratend')+'): '+st[s.anw[m.id]||''])});
+  if(gTxt(s))L.push('- Gäste: '+gTxt(s));
   L.push('','Beschlussfähigkeit: '+(q.ok?'ja':'nein')+' ('+q.present+' von '+q.N+' Stimmberechtigten anwesend, benötigt '+q.need+')','','## Tagesordnung','');
   s.tops.forEach(function(t,i){L.push('### TOP '+(i+1)+': '+t.titel);if(t.notiz)L.push('',t.notiz);L.push('')});
   if(s.beschluesse.length){L.push('## Beschlüsse','');s.beschluesse.forEach(function(b,i){L.push((i+1)+'. '+b.text+' (Ja '+b.ja+', Nein '+b.nein+', Enthaltung '+b.enth+': '+res(b).label+')')});L.push('')}
@@ -1550,7 +1563,7 @@ function vVorl(){
     h+='<p class="meta" style="margin-bottom:12px">Funktion (Klassensprecher/in oder Vertretung) antippen und mit „✍ Unterschreiben“ direkt in der App unterschreiben, z. B. mit dem Apple Pencil. Die Funktion gilt nur für diese Sitzung. Namen und Klassen pflegst du unter „Gremium“. Leere Zeilen sind für Gäste frei und werden ausgedruckt. Die Anzahl der Zeilen legst du hier fest.</p>'+
       '<div class="frow" style="margin-bottom:12px"><label class="meta" for="ts-sel">Sitzung</label><select id="ts-sel" data-ui="tsid" class="grow">'+all.map(function(s){return '<option value="'+s.id+'"'+(s.id===ts.id?' selected':'')+'>'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel'))+'</option>'}).join('')+'</select>'+
       '<label class="meta" for="ts-rows">Zeilen</label><input type="number" id="ts-rows" min="0" max="200" data-s="tlRows" value="'+esc(S.settings.tlRows)+'">'+(DL?'<button type="button" class="btn primary" data-act="tlsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="tlhtml">HTML kopieren</button>')+'</div>'+
-      '<div class="sheet" id="tlsheet">'+tlHTML(ts,true)+'</div>';
+      gaesteHTML(ts)+'<div class="sheet" id="tlsheet" style="margin-top:12px">'+tlHTML(ts,true)+'</div>';
   }
   h+='</section>';
 
@@ -2041,6 +2054,8 @@ function needConfirm(key){if(pc===key)return true;ui.confirm=key;render();return
 function pdfRun(save,d,b){var orig=saveFile,cap=null;saveFile=function(n,h){cap={n:n,h:h}};try{A[save](d,b)}finally{saveFile=orig}
   if(cap&&/\.html$/.test(cap.n))makePDF(cap.h,cap.n.replace(/\.html$/,'.pdf'));else toast('PDF nicht möglich');return 'skip'}
 var A={
+  gadd:function(d){var s=sess(d.sid),n=$('#g-name'),r=$('#g-rolle');if(!s||!n)return 'skip';var v=n.value.trim();if(!v){toast('Bitte einen Namen eingeben');return 'skip'}GA(s).push({id:uid(),name:v,rolle:r?r.value:''});save()},
+  gdel:function(d){var s=sess(d.sid);if(!s)return 'skip';s.gaeste=GA(s).filter(function(g){return g.id!==d.id});save()},
   ahpdf:function(d,b){return pdfRun('ahsave',d,b)},antpdf:function(d,b){return pdfRun('antsave',d,b)},bpdf:function(d,b){return pdfRun('bsave',d,b)},bnpdf:function(d,b){return pdfRun('bnsave',d,b)},gopdf:function(d,b){return pdfRun('gosave',d,b)},
   nspdf:function(d,b){return pdfRun('nssave',d,b)},protpdf:function(d,b){return pdfRun('protsave',d,b)},skrpdf:function(d,b){return pdfRun('skrhtml',d,b)},tlpdf:function(d,b){return pdfRun('tlsave',d,b)},ufpdf:function(d,b){return pdfRun('ufsave',d,b)},wnpdf:function(d,b){return pdfRun('wnsave',d,b)},
   einlpdf:function(){var s=ensureA(),el=$('#einltext');if(!s||!el)return 'skip';makePDF(docFile('<div class="paper" style="white-space:pre-wrap">'+esc(el.value)+'</div>','Einladung'),'einladung-'+(s.datum||today()).slice(0,10)+'.pdf');return 'skip'},
