@@ -325,6 +325,13 @@ function sigOpen(key,lab){
     if(document.getElementById('sigmy').checked){try{localStorage.setItem(KEY+'-mysig',url)}catch(e){}}
     save();sigClose();render()};
 }
+var ORDARTEN=['Ordnungsruf','Verwarnung','Wortentzug','Ausschluss vom TOP','Ausschluss von der Sitzung'];
+function ORD(s){return s.ordnung||(s.ordnung=[])}
+function ordNr(s,o){var n=0;for(var i=0;i<ORD(s).length;i++){if(ORD(s)[i].wer&&ORD(s)[i].wer===o.wer)n++;if(ORD(s)[i]===o)break}return n}
+function ordTopNo(s,id){var i=s.tops.findIndex(function(t){return t.id===id});return i<0?'':String(i+1)}
+function ordHTML(s){var l=(s.ordnung||[]);if(!l.length)return '';
+  return '<h3>Ordnungsmaßnahmen</h3><table style="margin-left:0;width:100%"><thead><tr><th style="width:9%">Uhrzeit</th><th style="width:8%">TOP</th><th style="width:24%">Person</th><th style="width:25%">Maßnahme</th><th>Grund</th></tr></thead><tbody>'+
+    l.map(function(o){return '<tr><td>'+esc(o.zeit||'')+'&nbsp;</td><td>'+esc(ordTopNo(s,o.top))+'&nbsp;</td><td>'+esc(o.wer||'')+'</td><td>'+esc(o.art)+'</td><td>'+esc(o.grund||'')+'&nbsp;</td></tr>'}).join('')+'</tbody></table>'}
 function dresHTML(b){
   var r=res(b);
   return (r.label==='Angenommen'?'☒':'☐')+' angenommen &nbsp; '+(r.k==='bad'?'☒':'☐')+' abgelehnt';
@@ -396,6 +403,7 @@ function protHTML(s,edit){
     if(t.typ==='beschluss')h+=bes(t,i);
   });
 
+  h+=ordHTML(s);
   h+='<h3>Übersicht der gefassten Beschlüsse und Maßnahmen</h3><table><thead><tr><th style="width:9%">TOP</th><th>Beschluss / Maßnahme</th><th style="width:22%">Verantwortlich</th><th style="width:15%">Frist</th></tr></thead><tbody id="ovw">'+ovwRows(s)+'</tbody></table>';
 
   var hasWahl=s.tops.some(function(t){return t.typ==='wahl'});
@@ -966,6 +974,7 @@ function nsHTML(s){
       if(line)o+='<p>Abstimmungsergebnis: '+esc(line)+'</p>';
     });
   });
+  o+=ordHTML(s);
   o+='<h3>Übersicht der gefassten Beschlüsse und Maßnahmen</h3><table style="margin-left:0;width:100%"><thead><tr><th style="width:9%">TOP</th><th>Beschluss / Maßnahme</th><th style="width:22%">Verantwortlich</th><th style="width:15%">Frist</th></tr></thead><tbody>'+ovwRows(s)+'</tbody></table>';
   var anl=pfv(s,'anlagen','');
   if(anl.trim())o+='<h3>Anlagen</h3><ol>'+anl.split('\n').filter(function(l){return l.trim()}).map(function(l){return '<li>'+esc(l)+'</li>'}).join('')+'</ol>';
@@ -1094,6 +1103,16 @@ function vLive(){
   h+='<section class="card"><h3 style="margin-bottom:6px">Aufgabe festhalten</h3><div class="frow"><input type="text" id="lv-task" class="grow" placeholder="Aufgabe"><input type="text" id="lv-wer" style="width:9rem" placeholder="Wer"><button type="button" class="btn primary" data-act="lvtask">Hinzufügen</button></div>';
   var tk=s.aufgaben.filter(function(a){return a.top===t.id});
   tk.forEach(function(a){h+='<div class="meta" style="margin-top:6px">• '+esc(a.text)+(a.wer?' · '+esc(a.wer):'')+'</div>'});
+  h+='</section>';
+  /* Ordnungsmaßnahmen */
+  h+='<section class="card"><div class="vh"><h3>Ordnungsmaßnahmen</h3><span class="meta">Sitzungsleitung</span></div>'+
+    '<div class="frow" style="flex-wrap:wrap"><input type="text" id="od-wer" class="grow" list="od-dl" placeholder="Person" aria-label="Person"><datalist id="od-dl">'+present.map(function(m){return '<option value="'+esc(m.name)+'">'}).join('')+'</datalist>'+
+    '<select id="od-art" aria-label="Maßnahme">'+ORDARTEN.map(function(a){return '<option>'+a+'</option>'}).join('')+'</select></div>'+
+    '<div class="frow" style="margin-top:8px"><input type="text" id="od-grund" class="grow" placeholder="Grund (optional)" aria-label="Grund"><button type="button" class="btn primary" data-act="ordadd">Erteilen</button></div>';
+  ORD(s).forEach(function(o){var m=S.members.find(function(x){return x.name===o.wer&&x.aktiv}),nr=ordNr(s,o);
+    h+='<div class="meta" style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="grow">• '+esc(o.zeit||'')+' · TOP '+esc(ordTopNo(s,o.top))+' · <strong>'+esc(o.wer)+'</strong> · '+esc(o.art)+(nr>1?' ('+nr+'. Maßnahme)':'')+(o.grund?' · '+esc(o.grund):'')+'</span>'+
+      (m&&o.art==='Ausschluss von der Sitzung'&&s.anw[m.id]==='ja'?'<button type="button" class="btn sm" data-act="ordaus" data-id="'+o.id+'">Aus Anwesenheit austragen</button>':'')+
+      '<button type="button" class="btn sm" data-act="orddel" data-id="'+o.id+'">Entfernen</button></div>'});
   h+='</section>';
   /* Navigation */
   h+='<section class="card"><div class="frow"><button type="button" class="btn" data-act="livetop" data-i="'+(L.top-1)+'"'+(L.top<=0?' disabled':'')+'>← Zurück</button><span class="grow"></span>'+(L.top<n-1?'<button type="button" class="btn primary" data-act="livetop" data-i="'+(L.top+1)+'">Nächster TOP →</button>':'<span class="meta">Letzter TOP</span>')+'</div></section></div>';
@@ -1947,6 +1966,10 @@ function readImport(file){
 var pc=null;
 function needConfirm(key){if(pc===key)return true;ui.confirm=key;render();return false}
 var A={
+  ordadd:function(){var s=sess(ui.sid),w=$('#od-wer'),a=$('#od-art'),g=$('#od-grund');if(!s||!s.live||!w)return 'skip';var v=w.value.trim();if(!v)return 'skip';var t=s.tops[s.live.top];
+    ORD(s).push({id:uid(),wer:v,art:a.value,grund:(g&&g.value.trim())||'',top:t?t.id:'',zeit:hhmm()});save()},
+  orddel:function(d){var s=sess(ui.sid);if(!s)return 'skip';s.ordnung=ORD(s).filter(function(o){return o.id!==d.id});save()},
+  ordaus:function(d){var s=sess(ui.sid);if(!s)return 'skip';var o=ORD(s).find(function(x){return x.id===d.id});var m=o&&S.members.find(function(x){return x.name===o.wer&&x.aktiv});if(m){s.anw[m.id]='';save()}},
   tlf:function(d){var s=sess(d.sid);if(!s)return 'skip';s.tlf=s.tlf||{};var m=mem(d.id)||{};var cur=s.tlf[d.id]!==undefined?s.tlf[d.id]:m.ksf;s.tlf[d.id]=(cur===d.v)?'':d.v;save()},
   sign:function(d){sigOpen(d.key,d.lab);return 'skip'},
   sigdel:function(d){delete SG()[d.key];save()},
