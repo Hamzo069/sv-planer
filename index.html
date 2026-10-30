@@ -6,6 +6,7 @@
 <script src="supabase.js"></script>
 <script src="html2canvas.min.js"></script>
 <script src="jspdf.umd.min.js"></script>
+<script src="qrcode.js"></script>
 
 <style>
 /* Layout: schmale Kopfzeile, Tab-Leiste, eine Arbeitsspalte (Übersicht: Hauptkarte + Aufgaben nebeneinander). */
@@ -931,6 +932,51 @@ function ufHTML(u){
   if(u.notiz)o+='<h3>Anmerkung</h3><p style="white-space:pre-wrap">'+esc(u.notiz)+'</p>';
   return o+'<p style="margin-top:14px">'+esc(S.settings.name||'')+', '+esc(S.settings.schule||'')+'</p></div>';
 }
+var VCH='abcdefghjkmnpqrstuvwxyz23456789',VCA='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function rndStr(n,al){var a=new Uint8Array(n),o='',i;try{crypto.getRandomValues(a)}catch(e){for(i=0;i<n;i++)a[i]=Math.floor(Math.random()*256)}for(i=0;i<n;i++)o+=al.charAt(a[i]%al.length);return o}
+function voteBase(){return window.SV_VOTE_BASE||new URL('.',location.href).href}
+function voteUrl(o,code){return voteBase()+'abstimmen.html?u='+encodeURIComponent(o.id)+(code?'&c='+encodeURIComponent(code):'')}
+function qrSvg(txt){try{var q=qrcode(0,'M');q.addData(txt);q.make();return q.createSvgTag({cellSize:4,margin:2,scalable:true})}catch(e){return ''}}
+function ufErr(e){var m=String(e&&e.message||e||'');if((e&&(e.code==='42P01'||e.code==='PGRST202'||e.code==='PGRST205'))||/relation|does not exist|schema cache|Could not find/i.test(m))return 'Datenbank noch nicht vorbereitet: SQL-Skript in Supabase ausführen';return 'Online-Abstimmung nicht möglich ('+m.slice(0,60)+')'}
+function needCloud(){if(!(CL.on&&CL.client&&CL.user)){toast('Bitte zuerst unter „Daten“ in der Cloud anmelden');return false}return true}
+function pollRow(u,o){return {id:o.id,frage:u.frage,optionen:u.optionen.map(function(x){return {id:x.id,text:x.text}}),modus:o.modus,status:o.offen?'offen':'zu'}}
+function ufOnlineHTML(u){
+  var o=u.online,h='<h3 style="margin:16px 0 6px">Online abstimmen</h3>';
+  if(!CL.on)return h+'<p class="meta">Dafür wird die Cloud gebraucht. Sie ist in dieser Version nicht eingerichtet.</p>';
+  if(!o){
+    var m=ui['uom_'+u.id]==='codes'?'codes':'einfach',n=ui['uon_'+u.id]||30;
+    return h+'<p class="meta" style="margin-bottom:8px">Erzeugt einen Link und QR-Code zu einer anonymen Abstimmungsseite. Das Ergebnis siehst nur du hier im Planer. Frage und Antworten kann jede Person mit dem Link lesen, schreibe darin keine Namen.</p>'+
+      '<div class="frow" style="margin-bottom:10px"><label class="meta" for="uom-'+u.id+'">Art</label><select id="uom-'+u.id+'" data-ui="uom_'+u.id+'" class="grow">'+opts([['einfach','Einfach: eine Stimme pro Gerät'],['codes','Mit Einmal-Code für wichtige Umfragen']],m)+'</select>'+
+      (m==='codes'?'<label class="meta" for="uon-'+u.id+'">Anzahl Codes</label><input type="number" id="uon-'+u.id+'" min="1" max="500" style="width:6rem" data-ui="uon_'+u.id+'" value="'+esc(n)+'">':'')+'</div>'+
+      '<button type="button" class="btn primary" data-act="ufonline" data-id="'+u.id+'">Online freischalten</button>';
+  }
+  var url=voteUrl(o),r=(ui.uores||{})[u.id],cod=o.modus==='codes';
+  h+='<div class="frow" style="margin-bottom:8px"><span class="pill '+(o.offen?'warn':'good')+'">'+(o.offen?'Online offen':'Online geschlossen')+'</span><span class="meta">'+(cod?'Mit Einmal-Code':'Eine Stimme pro Gerät')+'</span></div>'+
+    '<div class="frow" style="align-items:flex-start"><div style="width:150px;height:150px;background:#fff;padding:4px;border-radius:8px;flex:none" aria-label="QR-Code zur Abstimmung" role="img"><style>.uqr svg{width:100%;height:100%;display:block}</style><div class="uqr" style="width:100%;height:100%">'+qrSvg(url)+'</div></div>'+
+    '<div class="grow"><label class="lbl" for="uol-'+u.id+'">Link</label><input type="text" id="uol-'+u.id+'" readonly value="'+esc(url)+'"><div class="frow" style="margin-top:8px"><button type="button" class="btn sm" data-act="ufolink" data-id="'+u.id+'">Link kopieren</button>'+(DL?'<button type="button" class="btn sm" data-act="ufosave" data-id="'+u.id+'">'+(cod?'Code-Zettel':'QR-Aushang')+' als HTML speichern</button>':'<button type="button" class="btn sm" data-act="ufohtml" data-id="'+u.id+'">'+(cod?'Code-Zettel':'QR-Aushang')+' als HTML kopieren</button>')+'</div></div></div>';
+  if(cod)h+='<label class="lbl" for="uoc-'+u.id+'" style="margin-top:12px">Codes ('+o.codes.length+')</label><textarea class="box" id="uoc-'+u.id+'" readonly style="min-height:70px;font-family:var(--mono,monospace)">'+esc(o.codes.join('\n'))+'</textarea><div class="frow" style="margin-top:6px"><button type="button" class="btn sm" data-act="ufocopy" data-id="'+u.id+'">Codes kopieren</button><button type="button" class="btn sm" data-act="ufomore" data-id="'+u.id+'">+ 10 Codes</button></div>';
+  h+='<h4 style="margin:14px 0 6px">Online-Ergebnis</h4>';
+  if(!r)h+='<p class="meta">Noch nicht abgerufen.</p>';
+  else h+='<div class="meta" style="margin-bottom:6px">Stand '+esc(r.at)+' · '+r.total+' Stimmen'+(cod?' von '+r.codes+' Codes':'')+'</div>'+ufRes({optionen:u.optionen.map(function(x){return {id:x.id,text:x.text,n:+(r.counts[x.id]||0)}})});
+  h+='<div class="frow" style="margin-top:8px"><button type="button" class="btn primary sm" data-act="ufores" data-id="'+u.id+'">Ergebnis abrufen</button>'+(r?cbtn('ufotake'+u.id,'In die Zählung übernehmen','data-act="ufotake" data-id="'+u.id+'"'):'')+'<button type="button" class="btn sm" data-act="ufoclose" data-id="'+u.id+'">'+(o.offen?'Online schließen':'Wieder öffnen')+'</button><button type="button" class="btn sm" data-act="ufosync" data-id="'+u.id+'">Frage und Antworten übertragen</button>'+cbtn('ufodel'+u.id,'Online-Abstimmung entfernen','data-act="ufodel" data-id="'+u.id+'"')+'</div>'+
+    '<p class="meta" style="margin-top:6px">„In die Zählung übernehmen“ ersetzt die Stimmen oben durch das Online-Ergebnis. Nach Änderungen an Frage oder Antworten bitte übertragen, solange noch keine Stimmen vorliegen.</p>';
+  return h;
+}
+function ufoDoc(u){
+  var o=u.online;if(!o)return '';
+  var sty='<style>.paper table.uo{margin:0;width:100%;table-layout:fixed}.paper table.uo td{border:1px dashed #777;padding:10px 12px;vertical-align:top;width:50%}.uoq{background:#fff}.uoq svg{width:100%;height:100%;display:block}</style>';
+  if(o.modus!=='codes'){
+    var url=voteUrl(o);
+    return '<div class="paper">'+sty+'<h1>'+esc(u.frage||'Abstimmung')+'</h1><div class="sub">Anonyme Abstimmung · eine Stimme pro Gerät'+(u.bis?' · bis '+esc(d2(u.bis+'T00:00')):'')+'</div><div class="uoq" style="width:260px;height:260px;margin:20px auto">'+qrSvg(url)+'</div><p style="text-align:center">QR-Code scannen oder diese Adresse öffnen:<br><b>'+esc(url)+'</b></p></div>';
+  }
+  var base=voteBase()+'abstimmen.html?u='+encodeURIComponent(o.id),rows=[],i,c=o.codes;
+  function slip(code){
+    if(!code)return '&nbsp;';
+    return '<div style="font-weight:700;font-size:14px">Abstimmung</div><div style="font-size:13px;margin:2px 0 8px">'+esc(u.frage||'')+'</div><div class="uoq" style="width:110px;height:110px">'+qrSvg(voteUrl(o,code))+'</div><div style="font-size:15px;margin-top:8px">Dein Code: <b style="letter-spacing:.12em">'+esc(code)+'</b></div><div style="font-size:10.5px;color:#444;margin-top:4px">Oder öffne '+esc(base)+' und gib den Code ein. Der Code gilt nur einmal.</div>';
+  }
+  for(i=0;i<c.length;i+=2)rows.push('<tr style="page-break-inside:avoid;break-inside:avoid"><td>'+slip(c[i])+'</td><td>'+slip(c[i+1])+'</td></tr>');
+  return '<div class="paper">'+sty+'<table class="uo">'+rows.join('')+'</table></div>';
+}
 function vUmf(){
   var list=S.umfragen.slice().sort(function(a,b){return ((a.status==='offen'?0:1)-(b.status==='offen'?0:1))||(b.von||'').localeCompare(a.von||'')});
   var h='<div class="stack"><section class="card"><div class="vh"><h2>Umfragen</h2><button type="button" class="btn primary" data-act="adduf">+ Umfrage</button></div><p class="meta">Meinungsbilder aus der Schülerschaft. Du trägst die gezählten Stimmen ein und bekommst Anteile, Balken und einen Aushang mit dem Ergebnis.</p></section>';
@@ -950,7 +996,7 @@ function vUmf(){
         h+='<div class="frow" style="margin-bottom:6px"><input type="text" class="grow" aria-label="Antwort" '+cx+' data-f="text" value="'+esc(x.text)+'" placeholder="Antwort"><input type="number" min="0" style="width:6rem" aria-label="Stimmen" '+cx+' data-f="n" value="'+x.n+'"><button type="button" class="btn sm danger" data-act="ufoptdel" data-uid="'+u.id+'" data-id="'+x.id+'">Entfernen</button></div>';
       });
       h+='<div class="frow"><button type="button" class="btn sm" data-act="ufopt" data-id="'+u.id+'">+ Antwort</button><button type="button" class="btn sm" data-act="ufpreset" data-id="'+u.id+'" data-v="jn">Vorlage Ja / Nein / Enthaltung</button><button type="button" class="btn sm" data-act="ufpreset" data-id="'+u.id+'" data-v="skala">Vorlage Skala 1 bis 5</button></div>'+
-        '<h3 style="margin:16px 0 6px">Auswertung</h3><div id="ufres-'+u.id+'">'+ufRes(u)+'</div>'+
+        '<h3 style="margin:16px 0 6px">Auswertung</h3><div id="ufres-'+u.id+'">'+ufRes(u)+'</div>'+ufOnlineHTML(u)+
         '<label class="lbl" for="un-'+u.id+'" style="margin-top:12px">Anmerkung (erscheint auf dem Aushang)</label><textarea class="box" id="un-'+u.id+'" '+c+' data-f="notiz" style="min-height:70px">'+esc(u.notiz)+'</textarea>'+
         '<div class="frow" style="margin:12px 0">'+(DL?'<button type="button" class="btn primary" data-act="ufsave" data-id="'+u.id+'">Ergebnis-Aushang als HTML speichern</button>':'<button type="button" class="btn primary" data-act="ufhtml" data-id="'+u.id+'">Ergebnis-Aushang als HTML kopieren</button>')+cbtn('deluf'+u.id,'Umfrage löschen','data-act="deluf" data-id="'+u.id+'"')+'</div>';
     }
@@ -1299,6 +1345,7 @@ function norm(o){
   o.themen=Array.isArray(o.themen)?o.themen:[];o.themen.forEach(function(t){t.id=t.id||uid();t.text=t.text||'';t.von=t.von||'';t.typ=t.typ||'diskussion';t.notiz=t.notiz||'';t.status=t.status||'offen';t.sid=t.sid||''});
   o.umfragen=Array.isArray(o.umfragen)?o.umfragen:[];
   o.umfragen.forEach(function(u){u.id=u.id||uid();['frage','von','bis','ziel','notiz'].forEach(function(k){u[k]=u[k]||''});u.status=u.status||'offen';u.optionen=Array.isArray(u.optionen)?u.optionen:[];u.optionen.forEach(function(x){x.id=x.id||uid();x.text=x.text||'';x.n=Math.max(0,+x.n||0)})});
+  o.umfragen.forEach(function(u){var w=u.online;u.online=(w&&typeof w==='object'&&w.id)?{id:String(w.id),modus:w.modus==='codes'?'codes':'einfach',offen:w.offen!==false,codes:Array.isArray(w.codes)?w.codes.map(String):[]}:null});
   o.verteiler.forEach(function(v){v.id=v.id||uid();v.name=v.name||'';v.ids=Array.isArray(v.ids)?v.ids:[];v.extra=v.extra||''});
   o.members.forEach(function(m){m.mail=m.mail||'';m.id=m.id||uid();m.name=m.name||'';m.rolle=m.rolle||'Mitglied';m.stimm=m.stimm!==false;m.aktiv=m.aktiv!==false;m.klasse=m.klasse||'';m.ksf=m.ksf||''});
   return o;
@@ -2034,7 +2081,7 @@ function makePDF(html,name){
   fr.onload=function(){
     var d=fr.contentDocument;
     var go=function(){try{
-      var h=Math.max(d.body.scrollHeight,d.documentElement.scrollHeight);fr.style.height=h+'px';
+      fr.style.height='10px';var h=Math.max(d.body.scrollHeight,d.documentElement.scrollHeight);fr.style.height=h+'px';
       var sc=Math.max(1,Math.min(2,Math.sqrt(1.2e7/(CW*h))));
       var cand=[];[].forEach.call(d.querySelectorAll('tr,p,li,img,.sub'),function(el){if(el.closest('thead'))return;cand.push(Math.round((el.getBoundingClientRect().bottom+(d.defaultView.scrollY||0))*sc))});
       window.html2canvas(d.body,{scale:sc,backgroundColor:'#fff',useCORS:true,width:CW,windowWidth:CW,logging:false}).then(function(cv){
@@ -2055,7 +2102,7 @@ function makePDF(html,name){
   };
   fr.srcdoc=html.replace('</head>','<style>html,body{margin:0!important;padding:0!important;background:#fff!important}.paper{border:0!important;padding:0!important;min-width:0!important;max-width:none!important;width:100%!important;margin:0!important}.sgb,.sgx{display:none!important}</style></head>');
 }
-var PDFMAP={ahsave:'ahpdf',ahhtml:'ahpdf',antsave:'antpdf',anthtml:'antpdf',bsave:'bpdf',bhtml:'bpdf',bnsave:'bnpdf',bnhtml:'bnpdf',gosave:'gopdf',gohtml:'gopdf',nssave:'nspdf',nshtml:'nspdf',protsave:'protpdf',prothtml:'protpdf',skrsave:'skrpdf',skrhtml:'skrpdf',tlsave:'tlpdf',tlhtml:'tlpdf',ufsave:'ufpdf',ufhtml:'ufpdf',wnsave:'wnpdf',wnhtml:'wnpdf',wzsave:'wzpdf',wzhtml:'wzpdf',einlcopy:'einlpdf'};
+var PDFMAP={ahsave:'ahpdf',ahhtml:'ahpdf',antsave:'antpdf',anthtml:'antpdf',bsave:'bpdf',bhtml:'bpdf',bnsave:'bnpdf',bnhtml:'bnpdf',gosave:'gopdf',gohtml:'gopdf',nssave:'nspdf',nshtml:'nspdf',protsave:'protpdf',prothtml:'protpdf',skrsave:'skrpdf',skrhtml:'skrpdf',tlsave:'tlpdf',tlhtml:'tlpdf',ufsave:'ufpdf',ufhtml:'ufpdf',wnsave:'wnpdf',wnhtml:'wnpdf',wzsave:'wzpdf',wzhtml:'wzpdf',ufosave:'ufopdf',ufohtml:'ufopdf',einlcopy:'einlpdf'};
 function addPdfButtons(){
   [].forEach.call(document.querySelectorAll('button[data-act]'),function(b){
     var pa=PDFMAP[b.dataset.act];if(!pa)return;
@@ -2210,8 +2257,34 @@ var A={
   impsess1:function(){if(sess('hist-2026-09-15')&&!needConfirm('impsess1'))return 'skip';var id=doImp1();ui.view='sitzungen';ui.sid=id;ui.md=null;toast('Sitzung vom 15.09.2026 eingelesen');return true},
   gosave:function(){saveFile('geschaeftsordnung.html',docFile(goHTML(),'Geschäftsordnung'));return 'skip'},
   gohtml:function(){copyText(docFile(goHTML(),'Geschäftsordnung'),'#none');return 'skip'},
+  ufonline:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!needCloud())return 'skip';
+    if(u.optionen.length<2||u.optionen.some(function(x){return !String(x.text||'').trim()})){toast('Bitte mindestens zwei Antworten mit Text anlegen');return 'skip'}
+    var cod=ui['uom_'+u.id]==='codes',n=Math.min(500,Math.max(1,parseInt(ui['uon_'+u.id],10)||30)),o={id:rndStr(8,VCH),modus:cod?'codes':'einfach',offen:true,codes:[]},i,c;
+    if(cod)for(i=0;i<n;i++){do{c=rndStr(6,VCA)}while(o.codes.indexOf(c)>=0);o.codes.push(c)}
+    toast('Wird freigeschaltet …');
+    CL.client.from('polls').insert(pollRow(u,o)).then(function(r){if(r.error)throw r.error;if(!o.codes.length)return;
+      return CL.client.from('poll_codes').insert(o.codes.map(function(x){return {poll_id:o.id,code:x}})).then(function(r2){if(r2.error)throw r2.error})
+    }).then(function(){u.online=o;save();render();toast('Online freigeschaltet')},function(e){toast(ufErr(e))});
+    return 'skip'},
+  ufolink:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u&&u.online)copyText(voteUrl(u.online),'#uol-'+u.id);return 'skip'},
+  ufocopy:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u&&u.online)copyText(u.online.codes.join('\n'),'#uoc-'+u.id);return 'skip'},
+  ufomore:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online||!needCloud())return 'skip';var o=u.online,add=[],i,c;
+    for(i=0;i<10;i++){do{c=rndStr(6,VCA)}while(o.codes.indexOf(c)>=0||add.indexOf(c)>=0);add.push(c)}
+    CL.client.from('poll_codes').insert(add.map(function(x){return {poll_id:o.id,code:x}})).then(function(r){if(r.error)throw r.error;o.codes=o.codes.concat(add);save();render()},function(e){toast(ufErr(e))});return 'skip'},
+  ufores:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online||!needCloud())return 'skip';
+    CL.client.rpc('poll_results',{p_id:u.online.id}).then(function(r){if(r.error)throw r.error;var v=r.data||{};ui.uores=ui.uores||{};ui.uores[u.id]={counts:v.counts||{},total:+v.total||0,codes:+v.codes||0,at:clTime()};render()},function(e){toast(ufErr(e))});return 'skip'},
+  ufotake:function(d){var u=S.umfragen.find(function(x){return x.id===d.id}),r=(ui.uores||{})[d.id];if(!u||!r)return 'skip';if(!needConfirm('ufotake'+d.id))return 'skip';u.optionen.forEach(function(x){x.n=+(r.counts[x.id]||0)});save()},
+  ufoclose:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online||!needCloud())return 'skip';var o=u.online,st=o.offen?'zu':'offen';
+    CL.client.from('polls').update({status:st}).eq('id',o.id).then(function(r){if(r.error)throw r.error;o.offen=st==='offen';save();render();toast(o.offen?'Online wieder geöffnet':'Online geschlossen')},function(e){toast(ufErr(e))});return 'skip'},
+  ufosync:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online||!needCloud())return 'skip';var row=pollRow(u,u.online);
+    CL.client.from('polls').update({frage:row.frage,optionen:row.optionen}).eq('id',row.id).then(function(r){if(r.error)throw r.error;toast('Übertragen')},function(e){toast(ufErr(e))});return 'skip'},
+  ufodel:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online)return 'skip';if(!needConfirm('ufodel'+d.id))return 'skip';if(!needCloud())return 'skip';
+    CL.client.from('polls').delete().eq('id',u.online.id).then(function(r){if(r.error)throw r.error;u.online=null;if(ui.uores)delete ui.uores[u.id];save();render();toast('Online-Abstimmung entfernt')},function(e){toast(ufErr(e))});return 'skip'},
+  ufosave:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online)return 'skip';saveFile((u.online.modus==='codes'?'code-zettel-':'abstimmung-qr-')+slug(u.frage)+'.html',docFile(ufoDoc(u),'Abstimmung'));return 'skip'},
+  ufohtml:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u&&u.online)copyText(docFile(ufoDoc(u),'Abstimmung'),'#none');return 'skip'},
+  ufopdf:function(d,b){return pdfRun('ufosave',d,b)},
   adduf:function(){var u={id:uid(),frage:'Neue Umfrage',von:today(),bis:'',ziel:'',notiz:'',status:'offen',optionen:[]};S.umfragen.push(u);ui.uopen=u.id;save()},
-  deluf:function(d){if(!needConfirm('deluf'+d.id))return 'skip';S.umfragen=S.umfragen.filter(function(u){return u.id!==d.id});ui.uopen='';save()},
+  deluf:function(d){if(!needConfirm('deluf'+d.id))return 'skip';var du=S.umfragen.find(function(u){return u.id===d.id});if(du&&du.online&&CL.client&&CL.user)CL.client.from('polls').delete().eq('id',du.online.id).then(function(){},function(){});S.umfragen=S.umfragen.filter(function(u){return u.id!==d.id});ui.uopen='';save()},
   ufopen:function(d){ui.uopen=ui.uopen===d.id?'':d.id},
   ufgo:function(d){ui.view='umfragen';ui.uopen=d.id;return true},
   ufopt:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u){u.optionen.push({id:uid(),text:'',n:0});save()}},

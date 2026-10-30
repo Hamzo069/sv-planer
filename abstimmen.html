@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0E6B58">
+<title>Abstimmung</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#14201c;--ink2:#52605a;--line:#d5ddd9;--brand:#0E6B58;--brandink:#fff;--bad:#a12d2d;--good:#14663f;--sel:#e3f1ec}
+@media (prefers-color-scheme:dark){:root{--bg:#101614;--surface:#18201d;--ink:#e8efec;--ink2:#a2b0aa;--line:#2c3834;--brand:#46b296;--brandink:#06251c;--bad:#ff9a9a;--good:#7fe0ae;--sel:#1f3029}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}
+main{max-width:34rem;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px}
+h1{font-size:1.2rem;line-height:1.35;margin:0 0 4px}
+.meta{color:var(--ink2);font-size:.9rem;margin:0 0 16px}
+fieldset{border:0;margin:0;padding:0}
+legend{position:absolute;left:-9999px}
+.opt{display:flex;gap:12px;align-items:center;padding:14px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px;cursor:pointer;min-height:52px}
+.opt:has(input:checked){border-color:var(--brand);background:var(--sel)}
+.opt input{width:22px;height:22px;accent-color:var(--brand);flex:none}
+label.l{display:block;font-weight:600;margin:16px 0 6px}
+input[type=text]{width:100%;font:inherit;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);text-transform:uppercase;letter-spacing:.12em}
+button{width:100%;margin-top:16px;font:inherit;font-weight:600;padding:14px;border:0;border-radius:12px;background:var(--brand);color:var(--brandink);cursor:pointer;min-height:52px}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.msg{padding:14px;border-radius:12px;border:1.5px solid var(--line);margin-top:14px}
+.msg.bad{border-color:var(--bad);color:var(--bad)}
+.msg.good{border-color:var(--good);color:var(--good)}
+.hint{color:var(--ink2);font-size:.85rem;margin-top:16px}
+</style>
+</head>
+<body>
+<main>
+  <div class="card" id="box" aria-live="polite"><p class="meta">Wird geladen …</p></div>
+  <p class="hint">Die Abstimmung ist anonym: Gespeichert werden nur deine Antwort und eine zufällige Gerätekennung oder dein Code, kein Name.</p>
+</main>
+<script>
+window.SV_CLOUD={url:'https://nrtpytnvbeosvuztmsgm.supabase.co',key:'sb_publishable_oU-geWGpwIOLAtoeGthfkA_Z9zs8P_U'};
+(function(){
+'use strict';
+var box=document.getElementById('box');
+var q=new URLSearchParams(location.search),pid=(q.get('u')||'').trim().toLowerCase(),codeQ=(q.get('c')||'').trim();
+var API=(window.SV_CLOUD||{}).url,KEY=(window.SV_CLOUD||{}).key;
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function st(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+function rpc(fn,body){
+  return fetch(API+'/rest/v1/rpc/'+fn,{method:'POST',headers:{'apikey':KEY,'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){if(!r.ok)throw new Error('http '+r.status);return r.json()});
+}
+function tok(){
+  var t=st('sv-vote-token');
+  if(!t||t.length<16){
+    var a=new Uint8Array(16);try{crypto.getRandomValues(a)}catch(e){for(var i=0;i<16;i++)a[i]=Math.floor(Math.random()*256)}
+    t=Array.prototype.map.call(a,function(x){return ('0'+x.toString(16)).slice(-2)}).join('');
+    st('sv-vote-token',t);
+  }
+  return t;
+}
+function info(title,text,cls){box.innerHTML='<h1>'+esc(title)+'</h1>'+(text?'<div class="msg'+(cls?' '+cls:'')+'">'+esc(text)+'</div>':'')}
+function done(){info('Danke, deine Stimme wurde gezählt.','Du kannst dieses Fenster jetzt schließen.','good')}
+if(!API||!KEY||!/^[a-z0-9]{4,32}$/.test(pid)){info('Link ungültig','Bitte öffne den Link oder den QR-Code noch einmal.','bad');return}
+rpc('get_poll',{p_id:pid}).then(function(p){
+  if(!p){info('Abstimmung nicht gefunden','Der Link ist nicht mehr gültig.','bad');return}
+  if(p.status!=='offen'){info(p.frage,'Diese Abstimmung ist beendet.');return}
+  if(st('sv-voted-'+pid)==='1'&&p.modus!=='codes'){info(p.frage,'Von diesem Gerät wurde bereits abgestimmt.','good');return}
+  var h='<h1 id="fq">'+esc(p.frage)+'</h1><p class="meta">Bitte genau eine Antwort wählen.</p><form id="f" novalidate><fieldset aria-labelledby="fq"><legend>Antworten</legend>';
+  p.optionen.forEach(function(o,i){h+='<label class="opt"><input type="radio" name="o" value="'+esc(o.id)+'" required> <span>'+esc(o.text)+'</span></label>'});
+  h+='</fieldset>';
+  if(p.modus==='codes')h+='<label class="l" for="c">Dein Code</label><input type="text" id="c" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16" value="'+esc(codeQ)+'" required>';
+  h+='<button type="submit" id="go">Abstimmen</button><div id="m" role="alert"></div></form>';
+  box.innerHTML=h;
+  var f=document.getElementById('f'),m=document.getElementById('m'),go=document.getElementById('go');
+  function err(t){m.className='msg bad';m.textContent=t}
+  f.addEventListener('submit',function(e){
+    e.preventDefault();m.className='';m.textContent='';
+    var sel=f.querySelector('input[name=o]:checked');
+    if(!sel){err('Bitte wähle eine Antwort.');return}
+    var code=p.modus==='codes'?(document.getElementById('c').value||'').trim():null;
+    if(p.modus==='codes'&&!code){err('Bitte gib deinen Code ein.');return}
+    go.disabled=true;
+    rpc('cast_vote',{p_poll:pid,p_option:sel.value,p_token:tok(),p_code:code}).then(function(r){
+      go.disabled=false;
+      if(r==='ok'){st('sv-voted-'+pid,'1');done()}
+      else if(r==='doppelt'){if(p.modus==='codes')err('Dieser Code wurde schon benutzt.');else{st('sv-voted-'+pid,'1');info(p.frage,'Von diesem Gerät wurde bereits abgestimmt.','good')}}
+      else if(r==='code')err('Dieser Code ist ungültig. Bitte prüfe die Eingabe.');
+      else if(r==='geschlossen')info(p.frage,'Diese Abstimmung ist inzwischen beendet.');
+      else err('Die Stimme konnte nicht gezählt werden. Bitte versuche es noch einmal.');
+    },function(){go.disabled=false;err('Keine Verbindung. Bitte versuche es noch einmal.')});
+  });
+},function(){info('Keine Verbindung','Die Abstimmung konnte nicht geladen werden. Bitte versuche es später noch einmal.','bad')});
+})();
+</script>
+</body>
+</html>
