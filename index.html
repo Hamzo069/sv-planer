@@ -525,6 +525,7 @@ function wzHTML(){
   return '<div class="paper"><style>.paper table.wz{margin:0;width:100%;table-layout:fixed}.paper table.wz td{border:1px dashed #777;padding:10px 12px;vertical-align:top;width:50%}</style><table class="wz">'+rows.join('')+'</table></div>';
 }
 /* ---- Öffentliche SV-Seite ---- */
+var WEB_GESPERRT=true; /* false, sobald Impressum und Datenschutz für die öffentliche Seite geklärt sind */
 var WSTAND=[['','Kein Stand'],['offen','Noch offen'],['arbeit','In Arbeit'],['umgesetzt','Umgesetzt']];
 function webTxt(x,n){return String(x==null?'':x).replace(/\s+$/,'').replace(/^\s+/,'').slice(0,n||500)}
 function webNews(){
@@ -564,7 +565,7 @@ function webDoc(){var url=voteBase()+'sv.html';return '<div class="paper"><style
 function webHTML(){
   var st=S.settings,url=voteBase()+'sv.html',now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   var h='<section class="card"><div class="vh"><h2>Öffentliche SV-Seite</h2></div>'+
-    '<p class="meta" style="margin-bottom:12px">Eine Webseite für alle Schüler/innen mit Terminen, Beschlüssen und Projekten. Sitzungen sind öffentlich (§ 7 Abs. 4 GO), Beschlüsse sollen der Schülerschaft zugänglich sein (§ 11 Abs. 3 GO). Nichts geht automatisch raus: Du wählst aus, prüfst die Vorschau und klickst auf „Veröffentlichen“. Jede Person mit dem Link kann die Seite lesen. Trage keine Namen von Schüler/innen ein.</p>';
+    ''+(WEB_GESPERRT?'<p class="meta bad" style="margin-bottom:12px"><strong>Vorerst gesperrt:</strong> Veröffentlichen ist ausgeschaltet, bis Impressum und Datenschutz für die Seite geklärt sind.</p>':'')+'<p class="meta" style="margin-bottom:12px">Eine Webseite für alle Schüler/innen mit Terminen, Beschlüssen und Projekten. Sitzungen sind öffentlich (§ 7 Abs. 4 GO), Beschlüsse sollen der Schülerschaft zugänglich sein (§ 11 Abs. 3 GO). Nichts geht automatisch raus: Du wählst aus, prüfst die Vorschau und klickst auf „Veröffentlichen“. Jede Person mit dem Link kann die Seite lesen. Trage keine Namen von Schüler/innen ein.</p>';
   if(!CL.on)return h+'<p class="meta">Dafür wird die Cloud gebraucht. Sie ist in dieser Version nicht eingerichtet.</p></section>';
   h+='<div class="frow" style="align-items:flex-start"><div style="width:130px;height:130px;background:#fff;padding:4px;border-radius:8px;flex:none" role="img" aria-label="QR-Code zur SV-Seite"><style>.uqr svg{width:100%;height:100%;display:block}</style><div class="uqr" style="width:100%;height:100%">'+qrSvg(url)+'</div></div>'+
     '<div class="grow"><label class="lbl" for="web-l">Link</label><input type="text" id="web-l" readonly value="'+esc(url)+'"><div class="frow" style="margin-top:8px"><button type="button" class="btn sm" data-act="weblink">Link kopieren</button>'+(DL?'<button type="button" class="btn sm" data-act="websave">QR-Aushang als HTML speichern</button>':'<button type="button" class="btn sm" data-act="webhtml">QR-Aushang als HTML kopieren</button>')+'</div></div></div>';
@@ -590,7 +591,7 @@ function webHTML(){
   if(!S.projekte.length)h+='<p class="meta">Noch keine Projekte angelegt.</p>';
   S.projekte.forEach(function(x){h+='<label class="frow" style="gap:8px;margin-bottom:6px"><input type="checkbox" data-pj="'+x.id+'" data-f="web" data-rr="1"'+(x.web===true?' checked':'')+'><span>'+esc(x.name||'(ohne Name)')+' <span class="meta">· '+esc((PJS.find(function(z){return z[0]===x.status})||PJS[0])[1])+'</span></span></label>'});
   h+='<h3 style="margin:18px 0 6px">Prüfen und veröffentlichen</h3><div id="webprev">'+webPrevHTML()+'</div>'+
-    '<div class="frow" style="margin-top:10px"><button type="button" class="btn primary" data-act="webpub">'+(ui.confirm==='webpub'?'Sicher? Nochmal klicken':(st.webHash?'Aktualisieren':'Veröffentlichen'))+'</button>'+(st.webHash?cbtn('webunpub','Veröffentlichung zurückziehen','data-act="webunpub"'):'')+'</div>'+
+    '<div class="frow" style="margin-top:10px"><button type="button" class="btn primary" data-act="webpub"'+(WEB_GESPERRT?' disabled':'')+'>'+(ui.confirm==='webpub'?'Sicher? Nochmal klicken':(st.webHash?'Aktualisieren':'Veröffentlichen'))+'</button>'+(st.webHash?cbtn('webunpub','Veröffentlichung zurückziehen','data-act="webunpub"'):'')+'</div>'+
     '<p class="meta" style="margin-top:6px">Veröffentlichen ersetzt den bisherigen Stand der Seite. Zurückziehen löscht ihn wieder.</p></section>';
   return h;
 }
@@ -2510,7 +2511,7 @@ var A={
   weblink:function(){copyText(voteBase()+'sv.html','#web-l');return 'skip'},
   websave:function(){saveFile('sv-seite-qr.html',docFile(webDoc(),'SV-Seite'));return 'skip'},
   webhtml:function(){copyText(docFile(webDoc(),'SV-Seite'),'#none');return 'skip'},
-  webpub:function(){if(!needCloud())return 'skip';if(!needConfirm('webpub'))return 'skip';
+  webpub:function(){if(WEB_GESPERRT){toast('Die öffentliche Seite ist vorerst gesperrt (Impressum und Datenschutz noch offen)');return 'skip'}if(!needCloud())return 'skip';if(!needConfirm('webpub'))return 'skip';
     var snap=webSnap();toast('Wird veröffentlicht …');
     CL.client.from('public_page').upsert({id:'main',daten:snap,updated_at:snap.at}).then(function(r){if(r.error)throw r.error;S.settings.webHash=webHashOf(snap);S.settings.webAt=snap.at;save();render();toast('Veröffentlicht')},function(e){toast(webErr(e))});return 'skip'},
   webunpub:function(){if(!needCloud())return 'skip';if(!needConfirm('webunpub'))return 'skip';
