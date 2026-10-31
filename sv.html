@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0E6B58">
+<title>Schülervertretung</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#14201c;--ink2:#52605a;--line:#d5ddd9;--brand:#0E6B58;--brandink:#fff;--soft:#e3f1ec;--warn:#8a5a00;--warnbg:#fbf0d9;--good:#14663f;--goodbg:#e0f2e8}
+@media (prefers-color-scheme:dark){:root{--bg:#101614;--surface:#18201d;--ink:#e8efec;--ink2:#a2b0aa;--line:#2c3834;--brand:#46b296;--brandink:#06251c;--soft:#1f3029;--warn:#e8b04a;--warnbg:#3a2d12;--good:#7fe0ae;--goodbg:#173826}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+main{max-width:40rem;margin:0 auto}
+header{margin:4px 0 18px}
+h1{font-size:1.5rem;line-height:1.2;margin:0}
+.sub{color:var(--ink2);margin:2px 0 0}
+h2{font-size:1.1rem;margin:26px 0 10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:10px}
+.card h3{font-size:1rem;margin:0 0 2px}
+.meta{color:var(--ink2);font-size:.9rem}
+.card p{margin:6px 0 0;white-space:pre-wrap}
+.info{background:var(--soft);border:1.5px solid var(--brand);border-radius:14px;padding:14px 16px;white-space:pre-wrap}
+.pill{display:inline-block;font-size:.78rem;font-weight:700;padding:2px 10px;border-radius:99px;background:var(--soft);color:var(--brand);margin-right:6px;margin-top:6px}
+.pill.warn{background:var(--warnbg);color:var(--warn)}
+.pill.good{background:var(--goodbg);color:var(--good)}
+ol{margin:6px 0 0;padding-left:1.3em}
+.foot{color:var(--ink2);font-size:.85rem;margin-top:28px}
+.empty{color:var(--ink2)}
+</style>
+</head>
+<body>
+<main id="m"><p class="meta">Wird geladen …</p></main>
+<script>
+window.SV_CLOUD={url:'https://nrtpytnvbeosvuztmsgm.supabase.co',key:'sb_publishable_oU-geWGpwIOLAtoeGthfkA_Z9zs8P_U'};
+(function(){
+'use strict';
+var m=document.getElementById('m');
+var API=(window.SV_CLOUD||{}).url,KEY=(window.SV_CLOUD||{}).key;
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function dt(x){var d=new Date(x);return isNaN(d.getTime())?null:d}
+function fd(x){var d=dt(x);return d?new Intl.DateTimeFormat('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(d):''}
+function fs(x){var d=dt(x);return d?new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}).format(d):''}
+function ft(x){var d=dt(x);if(!d||(d.getHours()===0&&d.getMinutes()===0))return '';return new Intl.DateTimeFormat('de-DE',{hour:'2-digit',minute:'2-digit'}).format(d)+' Uhr'}
+function pillCls(t){return /umgesetzt|erledigt|angenommen/i.test(t)?'good':/abgelehnt|gleichheit/i.test(t)?'warn':''}
+function render(p){
+  var h='<header><h1>'+esc(p.name||'Schülervertretung')+'</h1>'+(p.schule?'<p class="sub">'+esc(p.schule)+'</p>':'')+'</header>';
+  if(p.info)h+='<div class="info">'+esc(p.info)+'</div>';
+  var any=!!p.info;
+  if(p.termine&&p.termine.length){any=true;h+='<h2>Nächste Sitzungen</h2>'+p.termine.map(function(t){
+    return '<div class="card"><h3>'+esc(t.titel||'Sitzung')+'</h3><div class="meta">'+esc(fd(t.datum))+(ft(t.datum)?', '+esc(ft(t.datum)):'')+(t.ort?' · '+esc(t.ort):'')+'</div>'+
+      (t.tops&&t.tops.length?'<ol>'+t.tops.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol>':'')+'</div>'}).join('')+'<p class="meta">Die Sitzungen sind öffentlich.</p>'}
+  if(p.news&&p.news.length){any=true;h+='<h2>Aktuelles</h2>'+p.news.map(function(n){
+    return '<div class="card"><h3>'+esc(n.titel)+'</h3>'+(n.datum?'<div class="meta">'+esc(n.datum)+'</div>':'')+(n.text?'<p>'+esc(n.text)+'</p>':'')+'</div>'}).join('')}
+  if(p.beschluesse&&p.beschluesse.length){any=true;h+='<h2>Das hat die SV beschlossen</h2>'+p.beschluesse.map(function(b){
+    return '<div class="card"><div class="meta">'+esc(fs(b.datum))+'</div><p style="margin-top:2px">'+esc(b.text)+'</p>'+
+      (b.ergebnis?'<span class="pill '+pillCls(b.ergebnis)+'">'+esc(b.ergebnis)+'</span>':'')+(b.stand?'<span class="pill '+pillCls(b.stand)+'">'+esc(b.stand)+'</span>':'')+'</div>'}).join('')}
+  if(p.projekte&&p.projekte.length){any=true;h+='<h2>Projekte</h2>'+p.projekte.map(function(x){
+    return '<div class="card"><h3>'+esc(x.name)+'</h3>'+(x.ziel?'<p style="margin-top:2px">'+esc(x.ziel)+'</p>':'')+'<span class="pill '+pillCls(x.status)+'">'+esc(x.status)+'</span>'+(x.termin?'<span class="meta"> bis '+esc(fs(x.termin))+'</span>':'')+'</div>'}).join('')}
+  if(!any)h+='<p class="empty">Hier erscheinen bald Termine und Beschlüsse der SV.</p>';
+  if(p.kontakt)h+='<h2>Fragen und Ideen</h2><div class="card"><p style="margin:0">'+esc(p.kontakt)+'</p></div>';
+  h+='<p class="foot">'+(p.at?'Stand: '+esc(fs(p.at))+' '+esc(new Intl.DateTimeFormat('de-DE',{hour:'2-digit',minute:'2-digit'}).format(dt(p.at)||new Date()))+' Uhr. ':'')+'Diese Seite wird von der Schülervertretung gepflegt.</p>';
+  m.innerHTML=h;
+}
+if(!API||!KEY){m.innerHTML='<p class="meta">Die Seite ist nicht eingerichtet.</p>';return}
+fetch(API+'/rest/v1/rpc/get_page',{method:'POST',headers:{'apikey':KEY,'Content-Type':'application/json'},body:JSON.stringify({p_id:'main'})})
+  .then(function(r){if(!r.ok)throw new Error('http '+r.status);return r.json()})
+  .then(function(p){
+    if(!p||typeof p!=='object'){m.innerHTML='<header><h1>Schülervertretung</h1></header><p class="empty">Diese Seite ist gerade nicht veröffentlicht.</p>';return}
+    render(p);
+  },function(){m.innerHTML='<header><h1>Schülervertretung</h1></header><p class="empty">Die Seite konnte nicht geladen werden. Bitte versuche es später noch einmal.</p>'});
+})();
+</script>
+</body>
+</html>

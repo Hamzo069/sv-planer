@@ -86,6 +86,17 @@ input[type="number"]{width:5.2rem}
 .pill.good{background:var(--good-soft);color:var(--good)}
 .pill.warn{background:var(--warn-soft);color:var(--warn)}
 .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.azg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:12px 0}
+.azc{display:flex;flex-direction:column;gap:6px}
+.azt{font:inherit;font-weight:600;color:var(--ink);border:2px solid var(--accent);background:var(--accent-soft);border-radius:10px;min-height:92px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px;width:100%;text-align:center}
+.azt .n{font-size:2.3rem;line-height:1;font-family:var(--f-mono);font-weight:700}
+.azt:active{transform:scale(.98)}
+.azt.o{border-color:var(--line);background:var(--surface2)}
+.azbar{height:8px;border-radius:99px;background:var(--surface2);overflow:hidden;margin-top:3px}
+.azbar i{display:block;height:100%;background:var(--accent)}
+.azv{border:1.5px solid var(--line);border-radius:10px;padding:12px;margin:10px 0}
+.azv.good{border-color:var(--good);background:var(--good-soft)}
+.azv.warn{border-color:var(--warn);background:var(--warn-soft)}
 .tag{font-size:11px;font-weight:600;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--ink2);vertical-align:middle}
 
 .srow{display:grid;grid-template-columns:9.5rem minmax(0,1fr) auto;gap:4px 14px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:12px 4px;font:inherit;color:inherit;cursor:pointer}
@@ -512,6 +523,175 @@ function wzHTML(){
   var rows=[],i,st='style="page-break-inside:avoid;break-inside:avoid"';
   for(i=0;i<o.anz;i+=2)rows.push('<tr '+st+'><td>'+b+'</td><td>'+(i+1<o.anz?b:'&nbsp;')+'</td></tr>');
   return '<div class="paper"><style>.paper table.wz{margin:0;width:100%;table-layout:fixed}.paper table.wz td{border:1px dashed #777;padding:10px 12px;vertical-align:top;width:50%}</style><table class="wz">'+rows.join('')+'</table></div>';
+}
+/* ---- Öffentliche SV-Seite ---- */
+var WSTAND=[['','Kein Stand'],['offen','Noch offen'],['arbeit','In Arbeit'],['umgesetzt','Umgesetzt']];
+function webTxt(x,n){return String(x==null?'':x).replace(/\s+$/,'').replace(/^\s+/,'').slice(0,n||500)}
+function webNews(){
+  return String(S.settings.webNews||'').split('\n').map(function(l){return l.trim()}).filter(Boolean).slice(0,12).map(function(l){var p=l.split('|').map(function(x){return x.trim()});return {titel:webTxt(p[0],120),datum:webTxt(p[1],60),text:webTxt(p.slice(2).join(' | '),400)}}).filter(function(n){return n.titel})
+}
+function webSnap(){
+  var st=S.settings,now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()),ses=sorted(),o={v:1,at:now.toISOString(),name:webTxt(st.name,80),schule:webTxt(st.schule,80),info:webTxt(st.webInfo,600),kontakt:webTxt(st.webKontakt,200)};
+  o.termine=ses.filter(function(x){var d=dt(x.datum);return x.web===true&&d&&d>=t0}).map(function(x){return {titel:webTxt(x.titel,120),datum:x.datum,ort:webTxt(x.ort,120),tops:x.webTop===true?x.tops.map(function(t){return webTxt(t.titel,120)}).filter(Boolean):[]}});
+  o.news=webNews();
+  o.beschluesse=[];
+  ses.slice().reverse().forEach(function(x){x.beschluesse.forEach(function(b){
+    if(b.web!==true||!String(b.text||'').trim())return;
+    var sd=WSTAND.find(function(z){return z[0]===(b.stand||'')});
+    o.beschluesse.push({datum:x.datum,text:webTxt(b.text,600),ergebnis:(b.ja+b.nein>0)?res(b).label+' ('+b.ja+' Ja, '+b.nein+' Nein'+(b.enth?', '+b.enth+' Enth.':'')+')':'',stand:(b.stand&&sd)?sd[1]:''})})});
+  o.projekte=S.projekte.filter(function(x){return x.web===true&&x.name}).map(function(x){return {name:webTxt(x.name,120),ziel:webTxt(x.ziel,300),status:(PJS.find(function(z){return z[0]===x.status})||PJS[0])[1],termin:x.termin||''}});
+  return o;
+}
+function webHashOf(o){var c=JSON.stringify(Object.assign({},o,{at:''})),h=5381,i;for(i=0;i<c.length;i++)h=((h<<5)+h+c.charCodeAt(i))|0;return String(h)}
+function webTexts(o){var a=[o.info];o.news.forEach(function(n){a.push(n.titel,n.text)});o.termine.forEach(function(t){a.push(t.titel,t.ort);t.tops.forEach(function(x){a.push(x)})});o.beschluesse.forEach(function(b){a.push(b.text)});o.projekte.forEach(function(x){a.push(x.name,x.ziel)});return a.filter(Boolean)}
+function webWarn(o){
+  var tok={},txt=webTexts(o).join('\n'),out=[];
+  S.members.forEach(function(m){String(m.name||'').split(/[\s,\-\/]+/).forEach(function(t){if(t.length>=4)tok[t.toLowerCase()]=t})});
+  Object.keys(tok).forEach(function(k){try{if(new RegExp('(^|[^\\p{L}])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^\\p{L}]|$)','iu').test(txt))out.push(tok[k])}catch(e){if(txt.toLowerCase().indexOf(k)>=0)out.push(tok[k])}});
+  return out;
+}
+function webErr(e){var m=String(e&&e.message||e||'');if((e&&(e.code==='42P01'||e.code==='PGRST202'||e.code==='PGRST205'))||/relation|does not exist|schema cache|Could not find/i.test(m))return 'Datenbank noch nicht vorbereitet: sv-seite.sql in Supabase ausführen';return 'Veröffentlichen nicht möglich ('+m.slice(0,60)+')'}
+function webPrevHTML(){
+  var o=webSnap(),st=S.settings,pubd=!!st.webHash,cur=pubd&&st.webHash===webHashOf(o),w=webWarn(o),h='';
+  h+='<div class="frow" style="margin-bottom:8px">'+(pubd?(cur?'<span class="pill good">Online, aktuell</span>':'<span class="pill warn">Online, aber Änderungen noch nicht veröffentlicht</span>'):'<span class="pill">Noch nicht veröffentlicht</span>')+(pubd&&st.webAt?'<span class="meta">Zuletzt veröffentlicht: '+esc(d2(st.webAt))+' '+esc(t2(st.webAt))+'</span>':'')+'</div>';
+  h+='<p class="meta" style="margin:0 0 6px">Das steht dann auf der Seite: '+'Termine: '+o.termine.length+' · Meldungen: '+o.news.length+' · Beschlüsse: '+o.beschluesse.length+' · Projekte: '+o.projekte.length+(o.info?' · Mitteilung':'')+(o.kontakt?' · Kontakt':'')+'.</p>';
+  if(w.length)h+='<p class="meta bad" style="margin:0 0 6px"><strong>Achtung, Namen im Text:</strong> '+esc(w.join(', '))+'. Die Seite ist für alle lesbar. Entferne Namen oder kläre vorher die Einwilligung.</p>';
+  if(o.termine.length+o.news.length+o.beschluesse.length+o.projekte.length===0&&!o.info)h+='<p class="meta">Wähle oben aus, was erscheinen soll.</p>';
+  return h;
+}
+function webRefresh(){var e=$('#webprev');if(e)e.innerHTML=webPrevHTML()}
+function webDoc(){var url=voteBase()+'sv.html';return '<div class="paper"><style>.webq svg{width:100%;height:100%;display:block}</style><h1>'+esc(S.settings.name||'Schülervertretung')+'</h1><div class="sub">'+esc(S.settings.schule||'')+'</div><p style="text-align:center;font-size:1.1em;margin-top:18px">Termine, Beschlüsse und Projekte der SV</p><div class="webq" style="width:260px;height:260px;margin:20px auto;background:#fff">'+qrSvg(url)+'</div><p style="text-align:center">QR-Code scannen oder diese Adresse öffnen:<br><b>'+esc(url)+'</b></p></div>'}
+function webHTML(){
+  var st=S.settings,url=voteBase()+'sv.html',now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  var h='<section class="card"><div class="vh"><h2>Öffentliche SV-Seite</h2></div>'+
+    '<p class="meta" style="margin-bottom:12px">Eine Webseite für alle Schüler/innen mit Terminen, Beschlüssen und Projekten. Sitzungen sind öffentlich (§ 7 Abs. 4 GO), Beschlüsse sollen der Schülerschaft zugänglich sein (§ 11 Abs. 3 GO). Nichts geht automatisch raus: Du wählst aus, prüfst die Vorschau und klickst auf „Veröffentlichen“. Jede Person mit dem Link kann die Seite lesen. Trage keine Namen von Schüler/innen ein.</p>';
+  if(!CL.on)return h+'<p class="meta">Dafür wird die Cloud gebraucht. Sie ist in dieser Version nicht eingerichtet.</p></section>';
+  h+='<div class="frow" style="align-items:flex-start"><div style="width:130px;height:130px;background:#fff;padding:4px;border-radius:8px;flex:none" role="img" aria-label="QR-Code zur SV-Seite"><style>.uqr svg{width:100%;height:100%;display:block}</style><div class="uqr" style="width:100%;height:100%">'+qrSvg(url)+'</div></div>'+
+    '<div class="grow"><label class="lbl" for="web-l">Link</label><input type="text" id="web-l" readonly value="'+esc(url)+'"><div class="frow" style="margin-top:8px"><button type="button" class="btn sm" data-act="weblink">Link kopieren</button>'+(DL?'<button type="button" class="btn sm" data-act="websave">QR-Aushang als HTML speichern</button>':'<button type="button" class="btn sm" data-act="webhtml">QR-Aushang als HTML kopieren</button>')+'</div></div></div>';
+  h+='<h3 style="margin:18px 0 6px">Texte</h3>'+
+    '<label class="lbl" for="web-i">Mitteilung oben (optional)</label><textarea class="box" id="web-i" data-s="webInfo" style="min-height:64px" placeholder="z. B. Weihnachtsfeier am 18. Dezember in der Mensa, alle sind willkommen!">'+esc(st.webInfo||'')+'</textarea>'+
+    '<label class="lbl" for="web-n" style="margin-top:10px">Meldungen (eine pro Zeile: Titel | Datum | Text)</label><textarea class="box" id="web-n" data-s="webNews" style="min-height:70px" placeholder="Weihnachtsfeier | 18.12., ab 18 Uhr | Mensa, kleines Buffet, Spiele, Fotoecke">'+esc(st.webNews||'')+'</textarea>'+
+    '<label class="lbl" for="web-k" style="margin-top:10px">Kontakt (optional)</label><input type="text" id="web-k" data-s="webKontakt" value="'+esc(st.webKontakt||'')+'" placeholder="z. B. Ideen und Fragen gern per Instagram oder im SV-Raum">';
+  var up=sorted().filter(function(x){var d=dt(x.datum);return d&&d>=t0});
+  h+='<h3 style="margin:18px 0 6px">Nächste Sitzungen</h3>';
+  if(!up.length)h+='<p class="meta">Keine kommenden Sitzungen angelegt.</p>';
+  up.forEach(function(x){h+='<div class="frow" style="gap:12px;margin-bottom:6px;flex-wrap:wrap"><label class="frow" style="gap:8px"><input type="checkbox" data-sid="'+x.id+'" data-f="web" data-rr="1"'+(x.web===true?' checked':'')+'><span>'+esc(rowDate(x.datum)+' · '+(x.titel||'Ohne Titel'))+'</span></label>'+(x.web===true?'<label class="frow meta" style="gap:6px"><input type="checkbox" data-sid="'+x.id+'" data-f="webTop" data-rr="1"'+(x.webTop===true?' checked':'')+'>mit Tagesordnung</label>':'')+'</div>'});
+  h+='<h3 style="margin:18px 0 6px">Beschlüsse</h3><p class="meta" style="margin-bottom:6px">Standardmäßig ist nichts angehakt. Der Text steht so auf der Seite. Wer zuständig ist, wird nie veröffentlicht.</p>';
+  var any=false;
+  sorted().slice().reverse().forEach(function(x){
+    if(!x.beschluesse.length)return;any=true;
+    h+='<div class="meta" style="margin:10px 0 4px"><strong>'+esc(rowDate(x.datum)+' · '+(x.titel||'Ohne Titel'))+'</strong></div>';
+    x.beschluesse.forEach(function(b){var c='data-sid="'+x.id+'" data-coll="beschluesse" data-id="'+b.id+'"';
+      h+='<div class="frow" style="gap:10px;margin-bottom:6px;align-items:flex-start;flex-wrap:wrap"><label class="frow" style="gap:8px;flex:1 1 260px"><input type="checkbox" '+c+' data-f="web" data-rr="1"'+(b.web===true?' checked':'')+'><span>'+esc((b.text||'(ohne Text)').slice(0,200))+'</span></label>'+
+        (b.web===true?'<select '+c+' data-f="stand" data-rr="1" aria-label="Stand der Umsetzung" style="width:auto">'+opts(WSTAND,b.stand||'')+'</select>':'')+'</div>'});
+  });
+  if(!any)h+='<p class="meta">Noch keine Beschlüsse erfasst.</p>';
+  h+='<h3 style="margin:18px 0 6px">Projekte</h3>';
+  if(!S.projekte.length)h+='<p class="meta">Noch keine Projekte angelegt.</p>';
+  S.projekte.forEach(function(x){h+='<label class="frow" style="gap:8px;margin-bottom:6px"><input type="checkbox" data-pj="'+x.id+'" data-f="web" data-rr="1"'+(x.web===true?' checked':'')+'><span>'+esc(x.name||'(ohne Name)')+' <span class="meta">· '+esc((PJS.find(function(z){return z[0]===x.status})||PJS[0])[1])+'</span></span></label>'});
+  h+='<h3 style="margin:18px 0 6px">Prüfen und veröffentlichen</h3><div id="webprev">'+webPrevHTML()+'</div>'+
+    '<div class="frow" style="margin-top:10px"><button type="button" class="btn primary" data-act="webpub">'+(ui.confirm==='webpub'?'Sicher? Nochmal klicken':(st.webHash?'Aktualisieren':'Veröffentlichen'))+'</button>'+(st.webHash?cbtn('webunpub','Veröffentlichung zurückziehen','data-act="webunpub"'):'')+'</div>'+
+    '<p class="meta" style="margin-top:6px">Veröffentlichen ersetzt den bisherigen Stand der Seite. Zurückziehen löscht ihn wieder.</p></section>';
+  return h;
+}
+/* ---- Auszählhilfe ---- */
+function azRounds(){var a=S.settings.az;if(!Array.isArray(a))return [];return a.filter(function(r){return r&&Array.isArray(r.kand)&&r.kand.length&&Array.isArray(r.c)})}
+function azCur(){var a=azRounds();return a.length?a[a.length-1]:null}
+function azArt(r){return r.art==='stich'?'Stichwahl':r.art==='erneut'?'Erneute Wahl':'1. Wahlgang'}
+function azSum(r){return r.kand.reduce(function(a,n,i){return a+(+r.c[i]||0)},0)+(+r.enth||0)+(+r.ung||0)}
+function azNm(x){return x.n}
+function azEval(r,ez){
+  var v=r.kand.map(function(n,i){return +r.c[i]||0}),sum=v.reduce(function(a,b){return a+b},0),valid=sum+(ez?(+r.enth||0):0);
+  var rank=r.kand.map(function(n,i){return {n:n,v:v[i]}}).sort(function(a,b){return b.v-a.v}),fix=r.fix||[];
+  var o={valid:valid,need:Math.floor(valid/2)+1,rank:rank};
+  if(!valid||!rank.length){o.typ='leer';return o}
+  var t=rank[0];
+  if(t.v*2>valid){
+    if(fix.length){o.typ='stich';o.names=fix.concat(t.n);o.fix=[];o.why='qual'}else{o.typ='win';o.name=t.n}
+    return o}
+  var tied1=rank.filter(function(x){return x.v===t.v});
+  if(!fix.length&&rank.length>2&&tied1.length===2){o.typ='stich';o.names=tied1.map(azNm);o.fix=[];o.why='gleich1';return o}
+  if(!fix.length&&rank.length>2&&tied1.length===1){
+    var sec=rank[1].v,tied2=rank.filter(function(x,i){return i>0&&x.v===sec});
+    if(tied2.length===1){o.typ='stich';o.names=[t.n,rank[1].n];o.fix=[];o.why='keine';return o}
+    o.typ='erneut';o.names=tied2.map(azNm);o.fix=[t.n];o.why='gleich2';return o}
+  var cont;if(tied1.length>=2)cont=tied1;else{var s2=rank[1]?rank[1].v:-1;cont=rank.filter(function(x,i){return i===0||x.v===s2})}
+  o.typ='erneut';o.names=cont.map(azNm);o.fix=fix.slice();o.why=tied1.length>=2?'gleich1':'keine';return o;
+}
+function azVerdict(ev,r){
+  var L=function(a){return a.length>1?a.slice(0,-1).join(', ')+' und '+a[a.length-1]:a.join('')};
+  if(ev.typ==='leer')return '';
+  if(ev.typ==='win')return '„'+ev.name+'“ hat die absolute Mehrheit ('+ev.rank[0].v+' von '+ev.valid+' gültigen Stimmen) und ist gewählt. Als Nächstes die Annahme der Wahl abfragen (§ 6 Abs. 8 GO).';
+  if(ev.typ==='stich'){
+    if(ev.why==='qual')return '„'+ev.rank[0].n+'“ hat sich durchgesetzt und tritt in der Stichwahl gegen '+L(r.fix)+' an.';
+    return (ev.why==='gleich1'?'Gleichstand an der Spitze.':'Keine absolute Mehrheit (nötig: mindestens '+ev.need+' von '+ev.valid+' gültigen Stimmen).')+' Stichwahl zwischen '+L(ev.names)+' (§ 6 Abs. 4 GO).';
+  }
+  var t=ev.why==='gleich2'?'Gleichstand um Platz 2.':ev.why==='gleich1'?'Stimmengleichheit an der Spitze.':'Keine Mehrheit (nötig: mindestens '+ev.need+' von '+ev.valid+' gültigen Stimmen).';
+  return t+(ev.names.length<2?' Die Wahl muss wiederholt werden (§ 6 Abs. 7 GO).':' Erneute Wahl zwischen '+L(ev.names)+' (§ 6 Abs. 7 GO).')+(ev.fix&&ev.fix.length?' Wer sich durchsetzt, tritt in der Stichwahl gegen '+L(ev.fix)+' an.':'');
+}
+function azReady(r){var s=azSum(r),abg=+r.abg||0,ausg=+r.ausg||0;return s>0&&(!abg||s===abg)&&!(ausg>0&&abg>ausg)}
+function azChk(r){
+  var s=azSum(r),abg=+r.abg||0,ausg=+r.ausg||0,h='';
+  if(abg>0){h=s===abg?'<span class="pill good">Alle '+abg+' Zettel gezählt</span>':s<abg?'<span class="pill warn">Noch '+(abg-s)+' von '+abg+' Zetteln offen</span>':'<span class="pill bad">'+(s-abg)+' Stimmen mehr erfasst als Zettel in der Urne</span>'}
+  else h='<span class="pill">Gezählt: '+s+'</span> <span class="meta">Trage die Zahl der Zettel in der Urne ein, dann prüfe ich die Zählung.</span>';
+  if(ausg>0&&abg>ausg)h+=' <span class="pill bad">Mehr Zettel in der Urne ('+abg+') als ausgegeben ('+ausg+'): Wahlleitung muss das klären</span>';
+  return h;
+}
+function azRoundLine(r,ez){
+  var parts=r.kand.map(function(n,i){return n+' '+(+r.c[i]||0)});
+  return azArt(r)+': '+parts.join(', ')+', Enthaltungen '+(+r.enth||0)+', ungültig '+(+r.ung||0)+((+r.abg)?' ('+r.abg+' Zettel abgegeben)':'');
+}
+function azFinal(){var r=azCur();if(!r)return null;var ev=azEval(r,!!S.settings.azEz);return (ev.typ==='win'&&azReady(r))?ev:null}
+function azText(){
+  var R=azRounds(),ez=!!S.settings.azEz,o=R.map(function(r){return azRoundLine(r,ez)});
+  var f=azFinal();if(f)o.push('Ergebnis: '+f.name+' ist gewählt ('+f.rank[0].v+' von '+f.valid+' gültigen Stimmen).');
+  return o.join('\n');
+}
+function azResultHTML(){
+  var r=azCur();if(!r)return '';
+  var ez=!!S.settings.azEz,ev=azEval(r,ez),rdy=azReady(r),h='';
+  if(ev.typ==='leer')return '<p class="meta">Noch keine gültige Stimme gezählt.</p>';
+  h+=ev.rank.map(function(x){var pc=ev.valid?Math.round(x.v*100/ev.valid):0;return '<div style="margin-bottom:6px"><div class="frow" style="justify-content:space-between"><strong>'+esc(x.n)+'</strong><span class="mono">'+x.v+' · '+pc+' %</span></div><div class="azbar"><i style="width:'+pc+'%"></i></div></div>'}).join('');
+  h+='<p class="meta" style="margin:6px 0">Gültige Stimmen: '+ev.valid+(ez?' (Enthaltungen zählen mit)':' (ohne Enthaltungen)')+' · für die absolute Mehrheit nötig: '+ev.need+' · Enthaltungen: '+(+r.enth||0)+' · ungültig: '+(+r.ung||0)+'</p>';
+  if(r.kand.length===1&&!ez&&(+r.enth||0)>ev.valid)h+='<p class="meta bad">Mehr Enthaltungen als Stimmen für die Kandidatur. Prüfe, ob die Einstellung „Enthaltungen zählen als gültige Stimmen“ gelten soll.</p>';
+  h+='<div class="azv '+(ev.typ==='win'?'good':'warn')+'"><strong>'+(rdy?'':'Vorläufig: ')+'</strong>'+esc(azVerdict(ev,r))+(rdy?'':' <span class="meta">(Erst endgültig, wenn alle Zettel gezählt sind.)</span>')+'</div>';
+  h+='<div class="frow">';
+  if(ev.typ==='win'&&rdy)h+='<button type="button" class="btn primary" data-act="azuebern">In die Wahlniederschrift übernehmen</button>';
+  if((ev.typ==='stich'||ev.typ==='erneut')&&rdy)h+='<button type="button" class="btn primary" data-act="azweiter">'+(ev.typ==='stich'?'Stichwahl vorbereiten':'Erneute Wahl vorbereiten')+'</button>';
+  h+='<button type="button" class="btn" data-act="azcopy">Ergebnis als Text kopieren</button></div>';
+  return h;
+}
+function azRefresh(){var r=azCur(),a=$('#azchk'),b=$('#azres');if(!r)return;if(a)a.innerHTML=azChk(r);if(b)b.innerHTML=azResultHTML()}
+function azSet(k,v){var r=azCur();if(!r||(k!=='ausg'&&k!=='abg'))return;r[k]=Math.max(0,parseInt(v,10)||0);save()}
+function azAdd(r,k,dl){
+  if(k==='e')r.enth=Math.max(0,(+r.enth||0)+dl);
+  else if(k==='u')r.ung=Math.max(0,(+r.ung||0)+dl);
+  else{var i=parseInt(k,10);if(i>=0&&i<r.kand.length)r.c[i]=Math.max(0,(+r.c[i]||0)+dl)}
+}
+function azHTML(){
+  var R=azRounds(),ez=!!S.settings.azEz;
+  var h='<section class="card"><div class="vh"><h2>Auszählung</h2></div>'+
+    '<p class="meta" style="margin-bottom:12px">Zähle die Zettel am Bildschirm: Namen vorlesen, den passenden Knopf tippen. Gespeichert werden nur Zahlen, nie wer wie gewählt hat. Regeln nach GO § 6: Gewählt ist, wer mehr als die Hälfte der gültigen Stimmen hat. Sonst Stichwahl der beiden Bestplatzierten, bei Stimmengleichheit erneute Wahl.</p>'+
+    '<label class="frow meta" style="gap:6px;margin-bottom:4px"><input type="checkbox" data-s="azEz" data-rr="1"'+(ez?' checked':'')+'>Enthaltungen zählen als gültige Stimmen</label>'+
+    '<p class="meta" style="margin:0 0 12px">Die GO sagt dazu nichts Ausdrückliches. Standard hier: nein. Bitte vorher im Gremium klären. Bei nur einer Kandidatur entscheidet das, ob viele Enthaltungen die Wahl verhindern können.</p>';
+  if(!R.length){
+    return h+'<label class="lbl" for="az-kand">Kandidat/innen (ein Name pro Zeile)</label><textarea class="box" id="az-kand" data-s="wzKand" style="min-height:90px" placeholder="Name 1&#10;Name 2">'+esc(S.settings.wzKand||'')+'</textarea>'+
+      '<p class="meta" style="margin-top:4px">Dieselbe Liste wie unter „Wahlzettel“.</p>'+
+      '<div class="frow" style="margin-top:12px"><button type="button" class="btn primary" data-act="azstart">Auszählung beginnen</button></div></section>';
+  }
+  var r=R[R.length-1],undo=(ui.azUndo||[]).length;
+  h+='<div class="frow" style="margin-bottom:10px"><span class="pill accent">'+azArt(r)+'</span><span class="meta">Zur Wahl: '+esc(r.kand.join(', '))+'</span></div>'+
+    '<div class="g2"><div><label class="lbl" for="az-ausg">Ausgegebene Zettel</label><input type="number" id="az-ausg" min="0" data-az="ausg" value="'+esc(r.ausg||'')+'"></div>'+
+    '<div><label class="lbl" for="az-abg">Zettel in der Urne</label><input type="number" id="az-abg" min="0" data-az="abg" value="'+esc(r.abg||'')+'"></div></div>'+
+    '<div id="azchk" style="margin:10px 0">'+azChk(r)+'</div>'+
+    '<div class="azg">'+r.kand.map(function(n,k){return '<div class="azc"><button type="button" class="azt" data-act="azk" data-k="'+k+'"><span>'+esc(n)+'</span><span class="n">'+(+r.c[k]||0)+'</span></button><button type="button" class="btn sm" data-act="azdec" data-k="'+k+'" aria-label="Eine Stimme für '+esc(n)+' abziehen">−1</button></div>'}).join('')+
+    '<div class="azc"><button type="button" class="azt o" data-act="azk" data-k="e"><span>Enthaltung</span><span class="n">'+(+r.enth||0)+'</span></button><button type="button" class="btn sm" data-act="azdec" data-k="e" aria-label="Eine Enthaltung abziehen">−1</button></div>'+
+    '<div class="azc"><button type="button" class="azt o" data-act="azk" data-k="u"><span>Ungültig</span><span class="n">'+(+r.ung||0)+'</span></button><button type="button" class="btn sm" data-act="azdec" data-k="u" aria-label="Einen ungültigen Zettel abziehen">−1</button></div></div>'+
+    '<div class="frow"><button type="button" class="btn"'+(undo?'':' disabled')+' data-act="azundo">↩ Letzte Eingabe zurücknehmen</button></div>'+
+    '<h3 style="margin:16px 0 6px">Zwischenstand</h3><div id="azres">'+azResultHTML()+'</div>';
+  if(R.length>1)h+='<h4 style="margin:14px 0 6px">Frühere Wahlgänge</h4>'+R.slice(0,-1).map(function(x){return '<p class="meta" style="margin:0 0 4px">'+esc(azRoundLine(x,ez))+'</p>'}).join('');
+  h+='<div class="frow" style="margin-top:16px">'+cbtn('azreset','Auszählung verwerfen und neu beginnen','data-act="azreset"')+'</div></section>';
+  return h;
 }
 function wnHTML(s,t,edit){
   var c='data-sid="'+s.id+'" data-coll="tops" data-id="'+t.id+'"';
@@ -1699,6 +1879,7 @@ function vVorl(){
     (wzj?'':'<label class="lbl" for="wz-kand" style="margin-top:12px">Kandidat/innen (ein Name pro Zeile)</label><textarea class="box" id="wz-kand" data-s="wzKand" style="min-height:90px" placeholder="Name 1&#10;Name 2">'+esc(S.settings.wzKand||'')+'</textarea>')+
     '<div class="frow" style="margin:12px 0">'+(DL?'<button type="button" class="btn primary" data-act="wzsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="wzhtml">HTML kopieren</button>')+'</div>'+
     '<div class="sheet" id="wzsheet">'+(wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>')+'</div></section>';
+  h+='<!--Sb-->'+azHTML();
 
   var as=ensureA();
   h+='<!--S5--><section class="card"><div class="vh"><h2>Einladung und Aushang</h2></div>';
@@ -1732,6 +1913,7 @@ function vVorl(){
       '<div class="sheet" style="margin-top:14px">'+bnHTML(bn)+'</div>';
   }
   h+='</section>';
+  h+='<!--Sc-->'+webHTML();
   var nss=ensureNs();
   h+='<!--S7--><section class="card"><div class="vh"><h2>Niederschrift</h2></div>';
   if(!nss)h+='<p class="empty">Noch keine Sitzung angelegt.</p>';
@@ -1752,7 +1934,7 @@ function vVorl(){
     '<div class="frow" style="margin-bottom:12px">'+(DL?'<button type="button" class="btn primary" data-act="bsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="bhtml">HTML kopieren</button>')+'</div><div class="sheet">'+berichtHTML(by,true)+'</div></section>';
   var pieces=h.replace('<div class="stack">','').split(/<!--S(\w+)-->/),parts={};
   for(var i=1;i<pieces.length;i+=2)parts[pieces[i]]=pieces[i+1];
-  var VT=[['0','Protokoll'],['7','Niederschrift'],['8','Beschluss-Aushang'],['1','Teilnehmerliste'],['4','Wahlniederschrift'],['a','Wahlzettel'],['5','Einladung & Aushang'],['9','Moderationsskript'],['6','Jahresbericht'],['2','Textvorlagen'],['3','Meine Vorlagen']];
+  var VT=[['0','Protokoll'],['7','Niederschrift'],['8','Beschluss-Aushang'],['c','Öffentliche Seite'],['1','Teilnehmerliste'],['4','Wahlniederschrift'],['a','Wahlzettel'],['b','Auszählung'],['5','Einladung & Aushang'],['9','Moderationsskript'],['6','Jahresbericht'],['2','Textvorlagen'],['3','Meine Vorlagen']];
   var cur=VT.some(function(x){return x[0]===ui.vtab})?ui.vtab:'0';
   return '<div class="stack"><div class="seg tabs" role="group" aria-label="Dokumente" style="align-self:flex-start;max-width:100%;overflow-x:auto">'+VT.map(function(x){return '<button type="button" data-act="vtab" data-v="'+x[0]+'" aria-pressed="'+(cur===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'+parts[cur]+'</div>';
 }
@@ -2102,7 +2284,7 @@ function makePDF(html,name){
   };
   fr.srcdoc=html.replace('</head>','<style>html,body{margin:0!important;padding:0!important;background:#fff!important}.paper{border:0!important;padding:0!important;min-width:0!important;max-width:none!important;width:100%!important;margin:0!important}.sgb,.sgx{display:none!important}</style></head>');
 }
-var PDFMAP={ahsave:'ahpdf',ahhtml:'ahpdf',antsave:'antpdf',anthtml:'antpdf',bsave:'bpdf',bhtml:'bpdf',bnsave:'bnpdf',bnhtml:'bnpdf',gosave:'gopdf',gohtml:'gopdf',nssave:'nspdf',nshtml:'nspdf',protsave:'protpdf',prothtml:'protpdf',skrsave:'skrpdf',skrhtml:'skrpdf',tlsave:'tlpdf',tlhtml:'tlpdf',ufsave:'ufpdf',ufhtml:'ufpdf',wnsave:'wnpdf',wnhtml:'wnpdf',wzsave:'wzpdf',wzhtml:'wzpdf',ufosave:'ufopdf',ufohtml:'ufopdf',einlcopy:'einlpdf'};
+var PDFMAP={ahsave:'ahpdf',ahhtml:'ahpdf',antsave:'antpdf',anthtml:'antpdf',bsave:'bpdf',bhtml:'bpdf',bnsave:'bnpdf',bnhtml:'bnpdf',gosave:'gopdf',gohtml:'gopdf',nssave:'nspdf',nshtml:'nspdf',protsave:'protpdf',prothtml:'protpdf',skrsave:'skrpdf',skrhtml:'skrpdf',tlsave:'tlpdf',tlhtml:'tlpdf',ufsave:'ufpdf',ufhtml:'ufpdf',wnsave:'wnpdf',wnhtml:'wnpdf',wzsave:'wzpdf',wzhtml:'wzpdf',ufosave:'ufopdf',ufohtml:'ufopdf',einlcopy:'einlpdf',websave:'webpdf',webhtml:'webpdf'};
 function addPdfButtons(){
   [].forEach.call(document.querySelectorAll('button[data-act]'),function(b){
     var pa=PDFMAP[b.dataset.act];if(!pa)return;
@@ -2140,6 +2322,7 @@ var A={
   gdel:function(d){var s=sess(d.sid);if(!s)return 'skip';s.gaeste=GA(s).filter(function(g){return g.id!==d.id});save()},
   ahpdf:function(d,b){return pdfRun('ahsave',d,b)},antpdf:function(d,b){return pdfRun('antsave',d,b)},bpdf:function(d,b){return pdfRun('bsave',d,b)},bnpdf:function(d,b){return pdfRun('bnsave',d,b)},gopdf:function(d,b){return pdfRun('gosave',d,b)},
   nspdf:function(d,b){return pdfRun('nssave',d,b)},protpdf:function(d,b){return pdfRun('protsave',d,b)},skrpdf:function(d,b){return pdfRun('skrhtml',d,b)},tlpdf:function(d,b){return pdfRun('tlsave',d,b)},ufpdf:function(d,b){return pdfRun('ufsave',d,b)},wnpdf:function(d,b){return pdfRun('wnsave',d,b)},
+  webpdf:function(d,b){return pdfRun('websave',d,b)},
   einlpdf:function(){var s=ensureA(),el=$('#einltext');if(!s||!el)return 'skip';makePDF(docFile('<div class="paper" style="white-space:pre-wrap">'+esc(el.value)+'</div>','Einladung'),'einladung-'+(s.datum||today()).slice(0,10)+'.pdf');return 'skip'},
   rlpick:function(d){var s=sess(ui.sid);if(!s||!s.live)return 'skip';var x=s.live.rl.find(function(r){return r.name===d.n&&!r.done});
     if(x){if(x.t0)return 'skip';s.live.rl=s.live.rl.filter(function(r){return r!==x})}else s.live.rl.push({id:uid(),name:d.n,done:false,sec:0,t0:null});save()},
@@ -2324,6 +2507,32 @@ var A={
   wzsave:function(){var h=wzHTML();if(!h){toast('Bitte zuerst Kandidat/innen eintragen');return 'skip'}saveFile('stimmzettel-'+((S.settings.wzDatum||today()).replace(/[^0-9A-Za-z]+/g,'-'))+'.html',docFile(h,'Stimmzettel'));return 'skip'},
   wzhtml:function(){var h=wzHTML();if(!h){toast('Bitte zuerst Kandidat/innen eintragen');return 'skip'}copyText(docFile(h,'Stimmzettel'),'#none');return 'skip'},
   wzpdf:function(d,b){return pdfRun('wzsave',d,b)},
+  weblink:function(){copyText(voteBase()+'sv.html','#web-l');return 'skip'},
+  websave:function(){saveFile('sv-seite-qr.html',docFile(webDoc(),'SV-Seite'));return 'skip'},
+  webhtml:function(){copyText(docFile(webDoc(),'SV-Seite'),'#none');return 'skip'},
+  webpub:function(){if(!needCloud())return 'skip';if(!needConfirm('webpub'))return 'skip';
+    var snap=webSnap();toast('Wird veröffentlicht …');
+    CL.client.from('public_page').upsert({id:'main',daten:snap,updated_at:snap.at}).then(function(r){if(r.error)throw r.error;S.settings.webHash=webHashOf(snap);S.settings.webAt=snap.at;save();render();toast('Veröffentlicht')},function(e){toast(webErr(e))});return 'skip'},
+  webunpub:function(){if(!needCloud())return 'skip';if(!needConfirm('webunpub'))return 'skip';
+    CL.client.from('public_page').delete().eq('id','main').then(function(r){if(r.error)throw r.error;S.settings.webHash='';S.settings.webAt='';save();render();toast('Veröffentlichung zurückgezogen')},function(e){toast(webErr(e))});return 'skip'},
+  azstart:function(){var names=String(S.settings.wzKand||'').split('\n').map(function(x){return x.trim()}).filter(Boolean);
+    if(!names.length){toast('Bitte mindestens einen Namen eintragen');return 'skip'}
+    S.settings.az=[{art:'wahl',kand:names,c:names.map(function(){return 0}),enth:0,ung:0,ausg:0,abg:0,fix:[]}];ui.azUndo=[];save()},
+  azk:function(d){var r=azCur();if(!r)return 'skip';azAdd(r,d.k,1);(ui.azUndo=ui.azUndo||[]).push(d.k);save()},
+  azdec:function(d){var r=azCur();if(!r)return 'skip';azAdd(r,d.k,-1);save()},
+  azundo:function(){var r=azCur(),k=(ui.azUndo||[]).pop();if(!r||k===undefined)return 'skip';azAdd(r,k,-1);save()},
+  azreset:function(){if(!needConfirm('azreset'))return 'skip';S.settings.az=[];ui.azUndo=[];save();toast('Auszählung verworfen')},
+  azweiter:function(){var r=azCur();if(!r)return 'skip';var ev=azEval(r,!!S.settings.azEz);if(ev.typ!=='stich'&&ev.typ!=='erneut'||!azReady(r))return 'skip';
+    var names=ev.names.slice();S.settings.az.push({art:ev.typ,kand:names,c:names.map(function(){return 0}),enth:0,ung:0,ausg:+r.abg||0,abg:0,fix:ev.fix||[]});
+    S.settings.wzKand=names.join('\n');S.settings.wzArt='person';S.settings.wzAnz=Math.max(2,(+r.abg||0)+2);ui.azUndo=[];save();toast('Nächster Wahlgang bereit. Die Wahlzettel unter „Wahlzettel“ haben schon die neuen Namen.')},
+  azcopy:function(){copyText(azText(),'#none');return 'skip'},
+  azuebern:function(){var f=azFinal();if(!f)return 'skip';var w0=ensureW();if(!w0.t){toast('Keine Wahl in der Sitzung gefunden. Lege unter „Sitzungen“ einen TOP vom Typ „Wahl“ an.');return 'skip'}
+    var R=azRounds(),r0=R[0],w=w0.t.w=w0.t.w||{};
+    w.abg=+r0.abg||azSum(r0);w.ung=+r0.ung||0;w.enth=+r0.enth||0;
+    [1,2,3].forEach(function(n){w['k'+n]=r0.kand[n-1]||'';w['s'+n]=r0.kand[n-1]?(+r0.c[n-1]||0):''});
+    w.gewaehlt=f.name;
+    if(R.length>1){var old=String(w.bem||'').replace(/(^|\n)Auszählung:[\s\S]*$/,'').trim();w.bem=(old?old+'\n':'')+'Auszählung:\n'+azText()}
+    save();toast('In die Wahlniederschrift übernommen')},
   wnsave:function(){var r=ensureW();if(!r.s)return 'skip';saveFile('wahlniederschrift-'+(r.s.datum||today()).slice(0,10)+'.html',docFile(wnHTML(r.s,r.t,false),'Wahlniederschrift'));return 'skip'},
   wnhtml:function(){var r=ensureW();if(r.s)copyText(docFile(wnHTML(r.s,r.t,false),'Wahlniederschrift'),'#none');return 'skip'},
   ahsave:function(){var s=ensureA();if(!s)return 'skip';saveFile('aushang-'+(s.datum||today()).slice(0,10)+'.html',docFile(ahHTML(s,false),'Aushang'));return 'skip'},
@@ -2402,8 +2611,9 @@ document.addEventListener('input',function(e){
   var t=e.target,d=t.dataset;
   if(d.search!==undefined){ui.q=t.value;$('#res').innerHTML=beschlList();return}
   if(d.gentext!==undefined){if(ui.gen)ui.gen.text=t.value;return}
+  if(d.az!==undefined){azSet(d.az,t.value);azRefresh();return}
   if(d.rr)return;
-  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);refreshDerived();if(/^wz/.test(d.s||'')){var wze=$('#wzsheet');if(wze)wze.innerHTML=wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>'}if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
+  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);refreshDerived();if(/^web/.test(d.s||''))webRefresh();if(/^wz/.test(d.s||'')){var wze=$('#wzsheet');if(wze)wze.innerHTML=wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>'}if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
 });
 document.addEventListener('change',function(e){
   var t=e.target,d=t.dataset;

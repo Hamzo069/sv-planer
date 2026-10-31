@@ -49,6 +49,12 @@ create policy "votes_auth_delete" on public.votes
 
 revoke all on public.polls, public.poll_codes, public.votes from anon;
 
+-- Tabellenrechte für die angemeldeten Konten (neue Supabase-Projekte vergeben sie nicht mehr automatisch)
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on public.polls      to authenticated;
+grant select, insert, update, delete on public.poll_codes to authenticated;
+grant delete                          on public.votes     to authenticated;
+
 -- 3) Funktionen -------------------------------------------------------------
 
 -- Umfrage für die Abstimmungsseite laden (ohne Codes, ohne Stimmen)
