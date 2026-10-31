@@ -110,12 +110,62 @@ input[type="number"]{width:5.2rem}
 .calc.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .calc .dn{font-weight:700;font-size:.9rem}
 .calc .fl{font-size:.68rem;color:var(--warn);line-height:1.1}
+.calc .fl.g{color:var(--good)}
 .calev{display:flex;flex-direction:column;gap:2px;min-width:0}
 .cale{display:block;font-size:.72rem;line-height:1.3;padding:1px 6px;border-radius:6px;background:var(--surface2);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cale.accent{background:var(--accent);color:var(--accent-ink)}
 .cale.warn{background:var(--warn-soft);color:var(--warn)}
 .cale.good{background:var(--good-soft);color:var(--good)}
 @media (max-width:700px){.calc{min-height:3.8rem;padding:4px}.calev{flex-direction:row;flex-wrap:wrap}.cale{font-size:0;height:7px;width:7px;padding:0;border-radius:50%}.calc .fl{display:none}}
+#beamer{display:none}
+#beamer.on{display:flex;position:fixed;inset:0;z-index:5000;background:#0b1a16;color:#fff;flex-direction:column;overflow:hidden;overscroll-behavior:contain}
+.bmbar{position:absolute;left:0;right:0;top:0;transform:translateY(-115%);transition:transform .2s;background:#14201Bf5;padding:max(10px,env(safe-area-inset-top)) 14px 10px;display:flex;flex-wrap:wrap;gap:8px;z-index:2;align-items:center}
+.bmbar.show{transform:none}
+.bmb{font:inherit;font-size:16px;font-weight:600;padding:10px 16px;border-radius:12px;border:1.5px solid #4b6b60;background:#1d3029;color:#fff;cursor:pointer;min-height:44px}
+.bmb.on{background:#0E6B58;border-color:#5fd3b0}
+.bmb.x{margin-left:auto;background:#7a1f17;border-color:#e57a70}
+.bmbar textarea{flex:1 1 100%;font:inherit;font-size:18px;min-height:80px;border-radius:10px;padding:10px;border:0}
+.bmc{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:5vmin 6vmin;text-align:center;gap:2.5vmin;overflow:auto;cursor:default}
+.bmhead{font-size:clamp(18px,3.2vmin,36px);color:#9fd8c6;font-weight:600}
+.bmtop{font-size:clamp(30px,7vmin,84px);font-weight:800;line-height:1.15}
+.bmtimer{font-size:clamp(70px,24vmin,280px);font-weight:800;font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace;color:#5fd3b0;line-height:1}
+.bmtimer.over{color:#ff8a80}
+.bmsub{font-size:clamp(16px,3vmin,32px);color:#b8c9c2}
+.bmlist{list-style:none;padding:0;margin:0;width:min(90vw,1100px);text-align:left;font-size:clamp(16px,3.2vmin,34px)}
+.bmlist.big{font-size:clamp(22px,4.6vmin,56px)}
+.bmlist li{display:flex;gap:16px;padding:.35em .6em;border-radius:12px;align-items:baseline}
+.bmlist li span{min-width:3.6em;font-family:ui-monospace,Menlo,monospace;color:#9fd8c6}
+.bmlist li em{margin-left:auto;font-style:normal;color:#b8c9c2;font-size:.75em}
+.bmlist li.cur{background:#0E6B58}
+.bmlist li.done{opacity:.45;text-decoration:line-through}
+.bmtext{font-size:clamp(26px,5.6vmin,70px);font-weight:700;line-height:1.25;max-width:min(92vw,1400px);white-space:pre-wrap}
+.bmvotes{display:flex;gap:5vmin}
+.bmvotes div{font-size:clamp(18px,3.4vmin,40px);color:#b8c9c2}
+.bmvotes b{display:block;font-size:clamp(50px,13vmin,160px);color:#fff;line-height:1}
+.bmres{font-size:clamp(28px,6vmin,72px);font-weight:800;padding:.2em .8em;border-radius:99px;background:#444}
+.bmres.good{background:#1B7F4A}.bmres.bad{background:#B42318}.bmres.warn{background:#8F5400}
+.bmtiles{display:flex;flex-wrap:wrap;gap:2vmin;justify-content:center;width:100%}
+.bmt{font:inherit;min-width:22vmin;padding:2vmin 3vmin;border-radius:18px;border:2px solid #5fd3b0;background:#12302a;color:#fff;cursor:pointer;display:flex;flex-direction:column;gap:.5vmin;font-size:clamp(16px,3vmin,34px)}
+.bmt b{font-size:clamp(40px,10vmin,120px);line-height:1;font-family:ui-monospace,Menlo,monospace}
+.bmt.o{border-color:#7e8f88;background:#1d2724}
+.bmaz{background:#fff;color:#14201B;border-radius:16px;padding:16px;font-size:clamp(14px,2.4vmin,26px);width:min(94vw,1200px);text-align:left}
+.bmmsg{font-size:clamp(22px,4vmin,48px);color:#b8c9c2}
+.bmbig{font-size:clamp(60px,20vmin,240px);font-weight:800;line-height:1}
+.bmnames{font-size:clamp(18px,3.4vmin,40px);color:#d9efe7;max-width:92vw}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-top:12px}
+.mcard{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden;display:flex;flex-direction:column}
+.mth{aspect-ratio:16/9;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--ink2);overflow:hidden}
+.mth img{width:100%;height:100%;object-fit:cover;display:block}
+.mcard .mi{padding:8px 10px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.mcard .mn{font-weight:600;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bmcm{padding:0!important;gap:0!important;overflow:hidden!important}
+.bmmedia{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000}
+.bmmedia img,.bmmedia video{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
+.bmthumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(30vmin,260px),1fr));gap:2vmin;width:min(96vw,1400px)}
+.bmth{font:inherit;color:#fff;background:#12302a;border:2px solid #4b6b60;border-radius:14px;padding:0;cursor:pointer;overflow:hidden;display:flex;flex-direction:column;text-align:left}
+.bmth .t{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;font-size:3rem;background:#0b1a16;overflow:hidden}
+.bmth .t img{width:100%;height:100%;object-fit:cover}
+.bmth span{padding:6px 10px;font-size:clamp(13px,2.2vmin,22px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .srow{display:grid;grid-template-columns:9.5rem minmax(0,1fr) auto;gap:4px 14px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:12px 4px;font:inherit;color:inherit;cursor:pointer}
 .srow:hover{background:var(--surface2)}
 .srow .st{font-weight:600;overflow-wrap:anywhere}
@@ -229,6 +279,7 @@ textarea.box{font-family:var(--f-mono);font-size:13px;min-height:220px}
   <div id="app"></div>
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="beamer"></div>
 
 <script>
 (function(){
@@ -261,7 +312,7 @@ var STATUS=[['geplant','Geplant','neutral'],['eingeladen','Eingeladen','accent']
 var TYPEN=[['info','Information'],['diskussion','Diskussion'],['beschluss','Beschluss'],['wahl','Wahl'],['sonstiges','Sonstiges'],['ende','Sitzungsende']];
 var AV=[['ja','Anwesend'],['entsch','Entschuldigt'],['nein','Fehlt']];
 var RULES=[['gt50','Mehr als die Hälfte der Stimmberechtigten'],['ge50','Mindestens die Hälfte der Stimmberechtigten'],['ge66','Mindestens zwei Drittel der Stimmberechtigten']];
-var TABS=[['uebersicht','Übersicht'],['sitzungen','Sitzungen'],['anwesenheit','Anwesenheit'],['vorlagen','Vorlagen'],['aufgaben','Aufgaben'],['themen','Themen'],['projekte','Projekte'],['antraege','Anträge'],['umfragen','Umfragen'],['plan','Jahresplan'],['kalender','Kalender'],['beschluesse','Beschlüsse'],['gremium','Gremium'],['daten','Daten']];
+var TABS=[['uebersicht','Übersicht'],['sitzungen','Sitzungen'],['anwesenheit','Anwesenheit'],['vorlagen','Vorlagen'],['aufgaben','Aufgaben'],['themen','Themen'],['projekte','Projekte'],['antraege','Anträge'],['umfragen','Umfragen'],['plan','Jahresplan'],['kalender','Kalender'],['beschluesse','Beschlüsse'],['gremium','Gremium'],['medien','Medien'],['daten','Daten']];
 var ART=[['tagesordnung','Tagesordnung'],['protokoll','Protokoll'],['einladung','Einladung'],['text','Sonstiges']];
 var PLATZ='{{gremium}} {{titel}} {{datum}} {{uhrzeit}} {{ort}} {{heute}} {{tagesordnung}} {{tops_notizen}} {{anwesenheit}} {{beschlussfaehigkeit}} {{beschluesse}} {{aufgaben}} {{notizen}}';
 
@@ -617,7 +668,7 @@ function azAdd(r,k,dl){
 }
 function azHTML(){
   var R=azRounds(),ez=!!S.settings.azEz;
-  var h='<section class="card"><div class="vh"><h2>Auszählung</h2></div>'+
+  var h='<section class="card"><div class="vh"><h2>Auszählung</h2><button type="button" class="btn sm" data-act="bmopen" data-m="az">Auf Beamer zeigen</button></div>'+
     '<p class="meta" style="margin-bottom:12px">Zähle die Zettel am Bildschirm: Namen vorlesen, den passenden Knopf tippen. Gespeichert werden nur Zahlen, nie wer wie gewählt hat. Regeln nach GO § 6: Gewählt ist, wer mehr als die Hälfte der gültigen Stimmen hat. Sonst Stichwahl der beiden Bestplatzierten, bei Stimmengleichheit erneute Wahl.</p>'+
     '<label class="frow meta" style="gap:6px;margin-bottom:4px"><input type="checkbox" data-s="azEz" data-rr="1"'+(ez?' checked':'')+'>Enthaltungen zählen als gültige Stimmen</label>'+
     '<p class="meta" style="margin:0 0 12px">Die GO sagt dazu nichts Ausdrückliches. Standard hier: nein. Bitte vorher im Gremium klären. Bei nur einer Kandidatur entscheidet das, ob viele Enthaltungen die Wahl verhindern können.</p>';
@@ -877,6 +928,195 @@ function sjList(){
 function sjOpts(cur,id,ui_){return '<select id="'+id+'" data-ui="'+ui_+'">'+sjList().map(function(y){return '<option value="'+y+'"'+(y===cur?' selected':'')+'>Schuljahr '+y+'</option>'}).join('')+'</select>'}
 function ensureSj(k){var l=sjList();if(l.indexOf(ui[k])<0)ui[k]=l.indexOf(curSj())>=0?curSj():l[l.length-1];return ui[k]}
 
+/* ---- WhatsApp-Teilen ---- */
+function waOpen(txt){
+  txt=String(txt||'').trim();if(!txt){toast('Kein Text vorhanden');return}
+  var url='https://wa.me/?text='+encodeURIComponent(txt);
+  if(url.length>7000){copyText(txt,'#none');toast('Text ist zu lang für WhatsApp und wurde kopiert');return}
+  try{
+    if(window.Neutralino&&window.NL_OS&&Neutralino.os&&Neutralino.os.open){Neutralino.os.open(url).catch(function(){toast('Link konnte nicht geöffnet werden')});return}
+    var a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';document.body.appendChild(a);a.click();a.remove();
+  }catch(e){toast('WhatsApp konnte nicht geöffnet werden')}
+}
+function waTaskText(t){
+  var n=String(t.wer||'').trim().split(/\s+/)[0];
+  return (n?'Hallo '+n+', ':'Hallo, ')+'kurze Erinnerung aus der SV: „'+(t.text||'Aufgabe')+'“'+(t.frist?' ist bis '+fristLabel(t.frist)+' offen':' ist noch offen')+'. Gib mir gern kurz Bescheid, wie der Stand ist. Danke!';
+}
+function waBesText(s){
+  var l=['*Beschlüsse der '+(s.titel||'Sitzung')+' am '+d2(s.datum)+'*',''];
+  s.beschluesse.forEach(function(b,i){var v=(b.ja||b.nein||b.enth)?' (Ja '+b.ja+', Nein '+b.nein+', Enthaltungen '+b.enth+')':'';l.push((i+1)+'. '+(b.text||'(ohne Text)')+v)});
+  return l.join('\n');
+}
+
+/* ---- Medien (Bilder und Videos, nur lokal auf diesem Gerät) ---- */
+var MDB=null,MEDIA=[],MURL={},MAXMB=800;
+function mdbOpen(){return new Promise(function(res,rej){
+  if(MDB)return res(MDB);
+  if(!window.indexedDB)return rej(new Error('kein IndexedDB'));
+  var r=indexedDB.open('sv-planer-media',1);
+  r.onupgradeneeded=function(){var d=r.result;d.createObjectStore('meta',{keyPath:'id'});d.createObjectStore('files',{keyPath:'id'})};
+  r.onsuccess=function(){MDB=r.result;res(MDB)};r.onerror=function(){rej(r.error)};
+})}
+function mdbRun(stores,mode,fn){return mdbOpen().then(function(d){return new Promise(function(res,rej){
+  var tx=d.transaction(stores,mode),out=fn(tx);
+  tx.oncomplete=function(){res(out&&typeof out==='object'&&'result' in out?out.result:out)};
+  tx.onerror=tx.onabort=function(){rej(tx.error||new Error('Speicherfehler'))};
+})})}
+function mediaSort(){MEDIA.sort(function(a,b){return (b.added||0)-(a.added||0)})}
+function mediaEst(){try{if(navigator.storage&&navigator.storage.estimate)navigator.storage.estimate().then(function(e){ui.mEst=e;if(ui.view==='medien')render()})}catch(e){}}
+function mediaLoad(){
+  return mdbRun(['meta'],'readonly',function(tx){return tx.objectStore('meta').getAll()}).then(function(l){
+    MEDIA=(l||[]).map(function(m){if(m.thumb)m.turl=URL.createObjectURL(m.thumb);return m});mediaSort();mediaEst();render();
+  },function(){});
+}
+function guessType(f){
+  if(f.type&&/^(image|video)\//.test(f.type))return f.type;
+  var e=(f.name.split('.').pop()||'').toLowerCase();
+  var m={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',heic:'image/heic',heif:'image/heif',mp4:'video/mp4',m4v:'video/mp4',mov:'video/quicktime',webm:'video/webm'};
+  return m[e]||'';
+}
+function makeThumb(file,type){
+  return new Promise(function(res){
+    var url=URL.createObjectURL(file),done=false;
+    function fin(b){if(done)return;done=true;URL.revokeObjectURL(url);res(b||null)}
+    function draw(el,w,h){try{var c=document.createElement('canvas'),W=320,H=180;c.width=W;c.height=H;var x=c.getContext('2d'),sc=Math.max(W/w,H/h),dw=w*sc,dh=h*sc;x.drawImage(el,(W-dw)/2,(H-dh)/2,dw,dh);c.toBlob(function(b){fin(b)},'image/jpeg',0.72)}catch(e){fin(null)}}
+    setTimeout(function(){fin(null)},6000);
+    if(type.indexOf('image')===0){var im=new Image();im.onload=function(){draw(im,im.naturalWidth||320,im.naturalHeight||180)};im.onerror=function(){fin(null)};im.src=url}
+    else{var v=document.createElement('video');v.muted=true;v.preload='metadata';v.playsInline=true;
+      v.onloadedmetadata=function(){try{v.currentTime=Math.min(1,(v.duration||2)/10)}catch(e){fin(null)}};
+      v.onseeked=function(){draw(v,v.videoWidth||320,v.videoHeight||180)};v.onerror=function(){fin(null)};v.src=url}
+  });
+}
+function mediaAdd1(f){
+  var type=guessType(f);
+  if(!type){toast('„'+f.name+'“ ist kein Bild oder Video');return Promise.resolve()}
+  if(f.size>MAXMB*1048576){toast('„'+f.name+'“ ist größer als '+MAXMB+' MB');return Promise.resolve()}
+  return makeThumb(f,type).then(function(th){
+    var id=uid()+uid(),meta={id:id,name:f.name,type:type,size:f.size,added:Date.now(),thumb:th};
+    return mdbRun(['meta','files'],'readwrite',function(tx){tx.objectStore('files').put({id:id,blob:f});tx.objectStore('meta').put(meta)}).then(function(){
+      if(th)meta.turl=URL.createObjectURL(th);MEDIA.push(meta);mediaSort();
+    });
+  });
+}
+function mediaAdd(files){
+  var l=[].slice.call(files||[]);if(!l.length)return;
+  ui.mBusy=true;render();
+  var ch=Promise.resolve();
+  l.forEach(function(f){ch=ch.then(function(){return mediaAdd1(f)})});
+  ch.then(function(){toast(l.length===1?'Hinzugefügt':l.length+' Dateien verarbeitet')},function(e){toast(e&&e.name==='QuotaExceededError'?'Speicher voll. Lösche andere Medien.':'Speichern nicht möglich')}).then(function(){ui.mBusy=false;mediaEst();render()});
+}
+function mediaDel(id){
+  return mdbRun(['meta','files'],'readwrite',function(tx){tx.objectStore('files').delete(id);tx.objectStore('meta').delete(id)}).then(function(){
+    var m=MEDIA.find(function(x){return x.id===id});if(m&&m.turl)URL.revokeObjectURL(m.turl);
+    if(MURL[id]){MURL[id].then(function(u){URL.revokeObjectURL(u)});delete MURL[id]}
+    MEDIA=MEDIA.filter(function(x){return x.id!==id});if(ui.bmMedia===id)ui.bmMedia=null;mediaEst();render();
+  },function(){toast('Löschen nicht möglich')});
+}
+function mediaUrl(id){
+  if(MURL[id])return MURL[id];
+  MURL[id]=mdbRun(['files'],'readonly',function(tx){return tx.objectStore('files').get(id)}).then(function(r){if(!r||!r.blob)throw new Error('fehlt');return URL.createObjectURL(r.blob)});
+  MURL[id].catch(function(){delete MURL[id]});return MURL[id];
+}
+function mb(n){return (n/1048576).toFixed(n>=1048576*10?0:1).replace('.',',')+' MB'}
+function vMedien(){
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>Medien für den Beamer</h2></div><p class="meta">Lade Bilder und Videos hoch und zeige sie in der Beamer-Ansicht. Die Dateien bleiben nur auf diesem Gerät. Sie werden nicht in die Cloud synchronisiert und nicht in der Sicherung gespeichert. Nutze nur Inhalte, für die ihr die Rechte habt.</p>';
+  h+='<div class="frow" style="margin-top:10px"><label class="btn primary" for="mfile" style="cursor:pointer">'+(ui.mBusy?'Wird verarbeitet …':'Bilder oder Videos hochladen')+'</label><input type="file" id="mfile" multiple accept="image/*,video/*" style="position:absolute;opacity:0;width:1px;height:1px">'+
+    (MEDIA.length?'<button type="button" class="btn" data-act="bmopen" data-m="media">Beamer öffnen</button>':'')+'</div>';
+  if(ui.mEst&&ui.mEst.quota)h+='<p class="meta" style="margin-top:8px">Belegt: '+mb(ui.mEst.usage||0)+' von ca. '+mb(ui.mEst.quota)+' möglichem Speicher auf diesem Gerät.</p>';
+  h+='</section>';
+  if(!MEDIA.length)return h+'<section class="card"><p class="empty">Noch keine Medien.</p></section></div>';
+  h+='<section class="card"><div class="mgrid">'+MEDIA.map(function(m){
+    var vid=m.type.indexOf('video')===0;
+    return '<div class="mcard"><div class="mth">'+(m.turl?'<img src="'+m.turl+'" alt="">':(vid?'▶':'🖼'))+'</div><div class="mi"><div class="mn" title="'+esc(m.name)+'">'+esc(m.name)+'</div><div class="meta">'+(vid?'Video':'Bild')+' · '+mb(m.size)+'</div>'+
+      '<div class="frow"><button type="button" class="btn sm primary" data-act="bmopen" data-m="media" data-id="'+m.id+'">Zeigen</button>'+cbtn('mdel'+m.id,'Löschen','data-act="mdel" data-id="'+m.id+'"')+'</div></div></div>'}).join('')+'</div></section></div>';
+  return h;
+}
+function bmMediaFill(){
+  var h=$('#bm-media');if(!h)return;var id=h.dataset.mid,it=MEDIA.find(function(x){return x.id===id});if(!it)return;
+  mediaUrl(id).then(function(u){
+    var h2=$('#bm-media');if(!h2||h2.dataset.mid!==id||h2.firstChild)return;
+    var e;
+    if(it.type.indexOf('video')===0){e=document.createElement('video');e.src=u;e.controls=true;e.playsInline=true;e.setAttribute('playsinline','');e.autoplay=true;h2.appendChild(e);var pr=e.play();if(pr&&pr.catch)pr.catch(function(){})}
+    else{e=document.createElement('img');e.src=u;e.alt=it.name;h2.appendChild(e)}
+  },function(){toast('Datei konnte nicht geladen werden')});
+}
+
+/* ---- Beamer-Ansicht (gespiegelt per AirPlay oder HDMI) ---- */
+var bmT=null;
+function bmSess(){return S.sessions.find(function(x){return x.live&&x.live.on})||sess(ui.sid)||nextSession()}
+function bmArm(){clearTimeout(bmT);bmT=setTimeout(function(){ui.bmBar=false;var b=document.querySelector('#beamer .bmbar');if(b)b.classList.remove('show')},5000)}
+function bmBtn(m,l){return '<button type="button" class="bmb'+(ui.bm===m?' on':'')+'" data-act="bmmode" data-m="'+m+'">'+l+'</button>'}
+function bmBesIdx(s){var n=s.beschluesse.length;if(!n)return -1;var i=ui.bmB==null?n-1:ui.bmB;return Math.max(0,Math.min(n-1,i))}
+function bmHTML(){
+  var s=bmSess(),m=ui.bm,x='',extra='';
+  var L=s&&s.live&&s.live.on?s.live:null;
+  if(m==='top'){
+    if(!s)x='<p class="bmmsg">Keine Sitzung ausgewählt.</p>';
+    else{
+      var st=dt(s.datum),acc=0,cur=L?L.top:-1,t=L&&s.tops[L.top];
+      x='<div class="bmhead">'+esc(s.titel||'Sitzung')+(st?' · '+esc(fTime.format(st))+' Uhr':'')+'</div>';
+      if(t){var el=lvTopSec(s,t),over=t.min>0&&el>t.min*60;
+        x+='<div class="bmtop">'+esc(t.titel||'')+'</div><div class="bmtimer'+(over?' over':'')+'" id="bm-timer" data-min="'+(t.min||0)+'">'+mmss(el)+'</div>'+(t.min?'<div class="bmsub">geplant '+t.min+' Min.'+(L.paused?' · pausiert':'')+'</div>':(L.paused?'<div class="bmsub">pausiert</div>':''));}
+      x+='<ol class="bmlist'+(t?'':' big')+'">'+s.tops.map(function(q,i){var tm=st?fTime.format(new Date(st.getTime()+acc*60000)):(i+1)+'.';acc+=q.min||0;return '<li class="'+(i===cur?'cur':(cur>=0&&i<cur?'done':''))+'"><span>'+esc(tm)+'</span>'+esc(q.titel||'')+(q.min?'<em>'+q.min+' Min.</em>':'')+'</li>'}).join('')+'</ol>';
+    }
+  }else if(m==='bes'){
+    var bi=s?bmBesIdx(s):-1;
+    if(bi<0)x='<p class="bmmsg">Noch kein Beschluss angelegt.</p>';
+    else{
+      var b=s.beschluesse[bi],tot=b.ja+b.nein+b.enth;
+      x='<div class="bmhead">Beschluss '+(bi+1)+' von '+s.beschluesse.length+'</div><div class="bmtext">'+esc(b.text||'(noch ohne Text)')+'</div>';
+      if(tot>0){var r=res(b);x+='<div class="bmvotes"><div><b>'+b.ja+'</b>Ja</div><div><b>'+b.nein+'</b>Nein</div><div><b>'+b.enth+'</b>Enthaltung</div></div><div class="bmres '+r.k+'">'+esc(r.label)+'</div>'}
+    }
+    extra='<button type="button" class="bmb" data-act="bmbes" data-d="-1">← Vorheriger</button><button type="button" class="bmb" data-act="bmbes" data-d="1">Nächster →</button>';
+  }else if(m==='az'){
+    var r2=azCur();
+    if(!r2)x='<p class="bmmsg">Es läuft keine Auszählung.</p>';
+    else{
+      x='<div class="bmhead">Auszählung</div><div class="bmtiles">'+r2.kand.map(function(n,i){return '<button type="button" class="bmt" data-act="azk" data-k="'+i+'"><span>'+esc(n)+'</span><b>'+(r2.c[i]||0)+'</b></button>'}).join('')+
+        '<button type="button" class="bmt o" data-act="azk" data-k="e"><span>Enthaltung</span><b>'+(r2.enth||0)+'</b></button><button type="button" class="bmt o" data-act="azk" data-k="u"><span>Ungültig</span><b>'+(r2.ung||0)+'</b></button></div>'+
+        '<div class="bmaz">'+azResultHTML()+'</div>';
+    }
+    extra='<button type="button" class="bmb" data-act="azundo">↩ Letzte Eingabe zurück</button>';
+  }else if(m==='anw'){
+    if(!s)x='<p class="bmmsg">Keine Sitzung ausgewählt.</p>';
+    else{
+      var q=quorum(s),pres=S.members.filter(function(mm){return mm.aktiv&&s.anw[mm.id]==='ja'});
+      x='<div class="bmhead">Anwesenheit</div><div class="bmbig">'+q.present+' <span style="font-size:.4em;color:#b8c9c2">von '+q.N+'</span></div><div class="bmres '+(q.ok?'good':'warn')+'">'+(q.ok?'Beschlussfähig':'Nicht beschlussfähig')+'</div><div class="bmsub">benötigt: '+q.need+'</div>';
+      if(ui.bmNames)x+='<div class="bmnames">'+pres.map(function(mm){return esc(mm.name||'?')}).join(' · ')+'</div>';
+    }
+    extra='<button type="button" class="bmb'+(ui.bmNames?' on':'')+'" data-act="bmnames">Namen '+(ui.bmNames?'verbergen':'zeigen')+'</button>';
+  }else if(m==='media'){
+    var mi=ui.bmMedia&&MEDIA.find(function(q){return q.id===ui.bmMedia});
+    if(mi){x='<div class="bmmedia" id="bm-media" data-mid="'+mi.id+'"></div>';extra='<button type="button" class="bmb" data-act="bmmsel">▦ Auswahl</button><button type="button" class="bmb" data-act="bmmstep" data-d="-1">◀ Zurück</button><button type="button" class="bmb" data-act="bmmstep" data-d="1">Weiter ▶</button>'}
+    else if(!MEDIA.length)x='<p class="bmmsg">Keine Medien vorhanden. Lade sie im Reiter „Medien“ hoch.</p>';
+    else x='<div class="bmhead">Medien auswählen</div><div class="bmthumbs">'+MEDIA.map(function(q){return '<button type="button" class="bmth" data-act="bmmpick" data-id="'+q.id+'"><div class="t">'+(q.turl?'<img src="'+q.turl+'" alt="">':(q.type.indexOf('video')===0?'▶':'🖼'))+'</div><span>'+esc(q.name)+'</span></button>'}).join('')+'</div>';
+  }else if(m==='text'){
+    x='<div class="bmtext" id="bm-text">'+esc(ui.bmText||'')+'</div>';
+    extra='<textarea data-bmtext="1" placeholder="Text für den Beamer">'+esc(ui.bmText||'')+'</textarea>';
+  }
+  var bar='<div class="bmbar'+(ui.bmBar?' show':'')+'">'+bmBtn('top','Tagesordnung')+bmBtn('bes','Beschluss')+bmBtn('az','Auszählung')+bmBtn('anw','Anwesenheit')+bmBtn('media','Medien')+bmBtn('text','Text')+bmBtn('black','Schwarz')+'<button type="button" class="bmb x" data-act="bmclose">Beenden</button>'+extra+'</div>';
+  var cc=(m==='media'&&ui.bmMedia&&MEDIA.some(function(q){return q.id===ui.bmMedia}))?' bmcm':'';
+  return bar+'<div class="bmc'+cc+'" data-act="bmtap">'+x+'</div>';
+}
+function bmRender(){
+  var el=$('#beamer');if(!el)return;
+  if(!ui.bm){el.className='';el.innerHTML='';el.removeAttribute('role');return}
+  el.className='on';el.setAttribute('role','dialog');el.setAttribute('aria-label','Beamer-Ansicht');
+  var ta=el.querySelector('textarea'),keep=ta&&document.activeElement===ta;
+  if(keep)return;
+  if(ui.bm==='media'&&ui.bmMedia){
+    var cur=el.querySelector('#bm-media[data-mid="'+ui.bmMedia+'"]');
+    if(cur&&cur.firstChild){var tmp=document.createElement('div');tmp.innerHTML=bmHTML();var nb=tmp.querySelector('.bmbar'),ob=el.querySelector('.bmbar');if(nb&&ob)ob.replaceWith(nb);return}
+  }
+  el.innerHTML=bmHTML();
+  if(ui.bm==='media'&&ui.bmMedia)bmMediaFill();
+}
+setInterval(function(){
+  if(ui.bm!=='top')return;var s=bmSess();if(!s||!s.live||!s.live.on)return;
+  var b=$('#bm-timer'),t=s.tops[s.live.top];if(b&&t){var e=lvTopSec(s,t);b.textContent=mmss(e);var m=+b.dataset.min;b.classList.toggle('over',m>0&&e>m*60)}
+},1000);
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&ui.bm){ui.bm=null;render();return}if(ui.bm==='media'&&ui.bmMedia&&(e.key==='ArrowRight'||e.key==='ArrowLeft')&&!/VIDEO|TEXTAREA|INPUT/.test((document.activeElement||{}).tagName||'')){A.bmmstep({d:e.key==='ArrowRight'?1:-1});render()}});
+
 /* ---- Ferien und Feiertage (Hessen) ---- */
 function easter(y){var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da)}
 var FT_CACHE={};
@@ -905,7 +1145,7 @@ function ferienList(){return (S.settings.ferienApi||[]).concat(parseFerien(S.set
 function freiInfo(ds){
   ds=String(ds||'').slice(0,10);if(!/^\d{4}-\d\d-\d\d$/.test(ds))return null;
   var ft=feiertage(+ds.slice(0,4))[ds];if(ft)return {k:'Feiertag',t:ft};
-  var l=ferienList();for(var i=0;i<l.length;i++){if(ds>=l[i].von&&ds<=l[i].bis)return {k:'Ferien',t:l[i].name||'Schulferien',bis:l[i].bis}}
+  var l=ferienList();for(var i=0;i<l.length;i++){if(ds>=l[i].von&&ds<=l[i].bis)return {k:'Ferien',t:l[i].name||'Schulferien',von:l[i].von,bis:l[i].bis}}
   return null;
 }
 function freiPill(ds){
@@ -954,11 +1194,12 @@ function vKal(){
   var mname=new Intl.DateTimeFormat('de-DE',{month:'long',year:'numeric'}).format(new Date(y,mo,1));
   var h='<div class="stack"><section class="card"><div class="vh"><h2>'+esc(mname)+'</h2><div class="frow"><button type="button" class="btn sm" data-act="calp" aria-label="Voriger Monat">←</button><button type="button" class="btn sm" data-act="calt">Heute</button><button type="button" class="btn sm" data-act="caln" aria-label="Nächster Monat">→</button></div></div>';
   h+='<p class="meta">Sitzungen, Fristen und Termine. Ferien sind grün, Feiertage gelb hinterlegt. Tippe auf einen Tag für die Einzelheiten.</p>';
+  if(!ferienList().length)h+='<p class="meta" style="margin-top:6px"><span class="pill warn">Keine Schulferien hinterlegt</span> Lade sie unter Gremium oder trage sie dort von Hand ein. <button type="button" class="btn sm" data-act="nav" data-v="gremium">Ferien einrichten</button></p>';
   h+='<div class="cal" role="grid">'+WTAGE.map(function(w){return '<div class="calh">'+w+'</div>'}).join('');
   var i;for(i=0;i<off;i++)h+='<div class="calc off"></div>';
   for(var d=1;d<=days;d++){
     var ds=cm+'-'+pad(d),f=freiInfo(ds),ev=by[ds]||[],wd=(off+d-1)%7;
-    h+='<button type="button" class="calc'+(ds===td?' today':'')+(wd>=5?' we':'')+(f?(f.k==='Ferien'?' fe':' ft'):'')+(ui.calD===ds?' sel':'')+'" data-act="calday" data-d="'+ds+'" aria-label="'+esc(d2(ds+'T00:00')+(ev.length?', '+ev.length+' Termine':'')+(f?', '+f.t:''))+'"><span class="dn">'+d+'</span>'+(f&&f.k==='Feiertag'?'<span class="fl">'+esc(f.t)+'</span>':'')+
+    h+='<button type="button" class="calc'+(ds===td?' today':'')+(wd>=5?' we':'')+(f?(f.k==='Ferien'?' fe':' ft'):'')+(ui.calD===ds?' sel':'')+'" data-act="calday" data-d="'+ds+'" aria-label="'+esc(d2(ds+'T00:00')+(ev.length?', '+ev.length+' Termine':'')+(f?', '+f.t:''))+'"><span class="dn">'+d+'</span>'+(f&&f.k==='Feiertag'?'<span class="fl">'+esc(f.t)+'</span>':'')+(f&&f.k==='Ferien'&&(f.von===ds||d===1||wd===0)?'<span class="fl g">'+esc(f.t)+'</span>':'')+
       (ev.length?'<span class="calev">'+ev.slice(0,2).map(function(x){return '<span class="cale '+x.c+'">'+esc((x.tm?x.tm+' ':'')+x.t)+'</span>'}).join('')+(ev.length>2?'<span class="cale">+'+(ev.length-2)+' weitere</span>':'')+'</span>':'')+'</button>';
   }
   var rest=(7-((off+days)%7))%7;for(i=0;i<rest;i++)h+='<div class="calc off"></div>';
@@ -1369,7 +1610,7 @@ function vLive(){
   if(!s||!s.live||!s.live.on)return '<div class="stack"><section class="card"><p class="empty">Kein Sitzungsmodus aktiv.</p><button type="button" class="btn" data-act="back">Zurück</button></section></div>';
   var L=s.live,sid=s.id,q=quorum(s),t=s.tops[L.top],n=s.tops.length;
   var h='<div class="stack"><section class="card"><div class="frow"><div class="grow"><strong>'+esc(s.titel||'Sitzung')+'</strong><div class="meta">Beginn '+esc(pfv(s,'beginn',''))+' · Gesamt <span id="lv-tot" class="mono">'+mmss(lvTotal(s))+'</span>'+(L.paused?' · <b>pausiert</b>':'')+'</div></div>'+
-    '<button type="button" class="btn sm" data-act="livepause">'+(L.paused?'Weiter':'Pause')+'</button><button type="button" class="btn sm" data-act="livequit">Zur Sitzung</button>'+cbtn('liveend','Sitzung beenden','data-act="liveend"')+'</div></section>';
+    '<button type="button" class="btn sm primary" data-act="bmopen" data-m="top">Beamer</button><button type="button" class="btn sm" data-act="livepause">'+(L.paused?'Weiter':'Pause')+'</button><button type="button" class="btn sm" data-act="livequit">Zur Sitzung</button>'+cbtn('liveend','Sitzung beenden','data-act="liveend"')+'</div></section>';
   /* Anwesenheit */
   var act=S.members.filter(function(m){return m.aktiv});
   h+='<section class="card"><div class="vh"><h3>Anwesenheit</h3><span class="pill '+(q.ok?'good':'warn')+'">'+(q.ok?'Beschlussfähig':'Nicht beschlussfähig')+': '+q.present+' von '+q.N+', benötigt '+q.need+'</span></div><div class="frow" style="flex-wrap:wrap;gap:6px">'+
@@ -1655,7 +1896,7 @@ function sRow(s){
 }
 function taskRow(t,showSess){
   var od=!t.done&&t.frist&&t.frist<today();
-  return '<div class="trow'+(t.done?' done':'')+'"><input type="checkbox" id="tk-'+t.id+'" data-sid="'+t.sid+'" data-coll="aufgaben" data-id="'+t.id+'" data-f="done" data-rr="1"'+(t.done?' checked':'')+'><div class="tmain"><label for="tk-'+t.id+'">'+(esc(t.text)||'<em>Ohne Text</em>')+'</label><div class="meta">'+(t.wer?esc(t.wer):'Niemand zugewiesen')+(t.frist?' · <span class="'+(od?'bad':'')+'">bis '+fristLabel(t.frist)+(od?' (überfällig)':'')+'</span>':'')+(showSess?' · <button type="button" class="link" data-act="open" data-sid="'+t.sid+'">'+esc(t.stitel||'Sitzung')+' ('+esc(shortD(t.sdatum))+')</button>':'')+'</div></div></div>';
+  return '<div class="trow'+(t.done?' done':'')+'"><input type="checkbox" id="tk-'+t.id+'" data-sid="'+t.sid+'" data-coll="aufgaben" data-id="'+t.id+'" data-f="done" data-rr="1"'+(t.done?' checked':'')+'><div class="tmain"><label for="tk-'+t.id+'">'+(esc(t.text)||'<em>Ohne Text</em>')+'</label><div class="meta">'+(t.wer?esc(t.wer):'Niemand zugewiesen')+(t.frist?' · <span class="'+(od?'bad':'')+'">bis '+fristLabel(t.frist)+(od?' (überfällig)':'')+'</span>':'')+(showSess?' · <button type="button" class="link" data-act="open" data-sid="'+t.sid+'">'+esc(t.stitel||'Sitzung')+' ('+esc(shortD(t.sdatum))+')</button>':'')+(t.done?'':' · <button type="button" class="link" data-act="taskwa" data-sid="'+t.sid+'" data-id="'+t.id+'">Per WhatsApp erinnern</button>')+'</div></div></div>';
 }
 function topSum(s){
   var m=s.tops.reduce(function(a,t){return a+(t.min||0)},0),d=dt(s.datum),end='';
@@ -1782,7 +2023,7 @@ function vDetail(s){
   if(nth&&(s.status==='geplant'||s.status==='eingeladen'))h+='<p class="meta" style="margin:0 0 8px"><span class="pill">Themenspeicher</span> '+nth+' offene'+(nth===1?'s Thema':' Themen')+'. <button type="button" class="btn sm" data-act="nav" data-v="themen">Ansehen</button></p>';
   var prevS=sorted().filter(function(x){return x.id!==s.id&&x.datum<s.datum&&(x.status==='gehalten'||x.status==='protokolliert')}).pop();
   if(prevS&&fg(prevS).st!=='genehmigt')h+='<p class="meta" style="margin:0 0 8px"><span class="pill warn">Offen</span> Das Protokoll der Sitzung vom '+esc(d2(prevS.datum))+' ist noch nicht genehmigt. Plane die Genehmigung als TOP ein.</p>';
-  h+='<section class="card"><div class="vh"><h3>Protokoll '+(s.tops.length?fgPill(s):'')+'</h3><div class="frow">'+(s.tops.length?'<button type="button" class="btn sm primary" data-act="livego" data-sid="'+sid+'">'+(s.live&&s.live.on?'Sitzungsmodus fortsetzen':'Sitzung starten')+'</button><button type="button" class="btn sm" data-act="protopen" data-sid="'+sid+'">Protokoll öffnen</button>':'')+'<button type="button" class="btn sm" data-act="tlopen" data-sid="'+sid+'">Teilnehmerliste</button>'+'<button type="button" class="btn sm" data-act="md" data-sid="'+sid+'">'+(ui.md===sid?'Schnelltext ausblenden':'Schnelltext')+'</button></div></div>';
+  h+='<section class="card"><div class="vh"><h3>Protokoll '+(s.tops.length?fgPill(s):'')+'</h3><div class="frow">'+(s.tops.length?'<button type="button" class="btn sm primary" data-act="livego" data-sid="'+sid+'">'+(s.live&&s.live.on?'Sitzungsmodus fortsetzen':'Sitzung starten')+'</button><button type="button" class="btn sm" data-act="protopen" data-sid="'+sid+'">Protokoll öffnen</button>':'')+(s.beschluesse.length?'<button type="button" class="btn sm" data-act="beswa" data-sid="'+sid+'">Beschlüsse per WhatsApp</button>':'')+'<button type="button" class="btn sm" data-act="bmopen" data-m="top" data-sid="'+sid+'">Beamer</button><button type="button" class="btn sm" data-act="tlopen" data-sid="'+sid+'">Teilnehmerliste</button>'+'<button type="button" class="btn sm" data-act="md" data-sid="'+sid+'">'+(ui.md===sid?'Schnelltext ausblenden':'Schnelltext')+'</button></div></div>';
   if(ui.md===sid){
     h+='<textarea class="box" id="mdbox" readonly aria-label="Protokoll als Markdown">'+esc(protokollMD(s))+'</textarea><div class="frow" style="margin-top:8px"><button type="button" class="btn primary" data-act="mdcopy" data-sid="'+sid+'">Kopieren</button>'+(DL?'<button type="button" class="btn" data-act="mdsave" data-sid="'+sid+'">Als .md speichern</button>':'')+'</div>';
   }else h+='<p class="meta">Erzeugt aus Anwesenheit, Tagesordnung, Beschlüssen und Aufgaben.</p>';
@@ -1935,7 +2176,7 @@ function vVorl(){
     h+='<div class="frow" style="margin-bottom:12px"><label class="meta" for="a-sel">Sitzung</label><select id="a-sel" data-ui="asid" class="grow">'+all.map(function(s){return '<option value="'+s.id+'"'+(s.id===as.id?' selected':'')+'>'+esc(rowDate(s.datum)+' · '+(s.titel||'Ohne Titel'))+'</option>'}).join('')+'</select></div>'+
       '<h3 style="margin:0 0 6px">Einladung (Text für Mail oder Messenger)</h3>'+
       '<textarea class="box" id="einltext" style="min-height:260px">'+esc(einlText(as))+'</textarea>'+
-      '<div class="frow" style="margin:8px 0 18px"><button type="button" class="btn primary" data-act="einlcopy">Kopieren</button>'+(DL?'<button type="button" class="btn" data-act="einlsave">Als Textdatei speichern</button>':'')+'</div>'+
+      '<div class="frow" style="margin:8px 0 18px"><button type="button" class="btn primary" data-act="einlcopy">Kopieren</button><button type="button" class="btn" data-act="einlwa">Per WhatsApp teilen</button>'+(DL?'<button type="button" class="btn" data-act="einlsave">Als Textdatei speichern</button>':'')+'</div>'+
       '<h3 style="margin:0 0 6px">Aushang (A4 zum Ausdrucken)</h3>'+
       '<div class="frow" style="margin-bottom:12px">'+(DL?'<button type="button" class="btn primary" data-act="ahsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="ahhtml">HTML kopieren</button>')+'</div>'+
       '<div class="sheet">'+ahHTML(as,true)+'</div>';
@@ -2055,13 +2296,14 @@ function vDaten(){
 }
 
 /* ---------- Rendern ---------- */
-var VIEWS={uebersicht:vUeber,sitzungen:vSitz,vorlagen:vVorl,aufgaben:vAufg,live:vLive,anwesenheit:vAnwes,themen:vThemen,projekte:vProj,antraege:vAnt,umfragen:vUmf,plan:vPlan,kalender:vKal,beschluesse:vBesch,gremium:vGremium,daten:vDaten};
+var VIEWS={uebersicht:vUeber,sitzungen:vSitz,vorlagen:vVorl,aufgaben:vAufg,live:vLive,anwesenheit:vAnwes,themen:vThemen,projekte:vProj,antraege:vAnt,umfragen:vUmf,plan:vPlan,kalender:vKal,beschluesse:vBesch,gremium:vGremium,medien:vMedien,daten:vDaten};
 function render(top){
   var y=window.scrollY;
   $('#gname').textContent=S.settings.name||'';
   $('#app').innerHTML=nav()+banner()+(VIEWS[ui.view]||vUeber)();
   try{addPdfButtons()}catch(e){}
   window.scrollTo(0,top?0:y);
+  try{bmRender()}catch(e){}
   try{localStorage.setItem(KEY+'-tab',ui.view)}catch(e){}
 }
 function refreshDerived(){
@@ -2557,6 +2799,16 @@ var A={
   wzsave:function(){var h=wzHTML();if(!h){toast('Bitte zuerst Kandidat/innen eintragen');return 'skip'}saveFile('stimmzettel-'+((S.settings.wzDatum||today()).replace(/[^0-9A-Za-z]+/g,'-'))+'.html',docFile(h,'Stimmzettel'));return 'skip'},
   wzhtml:function(){var h=wzHTML();if(!h){toast('Bitte zuerst Kandidat/innen eintragen');return 'skip'}copyText(docFile(h,'Stimmzettel'),'#none');return 'skip'},
   wzpdf:function(d,b){return pdfRun('wzsave',d,b)},
+  bmopen:function(d){if(d.sid)ui.sid=d.sid;if(d.id)ui.bmMedia=d.id;ui.bm=d.m||'top';ui.bmBar=true;bmArm()},
+  bmmode:function(d){ui.bm=d.m;ui.bmBar=true;bmArm()},
+  bmmpick:function(d){ui.bmMedia=d.id;ui.bmBar=true;bmArm()},
+  bmmsel:function(){ui.bmMedia=null;ui.bmBar=true;bmArm()},
+  bmmstep:function(d){var n=MEDIA.length;if(!n)return 'skip';var i=MEDIA.findIndex(function(x){return x.id===ui.bmMedia});ui.bmMedia=MEDIA[(i+(+d.d||1)+n)%n].id;ui.bmBar=true;bmArm()},
+  mdel:function(d){if(ui.confirm!==('mdel'+d.id)&&pc!==('mdel'+d.id)){ui.confirm='mdel'+d.id;return}mediaDel(d.id);return 'skip'},
+  bmclose:function(){ui.bm=null;clearTimeout(bmT)},
+  bmtap:function(){ui.bmBar=true;var b=document.querySelector('#beamer .bmbar');if(b)b.classList.add('show');bmArm();return 'skip'},
+  bmbes:function(d){var s=bmSess();if(!s||!s.beschluesse.length)return 'skip';ui.bmB=Math.max(0,Math.min(s.beschluesse.length-1,bmBesIdx(s)+(+d.d||0)));ui.bmBar=true;bmArm()},
+  bmnames:function(){ui.bmNames=!ui.bmNames;ui.bmBar=true;bmArm()},
   frload:function(){if(ui.frBusy)return 'skip';ferienLaden();return 'skip'},
   azstart:function(){var names=String(S.settings.wzKand||'').split('\n').map(function(x){return x.trim()}).filter(Boolean);
     if(!names.length){toast('Bitte mindestens einen Namen eintragen');return 'skip'}
@@ -2597,6 +2849,9 @@ var A={
   skrsave:function(){var s=ensureA(),el=$('#skrtext');if(s&&el)saveFile('moderationsskript-'+(s.datum||today()).slice(0,10)+'.txt',el.value);return 'skip'},
   skrhtml:function(){var s=ensureA();if(!s)return 'skip';saveFile('moderationsskript-'+(s.datum||today()).slice(0,10)+'.html',docFile(skriptHTML(s),'Moderationsskript'));return 'skip'},
   skrnew:function(){var s=ensureA(),el=$('#skrtext');if(s&&el){el.value=skriptText(s);toast('Skript neu erstellt')}return 'skip'},
+  einlwa:function(){var el=$('#einltext');if(el)waOpen(el.value);return 'skip'},
+  taskwa:function(d){var s=sess(d.sid),t=s&&s.aufgaben.find(function(x){return x.id===d.id});if(!t)return 'skip';waOpen(waTaskText(t));return 'skip'},
+  beswa:function(d){var s=sess(d.sid);if(!s||!s.beschluesse.length)return 'skip';waOpen(waBesText(s));return 'skip'},
   einlcopy:function(){var el=$('#einltext');if(el)copyText(el.value,'#einltext');return 'skip'},
   einlsave:function(){var s=ensureA(),el=$('#einltext');if(s&&el)saveFile('einladung-'+(s.datum||today()).slice(0,10)+'.txt',el.value);return 'skip'},
   tlopen:function(d){ui.vtab='1';ui.tsid=d.sid;ui.view='vorlagen';ui.sid=null;return true},
@@ -2654,6 +2909,7 @@ document.addEventListener('input',function(e){
   var t=e.target,d=t.dataset;
   if(d.search!==undefined){ui.q=t.value;$('#res').innerHTML=beschlList();return}
   if(d.gentext!==undefined){if(ui.gen)ui.gen.text=t.value;return}
+  if(d.bmtext!==undefined){ui.bmText=t.value;var bt=$('#bm-text');if(bt)bt.textContent=t.value;if(ui.bm)bmArm();return}
   if(d.az!==undefined){azSet(d.az,t.value);azRefresh();return}
   if(d.rr)return;
   if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);refreshDerived();if(/^wz/.test(d.s||'')){var wze=$('#wzsheet');if(wze)wze.innerHTML=wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>'}if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
@@ -2662,11 +2918,13 @@ document.addEventListener('change',function(e){
   var t=e.target,d=t.dataset;
   if(d.ui){ui[d.ui]=t.value;render();return}
   if(d.gensel){ui.gen[d.gensel]=t.value;regen();render();return}
+  if(t.id==='mfile'){mediaAdd(t.files);try{t.value=''}catch(e){}return}
   if(t.id==='impfile'){readImport(t.files&&t.files[0]);return}
   if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);if(d.rr)render();else refreshDerived()}
 });
 
 render();
+try{mediaLoad()}catch(e){}
 try{if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js')}catch(e){}
 try{cloudInit()}catch(e){}
 try{
