@@ -99,6 +99,23 @@ input[type="number"]{width:5.2rem}
 .azv.warn{border-color:var(--warn);background:var(--warn-soft)}
 .tag{font-size:11px;font-weight:600;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--ink2);vertical-align:middle}
 
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:10px}
+.calh{font-size:.8rem;font-weight:700;color:var(--ink2);text-align:center;padding:4px 0}
+.calc{min-height:5.6rem;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px;text-align:left;font:inherit;color:inherit;cursor:pointer;display:flex;flex-direction:column;gap:3px;overflow:hidden}
+.calc.off{background:transparent;border-color:transparent;cursor:default}
+.calc.we{background:var(--surface2)}
+.calc.fe{background:var(--good-soft)}
+.calc.ft{background:var(--warn-soft)}
+.calc.today{outline:2px solid var(--accent)}
+.calc.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.calc .dn{font-weight:700;font-size:.9rem}
+.calc .fl{font-size:.68rem;color:var(--warn);line-height:1.1}
+.calev{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cale{display:block;font-size:.72rem;line-height:1.3;padding:1px 6px;border-radius:6px;background:var(--surface2);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cale.accent{background:var(--accent);color:var(--accent-ink)}
+.cale.warn{background:var(--warn-soft);color:var(--warn)}
+.cale.good{background:var(--good-soft);color:var(--good)}
+@media (max-width:700px){.calc{min-height:3.8rem;padding:4px}.calev{flex-direction:row;flex-wrap:wrap}.cale{font-size:0;height:7px;width:7px;padding:0;border-radius:50%}.calc .fl{display:none}}
 .srow{display:grid;grid-template-columns:9.5rem minmax(0,1fr) auto;gap:4px 14px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:12px 4px;font:inherit;color:inherit;cursor:pointer}
 .srow:hover{background:var(--surface2)}
 .srow .st{font-weight:600;overflow-wrap:anywhere}
@@ -244,7 +261,7 @@ var STATUS=[['geplant','Geplant','neutral'],['eingeladen','Eingeladen','accent']
 var TYPEN=[['info','Information'],['diskussion','Diskussion'],['beschluss','Beschluss'],['wahl','Wahl'],['sonstiges','Sonstiges'],['ende','Sitzungsende']];
 var AV=[['ja','Anwesend'],['entsch','Entschuldigt'],['nein','Fehlt']];
 var RULES=[['gt50','Mehr als die Hälfte der Stimmberechtigten'],['ge50','Mindestens die Hälfte der Stimmberechtigten'],['ge66','Mindestens zwei Drittel der Stimmberechtigten']];
-var TABS=[['uebersicht','Übersicht'],['sitzungen','Sitzungen'],['anwesenheit','Anwesenheit'],['vorlagen','Vorlagen'],['aufgaben','Aufgaben'],['themen','Themen'],['projekte','Projekte'],['antraege','Anträge'],['umfragen','Umfragen'],['plan','Jahresplan'],['beschluesse','Beschlüsse'],['gremium','Gremium'],['daten','Daten']];
+var TABS=[['uebersicht','Übersicht'],['sitzungen','Sitzungen'],['anwesenheit','Anwesenheit'],['vorlagen','Vorlagen'],['aufgaben','Aufgaben'],['themen','Themen'],['projekte','Projekte'],['antraege','Anträge'],['umfragen','Umfragen'],['plan','Jahresplan'],['kalender','Kalender'],['beschluesse','Beschlüsse'],['gremium','Gremium'],['daten','Daten']];
 var ART=[['tagesordnung','Tagesordnung'],['protokoll','Protokoll'],['einladung','Einladung'],['text','Sonstiges']];
 var PLATZ='{{gremium}} {{titel}} {{datum}} {{uhrzeit}} {{ort}} {{heute}} {{tagesordnung}} {{tops_notizen}} {{anwesenheit}} {{beschlussfaehigkeit}} {{beschluesse}} {{aufgaben}} {{notizen}}';
 
@@ -860,6 +877,103 @@ function sjList(){
 function sjOpts(cur,id,ui_){return '<select id="'+id+'" data-ui="'+ui_+'">'+sjList().map(function(y){return '<option value="'+y+'"'+(y===cur?' selected':'')+'>Schuljahr '+y+'</option>'}).join('')+'</select>'}
 function ensureSj(k){var l=sjList();if(l.indexOf(ui[k])<0)ui[k]=l.indexOf(curSj())>=0?curSj():l[l.length-1];return ui[k]}
 
+/* ---- Ferien und Feiertage (Hessen) ---- */
+function easter(y){var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da)}
+var FT_CACHE={};
+function feiertage(y){
+  if(FT_CACHE[y])return FT_CACHE[y];
+  var e=easter(y),o={};function ad(n){return dstr(new Date(e.getFullYear(),e.getMonth(),e.getDate()+n))}
+  o[y+'-01-01']='Neujahr';o[ad(-2)]='Karfreitag';o[ad(1)]='Ostermontag';o[y+'-05-01']='Tag der Arbeit';o[ad(39)]='Christi Himmelfahrt';o[ad(50)]='Pfingstmontag';o[ad(60)]='Fronleichnam';o[y+'-10-03']='Tag der Deutschen Einheit';o[y+'-12-25']='1. Weihnachtstag';o[y+'-12-26']='2. Weihnachtstag';
+  return FT_CACHE[y]=o;
+}
+var FR_LAST={t:null,v:[]};
+function parseFerien(txt){
+  txt=String(txt||'');if(FR_LAST.t===txt)return FR_LAST.v;
+  var out=[];
+  txt.split('\n').forEach(function(l){
+    l=l.trim();if(!l)return;
+    var re=/(\d{4})-(\d\d)-(\d\d)|(\d{1,2})\.(\d{1,2})\.(\d{4})/g,m,ds=[];
+    while((m=re.exec(l))){ds.push(m[1]?m[1]+'-'+m[2]+'-'+m[3]:m[6]+'-'+pad(+m[5])+'-'+pad(+m[4]))}
+    if(!ds.length)return;if(ds.length===1)ds.push(ds[0]);
+    var v=ds[0],b=ds[1];if(v>b){var x=v;v=b;b=x}
+    var nm=l.replace(re,' ').replace(/\bbis\b/gi,' ').replace(/(^|\s)[–—\-:]+(?=\s|$)/g,' ').replace(/\s+/g,' ').trim();
+    out.push({von:v,bis:b,name:(nm||'Ferien').slice(0,60)});
+  });
+  FR_LAST={t:txt,v:out};return out;
+}
+function ferienList(){return (S.settings.ferienApi||[]).concat(parseFerien(S.settings.ferienTxt))}
+function freiInfo(ds){
+  ds=String(ds||'').slice(0,10);if(!/^\d{4}-\d\d-\d\d$/.test(ds))return null;
+  var ft=feiertage(+ds.slice(0,4))[ds];if(ft)return {k:'Feiertag',t:ft};
+  var l=ferienList();for(var i=0;i<l.length;i++){if(ds>=l[i].von&&ds<=l[i].bis)return {k:'Ferien',t:l[i].name||'Schulferien',bis:l[i].bis}}
+  return null;
+}
+function freiPill(ds){
+  var f=freiInfo(ds);if(!f)return '';
+  return '<span class="pill warn">'+esc(f.k==='Ferien'?'Ferien: '+f.t+(f.bis?' (bis '+d2(f.bis+'T00:00')+')':''):'Feiertag: '+f.t)+'</span>';
+}
+function ferienLaden(){
+  var a=+String(curSj()).slice(0,4)||new Date().getFullYear();
+  var url='https://openholidaysapi.org/SchoolHolidays?countryIsoCode=DE&subdivisionCode=DE-HE&languageIsoCode=DE&validFrom='+a+'-08-01&validTo='+(a+2)+'-07-31';
+  ui.frBusy=true;ui.frMsg='';render();
+  fetch(url,{headers:{'Accept':'application/json'}}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){
+    if(!Array.isArray(j))throw 0;
+    var out=[];
+    j.forEach(function(x){
+      var n=(x.name||[]).filter(function(q){return q.language==='DE'})[0]||(x.name||[])[0]||{};
+      var v=String(x.startDate||'').slice(0,10),b=String(x.endDate||'').slice(0,10);
+      if(/^\d{4}-\d\d-\d\d$/.test(v)&&/^\d{4}-\d\d-\d\d$/.test(b)&&v<=b)out.push({von:v,bis:b,name:String(n.text||'Schulferien').slice(0,60)});
+    });
+    if(!out.length)throw 0;
+    out.sort(function(p,q){return p.von.localeCompare(q.von)});
+    S.settings.ferienApi=out;S.settings.ferienAt=today();ui.frBusy=false;ui.frMsg='ok';save();render();
+  }).catch(function(){ui.frBusy=false;ui.frMsg='err';render()});
+}
+function vFerien(){
+  var l=S.settings.ferienApi||[],h='<section class="card"><h3 style="margin-bottom:6px">Ferien und Feiertage (Hessen)</h3><p class="meta" style="margin-bottom:10px">Die hessischen Feiertage sind fest eingebaut. Der Planer warnt, wenn eine Sitzung auf einen Feiertag oder in die Schulferien fällt. Die Ferien kannst du online laden oder von Hand eintragen. Bitte prüfe sie mit dem Ferienplan deiner Schule.</p>';
+  h+='<div class="frow"><button type="button" class="btn sm" data-act="frload"'+(ui.frBusy?' disabled':'')+'>'+(ui.frBusy?'Lädt …':'Ferien Hessen online laden')+'</button><span class="meta">'+(S.settings.ferienAt?l.length+' Zeiträume geladen, Stand '+esc(d2(S.settings.ferienAt+'T00:00')):'Noch nicht geladen')+'</span></div>';
+  if(ui.frMsg==='ok')h+='<p class="meta" style="margin-top:6px"><span class="pill good">Geladen</span></p>';
+  if(ui.frMsg==='err')h+='<p class="meta" style="margin-top:6px"><span class="pill bad">Fehler</span> Die Ferien konnten nicht geladen werden (keine Verbindung oder der Dienst blockiert den Abruf). Du kannst sie unten von Hand eintragen.</p>';
+  h+='<p class="meta" style="margin-top:6px">Datenschutz: Beim Laden geht nur eine Anfrage nach den Schulferien in Hessen an openholidaysapi.org. Es werden keine Daten aus dem Planer gesendet. Der Dienst sieht allerdings deine IP-Adresse.</p>';
+  if(l.length)h+='<details style="margin-top:8px"><summary>Geladene Ferien anzeigen</summary><ul class="facts">'+l.map(function(x){return '<li>'+esc(x.name)+': '+esc(d2(x.von+'T00:00'))+' bis '+esc(d2(x.bis+'T00:00'))+'</li>'}).join('')+'</ul></details>';
+  h+='<label class="lbl" for="s-ft" style="margin-top:10px">Ferien von Hand (eine Zeile pro Zeitraum)</label><textarea id="s-ft" data-s="ferienTxt" rows="3" placeholder="21.12.2026 - 08.01.2027 Weihnachtsferien">'+esc(S.settings.ferienTxt||'')+'</textarea>';
+  var pm=parseFerien(S.settings.ferienTxt);
+  if(pm.length)h+='<p class="meta" style="margin-top:4px">'+pm.length+(pm.length===1?' Zeitraum erkannt':' Zeiträume erkannt')+'.</p>';
+  return h+'</section>';
+}
+
+/* ---- Kalender (Monatsansicht) ---- */
+var WTAGE=['Mo','Di','Mi','Do','Fr','Sa','So'];
+function calMonth(){if(!/^\d{4}-\d\d$/.test(ui.calM||''))ui.calM=today().slice(0,7);return ui.calM}
+function calShift(n){var m=calMonth().split('-').map(Number),d=new Date(m[0],m[1]-1+n,1);ui.calM=d.getFullYear()+'-'+pad(d.getMonth()+1);ui.calD=''}
+function vKal(){
+  var cm=calMonth(),p=cm.split('-').map(Number),y=p[0],mo=p[1]-1,td=today();
+  var off=(new Date(y,mo,1).getDay()+6)%7,days=new Date(y,mo+1,0).getDate();
+  var it=planItems(sjd(cm+'-01')).filter(function(x){return x.k!=='Ferien'&&x.k!=='Feiertag'&&x.d.slice(0,7)===cm});
+  var by={};it.forEach(function(x){(by[x.d]=by[x.d]||[]).push(x)});
+  var mname=new Intl.DateTimeFormat('de-DE',{month:'long',year:'numeric'}).format(new Date(y,mo,1));
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>'+esc(mname)+'</h2><div class="frow"><button type="button" class="btn sm" data-act="calp" aria-label="Voriger Monat">←</button><button type="button" class="btn sm" data-act="calt">Heute</button><button type="button" class="btn sm" data-act="caln" aria-label="Nächster Monat">→</button></div></div>';
+  h+='<p class="meta">Sitzungen, Fristen und Termine. Ferien sind grün, Feiertage gelb hinterlegt. Tippe auf einen Tag für die Einzelheiten.</p>';
+  h+='<div class="cal" role="grid">'+WTAGE.map(function(w){return '<div class="calh">'+w+'</div>'}).join('');
+  var i;for(i=0;i<off;i++)h+='<div class="calc off"></div>';
+  for(var d=1;d<=days;d++){
+    var ds=cm+'-'+pad(d),f=freiInfo(ds),ev=by[ds]||[],wd=(off+d-1)%7;
+    h+='<button type="button" class="calc'+(ds===td?' today':'')+(wd>=5?' we':'')+(f?(f.k==='Ferien'?' fe':' ft'):'')+(ui.calD===ds?' sel':'')+'" data-act="calday" data-d="'+ds+'" aria-label="'+esc(d2(ds+'T00:00')+(ev.length?', '+ev.length+' Termine':'')+(f?', '+f.t:''))+'"><span class="dn">'+d+'</span>'+(f&&f.k==='Feiertag'?'<span class="fl">'+esc(f.t)+'</span>':'')+
+      (ev.length?'<span class="calev">'+ev.slice(0,2).map(function(x){return '<span class="cale '+x.c+'">'+esc((x.tm?x.tm+' ':'')+x.t)+'</span>'}).join('')+(ev.length>2?'<span class="cale">+'+(ev.length-2)+' weitere</span>':'')+'</span>':'')+'</button>';
+  }
+  var rest=(7-((off+days)%7))%7;for(i=0;i<rest;i++)h+='<div class="calc off"></div>';
+  h+='</div></section>';
+  var sd=ui.calD&&ui.calD.slice(0,7)===cm?ui.calD:'';
+  if(sd){
+    var l=by[sd]||[],f2=freiInfo(sd);
+    h+='<section class="card"><h3 style="margin-bottom:6px">'+esc(langDatum(sd+'T00:00'))+'</h3>'+(f2?'<p>'+freiPill(sd)+'</p>':'');
+    if(!l.length)h+='<p class="empty">Keine Termine an diesem Tag.</p>';
+    l.forEach(function(x){h+='<div class="toprow"><div class="frow">'+(x.tm?'<span class="mono">'+esc(x.tm)+'</span>':'')+'<span class="pill '+x.c+'">'+esc(x.k)+'</span><span class="grow">'+esc(x.t)+'</span>'+(x.act?'<button type="button" class="btn sm" data-act="'+x.act+'" '+x.attr+'>Öffnen</button>':'')+'</div></div>'});
+    h+='</section>';
+  }
+  return h+'</div>';
+}
+
 /* ---- Jahresplan ---- */
 function planItems(y){
   var it=[];
@@ -879,6 +993,9 @@ function planItems(y){
   });
   S.umfragen.forEach(function(u){add({d:u.bis,k:'Umfrage',c:'',t:'Ende · '+(u.frage||'Umfrage'),done:u.status==='abgeschlossen',act:'ufgo',attr:'data-id="'+u.id+'"'})});
   S.antraege.forEach(function(x){if(x.status==='eingereicht'&&x.frist)add({d:x.frist,k:'Antrag',c:'warn',t:'Rückmeldung fällig · '+(x.titel||'Antrag'),done:false,task:true,act:'ango',attr:'data-id="'+x.id+'"'})});
+  var ya=+String(y).slice(0,4);
+  if(ya){[ya,ya+1].forEach(function(yy){var f=feiertage(yy);Object.keys(f).forEach(function(d){add({d:d,k:'Feiertag',c:'',t:f[d],done:false})})})}
+  ferienList().forEach(function(f){add({d:f.von,k:'Ferien',c:'good',t:(f.name||'Ferien')+' bis '+d2(f.bis+'T00:00'),done:false})});
   it.sort(function(a,b){return (a.d+(a.tm||'')).localeCompare(b.d+(b.tm||''))});
   return it;
 }
@@ -891,14 +1008,14 @@ function halbNote(y){
 }
 function vPlan(){
   var y=ensureSj('psj'),it=planItems(y),td=today();
-  var h='<div class="stack"><section class="card"><div class="vh"><h2>Jahresplan</h2>'+sjOpts(y,'pl-sj','psj')+'</div><p class="meta">Sitzungen, Projekttermine, Aufgabenfristen, Protokoll-Einwände und fällige Antworten auf Anträge an einem Ort.</p>'+halbNote(y)+'</section>';
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>Jahresplan</h2>'+sjOpts(y,'pl-sj','psj')+'</div><p class="meta">Sitzungen, Projekttermine, Aufgabenfristen, Protokoll-Einwände und fällige Antworten auf Anträge an einem Ort, dazu Feiertage und Schulferien in Hessen.</p>'+halbNote(y)+'</section>';
   if(!it.length)return h+'<section class="card"><p class="empty">In diesem Schuljahr gibt es noch keine Termine.</p></section></div>';
   var mf=new Intl.DateTimeFormat('de-DE',{month:'long',year:'numeric'}),cur='',open=false;
   it.forEach(function(x){
     var m=mf.format(dt(x.d+'T00:00'));
     if(m!==cur){if(open)h+='</section>';cur=m;open=true;h+='<section class="card"><h3 style="margin-bottom:6px">'+m+(x.d.slice(0,7)===td.slice(0,7)?' <span class="pill accent">aktueller Monat</span>':'')+'</h3>'}
     var over=x.task&&!x.done&&x.d<td,past=x.d<td&&(x.done||!x.task);
-    h+='<div class="toprow" style="'+(past?'opacity:.6':'')+'"><div class="frow"><span class="mono" style="min-width:6.5rem">'+esc(fRow.format(dt(x.d+'T00:00')))+(x.tm?' · '+x.tm:'')+'</span><span class="pill '+x.c+'">'+x.k+'</span><span class="grow"'+(x.done&&x.task?' style="text-decoration:line-through"':'')+'>'+esc(x.t)+'</span>'+(over?'<span class="pill bad">überfällig</span>':'')+'<button type="button" class="btn sm" data-act="'+x.act+'" '+x.attr+'>Öffnen</button></div></div>';
+    h+='<div class="toprow" style="'+(past?'opacity:.6':'')+'"><div class="frow"><span class="mono" style="min-width:6.5rem">'+esc(fRow.format(dt(x.d+'T00:00')))+(x.tm?' · '+x.tm:'')+'</span><span class="pill '+x.c+'">'+x.k+'</span><span class="grow"'+(x.done&&x.task?' style="text-decoration:line-through"':'')+'>'+esc(x.t)+'</span>'+(over?'<span class="pill bad">überfällig</span>':'')+(x.act?'<button type="button" class="btn sm" data-act="'+x.act+'" '+x.attr+'>Öffnen</button>':'')+'</div></div>';
   });
   return h+'</section></div>';
 }
@@ -1534,7 +1651,7 @@ function banner(){
   return o+'<div class="banner"><span>Du siehst Beispieldaten. Trage deine eigenen Sitzungen ein und entferne die Beispiele, wenn du soweit bist.</span><button type="button" class="btn sm" data-act="rmex">Beispieldaten entfernen</button></div>';
 }
 function sRow(s){
-  return '<button type="button" class="srow" data-act="open" data-sid="'+s.id+'"><span class="sdate mono">'+esc(rowDate(s.datum))+'</span><span><span class="st">'+esc(s.titel||'Ohne Titel')+'</span>'+(s.bsp?' <span class="tag">Beispiel</span>':'')+'<br><span class="meta">'+s.tops.length+' TOPs · '+s.beschluesse.length+' Beschlüsse · '+s.aufgaben.length+' Aufgaben</span></span>'+pill(s.status)+'</button>';
+  return '<button type="button" class="srow" data-act="open" data-sid="'+s.id+'"><span class="sdate mono">'+esc(rowDate(s.datum))+'</span><span><span class="st">'+esc(s.titel||'Ohne Titel')+'</span>'+(s.bsp?' <span class="tag">Beispiel</span>':'')+'<br><span class="meta">'+s.tops.length+' TOPs · '+s.beschluesse.length+' Beschlüsse · '+s.aufgaben.length+' Aufgaben</span>'+((s.status==='geplant'||s.status==='eingeladen')&&freiInfo(s.datum)?'<br>'+freiPill(s.datum):'')+'</span>'+pill(s.status)+'</button>';
 }
 function taskRow(t,showSess){
   var od=!t.done&&t.frist&&t.frist<today();
@@ -1553,7 +1670,7 @@ function vUeber(){
     left='<section class="card hero"><div class="eyebrow">Nächste Sitzung · <span class="mono">'+rel(n)+'</span></div><h2>'+esc(ns.titel||'Ohne Titel')+'</h2><p class="when">'+esc(dateLabel(ns.datum))+(ns.ort?' · '+esc(ns.ort):'')+'</p>'+
       '<ul class="facts"><li><span class="mono">'+ns.tops.length+'</span> Tagesordnungspunkte, '+esc(topSum(ns))+'</li>'+
       '<li><span class="mono">'+q.present+'/'+q.N+'</span> Stimmberechtigte zugesagt, benötigt <span class="mono">'+q.need+'</span> '+(q.ok?'<span class="pill good">Beschlussfähig</span>':'<span class="pill warn">Noch nicht beschlussfähig</span>')+'</li>'+
-      '<li><span class="mono">'+others+'</span> offene Aufgaben aus früheren Sitzungen</li></ul>'+
+      '<li><span class="mono">'+others+'</span> offene Aufgaben aus früheren Sitzungen</li>'+(freiInfo(ns.datum)?'<li>'+freiPill(ns.datum)+' Bitte Termin prüfen.</li>':'')+'</ul>'+
       '<button type="button" class="btn primary" data-act="open" data-sid="'+ns.id+'">Sitzung öffnen</button></section>';
   }else{
     left='<section class="card hero"><div class="eyebrow">Nächste Sitzung</div><h2>Nichts geplant</h2><p class="when">Lege den nächsten Termin an. Dann siehst du hier Countdown, Tagesordnung und Beschlussfähigkeit.</p><button type="button" class="btn primary" data-act="newsess">Sitzung planen</button></section>';
@@ -1591,7 +1708,7 @@ function vDetail(s){
 
   h+='<section class="card"><h2 style="margin-bottom:12px">Eckdaten</h2><div class="g2">'+
     '<div><label class="lbl" for="f-titel">Titel</label><input type="text" id="f-titel" '+a('data-f="titel"')+' value="'+esc(s.titel)+'"></div>'+
-    '<div><label class="lbl" for="f-datum">Beginn</label><input type="datetime-local" id="f-datum" '+a('data-f="datum"')+' value="'+esc(s.datum)+'"></div>'+
+    '<div><label class="lbl" for="f-datum">Beginn</label><input type="datetime-local" id="f-datum" '+a('data-f="datum"')+' value="'+esc(s.datum)+'"><div id="frp" style="margin-top:6px">'+freiPill(s.datum)+'</div></div>'+
     '<div><label class="lbl" for="f-ort">Ort</label><input type="text" id="f-ort" '+a('data-f="ort"')+' value="'+esc(s.ort)+'" placeholder="Raum oder Videolink"></div>'+
     '<div><label class="lbl" for="f-status">Status</label><select id="f-status" '+a('data-f="status" data-rr="1"')+'>'+opts(STATUS.map(function(x){return [x[0],x[1]]}),s.status)+'</select></div></div></section>';
 
@@ -1916,7 +2033,7 @@ function vGremium(){
       '<label class="frow meta" style="gap:6px"><input type="checkbox" '+c+' data-f="aktiv" data-rr="1"'+(m.aktiv?' checked':'')+'>aktiv</label>'+
       cbtn('delmem'+m.id,'Löschen','data-act="delmem" data-id="'+m.id+'"')+'</div></div>';
   });
-  h+='<p class="meta" style="margin-top:8px">Pro Klasse zählt eine Stimme. Die Stellvertretung stimmt nur, wenn der/die Klassensprecher/in fehlt. Setze dafür Klasse und Funktion in der Klasse und lass „stimmberechtigt“ bei beiden angehakt. Zum Schuljahreswechsel Mitglieder auf „nicht aktiv“ setzen statt löschen. So bleiben alte Protokolle vollständig.</p></section>'+vGO()+vVert()+'</div>';
+  h+='<p class="meta" style="margin-top:8px">Pro Klasse zählt eine Stimme. Die Stellvertretung stimmt nur, wenn der/die Klassensprecher/in fehlt. Setze dafür Klasse und Funktion in der Klasse und lass „stimmberechtigt“ bei beiden angehakt. Zum Schuljahreswechsel Mitglieder auf „nicht aktiv“ setzen statt löschen. So bleiben alte Protokolle vollständig.</p></section>'+vFerien()+vGO()+vVert()+'</div>';
   return h;
 }
 
@@ -1938,7 +2055,7 @@ function vDaten(){
 }
 
 /* ---------- Rendern ---------- */
-var VIEWS={uebersicht:vUeber,sitzungen:vSitz,vorlagen:vVorl,aufgaben:vAufg,live:vLive,anwesenheit:vAnwes,themen:vThemen,projekte:vProj,antraege:vAnt,umfragen:vUmf,plan:vPlan,beschluesse:vBesch,gremium:vGremium,daten:vDaten};
+var VIEWS={uebersicht:vUeber,sitzungen:vSitz,vorlagen:vVorl,aufgaben:vAufg,live:vLive,anwesenheit:vAnwes,themen:vThemen,projekte:vProj,antraege:vAnt,umfragen:vUmf,plan:vPlan,kalender:vKal,beschluesse:vBesch,gremium:vGremium,daten:vDaten};
 function render(top){
   var y=window.scrollY;
   $('#gname').textContent=S.settings.name||'';
@@ -1951,6 +2068,7 @@ function refreshDerived(){
   var ae=document.activeElement;if(ae&&ae.dataset&&ae.dataset.uf){var uu=S.umfragen.find(function(x){return x.id===ae.dataset.uf}),ux=$('#ufres-'+ae.dataset.uf);if(uu&&ux)ux.innerHTML=ufRes(uu)}
   var sid=ui.view==='vorlagen'?ui.psid:(ui.view==='sitzungen'?ui.sid:'');
   var s=sid&&sess(sid);if(!s)return;
+  var fpe=$('#frp');if(fpe)fpe.innerHTML=freiPill(s.datum);
   var a=$('#topsum');if(a)a.textContent=topSum(s);
   s.beschluesse.forEach(function(b){
     var x=$('#bres-'+b.id);if(x)x.innerHTML=bres(s,b);
@@ -2265,6 +2383,10 @@ var A={
   tlf:function(d){var s=sess(d.sid);if(!s)return 'skip';s.tlf=s.tlf||{};var m=mem(d.id)||{};var cur=s.tlf[d.id]!==undefined?s.tlf[d.id]:m.ksf;s.tlf[d.id]=(cur===d.v)?'':d.v;save()},
   sign:function(d){sigOpen(d.key,d.lab);return 'skip'},
   sigdel:function(d){delete SG()[d.key];save()},
+  calp:function(){calShift(-1);return true},
+  caln:function(){calShift(1);return true},
+  calt:function(){ui.calM=today().slice(0,7);ui.calD=today();return true},
+  calday:function(d){ui.calD=ui.calD===d.d?'':d.d;return true},
   nav:function(d){ui.view=d.v;ui.sid=null;ui.md=null;return true},
   open:function(d){ui.view='sitzungen';ui.sid=d.sid;ui.md=null;return true},
   back:function(){ui.sid=null;ui.md=null;return true},
@@ -2435,6 +2557,7 @@ var A={
   wzsave:function(){var h=wzHTML();if(!h){toast('Bitte zuerst Kandidat/innen eintragen');return 'skip'}saveFile('stimmzettel-'+((S.settings.wzDatum||today()).replace(/[^0-9A-Za-z]+/g,'-'))+'.html',docFile(h,'Stimmzettel'));return 'skip'},
   wzhtml:function(){var h=wzHTML();if(!h){toast('Bitte zuerst Kandidat/innen eintragen');return 'skip'}copyText(docFile(h,'Stimmzettel'),'#none');return 'skip'},
   wzpdf:function(d,b){return pdfRun('wzsave',d,b)},
+  frload:function(){if(ui.frBusy)return 'skip';ferienLaden();return 'skip'},
   azstart:function(){var names=String(S.settings.wzKand||'').split('\n').map(function(x){return x.trim()}).filter(Boolean);
     if(!names.length){toast('Bitte mindestens einen Namen eintragen');return 'skip'}
     S.settings.az=[{art:'wahl',kand:names,c:names.map(function(){return 0}),enth:0,ung:0,ausg:0,abg:0,fix:[]}];ui.azUndo=[];save()},
