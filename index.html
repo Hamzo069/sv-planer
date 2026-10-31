@@ -524,77 +524,6 @@ function wzHTML(){
   for(i=0;i<o.anz;i+=2)rows.push('<tr '+st+'><td>'+b+'</td><td>'+(i+1<o.anz?b:'&nbsp;')+'</td></tr>');
   return '<div class="paper"><style>.paper table.wz{margin:0;width:100%;table-layout:fixed}.paper table.wz td{border:1px dashed #777;padding:10px 12px;vertical-align:top;width:50%}</style><table class="wz">'+rows.join('')+'</table></div>';
 }
-/* ---- Öffentliche SV-Seite ---- */
-var WEB_GESPERRT=true; /* false, sobald Impressum und Datenschutz für die öffentliche Seite geklärt sind */
-var WSTAND=[['','Kein Stand'],['offen','Noch offen'],['arbeit','In Arbeit'],['umgesetzt','Umgesetzt']];
-function webTxt(x,n){return String(x==null?'':x).replace(/\s+$/,'').replace(/^\s+/,'').slice(0,n||500)}
-function webNews(){
-  return String(S.settings.webNews||'').split('\n').map(function(l){return l.trim()}).filter(Boolean).slice(0,12).map(function(l){var p=l.split('|').map(function(x){return x.trim()});return {titel:webTxt(p[0],120),datum:webTxt(p[1],60),text:webTxt(p.slice(2).join(' | '),400)}}).filter(function(n){return n.titel})
-}
-function webSnap(){
-  var st=S.settings,now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()),ses=sorted(),o={v:1,at:now.toISOString(),name:webTxt(st.name,80),schule:webTxt(st.schule,80),info:webTxt(st.webInfo,600),kontakt:webTxt(st.webKontakt,200)};
-  o.termine=ses.filter(function(x){var d=dt(x.datum);return x.web===true&&d&&d>=t0}).map(function(x){return {titel:webTxt(x.titel,120),datum:x.datum,ort:webTxt(x.ort,120),tops:x.webTop===true?x.tops.map(function(t){return webTxt(t.titel,120)}).filter(Boolean):[]}});
-  o.news=webNews();
-  o.beschluesse=[];
-  ses.slice().reverse().forEach(function(x){x.beschluesse.forEach(function(b){
-    if(b.web!==true||!String(b.text||'').trim())return;
-    var sd=WSTAND.find(function(z){return z[0]===(b.stand||'')});
-    o.beschluesse.push({datum:x.datum,text:webTxt(b.text,600),ergebnis:(b.ja+b.nein>0)?res(b).label+' ('+b.ja+' Ja, '+b.nein+' Nein'+(b.enth?', '+b.enth+' Enth.':'')+')':'',stand:(b.stand&&sd)?sd[1]:''})})});
-  o.projekte=S.projekte.filter(function(x){return x.web===true&&x.name}).map(function(x){return {name:webTxt(x.name,120),ziel:webTxt(x.ziel,300),status:(PJS.find(function(z){return z[0]===x.status})||PJS[0])[1],termin:x.termin||''}});
-  return o;
-}
-function webHashOf(o){var c=JSON.stringify(Object.assign({},o,{at:''})),h=5381,i;for(i=0;i<c.length;i++)h=((h<<5)+h+c.charCodeAt(i))|0;return String(h)}
-function webTexts(o){var a=[o.info];o.news.forEach(function(n){a.push(n.titel,n.text)});o.termine.forEach(function(t){a.push(t.titel,t.ort);t.tops.forEach(function(x){a.push(x)})});o.beschluesse.forEach(function(b){a.push(b.text)});o.projekte.forEach(function(x){a.push(x.name,x.ziel)});return a.filter(Boolean)}
-function webWarn(o){
-  var tok={},txt=webTexts(o).join('\n'),out=[];
-  S.members.forEach(function(m){String(m.name||'').split(/[\s,\-\/]+/).forEach(function(t){if(t.length>=4)tok[t.toLowerCase()]=t})});
-  Object.keys(tok).forEach(function(k){try{if(new RegExp('(^|[^\\p{L}])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^\\p{L}]|$)','iu').test(txt))out.push(tok[k])}catch(e){if(txt.toLowerCase().indexOf(k)>=0)out.push(tok[k])}});
-  return out;
-}
-function webErr(e){var m=String(e&&e.message||e||'');if((e&&(e.code==='42P01'||e.code==='PGRST202'||e.code==='PGRST205'))||/relation|does not exist|schema cache|Could not find/i.test(m))return 'Datenbank noch nicht vorbereitet: sv-seite.sql in Supabase ausführen';return 'Veröffentlichen nicht möglich ('+m.slice(0,60)+')'}
-function webPrevHTML(){
-  var o=webSnap(),st=S.settings,pubd=!!st.webHash,cur=pubd&&st.webHash===webHashOf(o),w=webWarn(o),h='';
-  h+='<div class="frow" style="margin-bottom:8px">'+(pubd?(cur?'<span class="pill good">Online, aktuell</span>':'<span class="pill warn">Online, aber Änderungen noch nicht veröffentlicht</span>'):'<span class="pill">Noch nicht veröffentlicht</span>')+(pubd&&st.webAt?'<span class="meta">Zuletzt veröffentlicht: '+esc(d2(st.webAt))+' '+esc(t2(st.webAt))+'</span>':'')+'</div>';
-  h+='<p class="meta" style="margin:0 0 6px">Das steht dann auf der Seite: '+'Termine: '+o.termine.length+' · Meldungen: '+o.news.length+' · Beschlüsse: '+o.beschluesse.length+' · Projekte: '+o.projekte.length+(o.info?' · Mitteilung':'')+(o.kontakt?' · Kontakt':'')+'.</p>';
-  if(w.length)h+='<p class="meta bad" style="margin:0 0 6px"><strong>Achtung, Namen im Text:</strong> '+esc(w.join(', '))+'. Die Seite ist für alle lesbar. Entferne Namen oder kläre vorher die Einwilligung.</p>';
-  if(o.termine.length+o.news.length+o.beschluesse.length+o.projekte.length===0&&!o.info)h+='<p class="meta">Wähle oben aus, was erscheinen soll.</p>';
-  return h;
-}
-function webRefresh(){var e=$('#webprev');if(e)e.innerHTML=webPrevHTML()}
-function webDoc(){var url=voteBase()+'sv.html';return '<div class="paper"><style>.webq svg{width:100%;height:100%;display:block}</style><h1>'+esc(S.settings.name||'Schülervertretung')+'</h1><div class="sub">'+esc(S.settings.schule||'')+'</div><p style="text-align:center;font-size:1.1em;margin-top:18px">Termine, Beschlüsse und Projekte der SV</p><div class="webq" style="width:260px;height:260px;margin:20px auto;background:#fff">'+qrSvg(url)+'</div><p style="text-align:center">QR-Code scannen oder diese Adresse öffnen:<br><b>'+esc(url)+'</b></p></div>'}
-function webHTML(){
-  var st=S.settings,url=voteBase()+'sv.html',now=new Date(),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  var h='<section class="card"><div class="vh"><h2>Öffentliche SV-Seite</h2></div>'+
-    ''+(WEB_GESPERRT?'<p class="meta bad" style="margin-bottom:12px"><strong>Vorerst gesperrt:</strong> Veröffentlichen ist ausgeschaltet, bis Impressum und Datenschutz für die Seite geklärt sind.</p>':'')+'<p class="meta" style="margin-bottom:12px">Eine Webseite für alle Schüler/innen mit Terminen, Beschlüssen und Projekten. Sitzungen sind öffentlich (§ 7 Abs. 4 GO), Beschlüsse sollen der Schülerschaft zugänglich sein (§ 11 Abs. 3 GO). Nichts geht automatisch raus: Du wählst aus, prüfst die Vorschau und klickst auf „Veröffentlichen“. Jede Person mit dem Link kann die Seite lesen. Trage keine Namen von Schüler/innen ein.</p>';
-  if(!CL.on)return h+'<p class="meta">Dafür wird die Cloud gebraucht. Sie ist in dieser Version nicht eingerichtet.</p></section>';
-  h+='<div class="frow" style="align-items:flex-start"><div style="width:130px;height:130px;background:#fff;padding:4px;border-radius:8px;flex:none" role="img" aria-label="QR-Code zur SV-Seite"><style>.uqr svg{width:100%;height:100%;display:block}</style><div class="uqr" style="width:100%;height:100%">'+qrSvg(url)+'</div></div>'+
-    '<div class="grow"><label class="lbl" for="web-l">Link</label><input type="text" id="web-l" readonly value="'+esc(url)+'"><div class="frow" style="margin-top:8px"><button type="button" class="btn sm" data-act="weblink">Link kopieren</button>'+(DL?'<button type="button" class="btn sm" data-act="websave">QR-Aushang als HTML speichern</button>':'<button type="button" class="btn sm" data-act="webhtml">QR-Aushang als HTML kopieren</button>')+'</div></div></div>';
-  h+='<h3 style="margin:18px 0 6px">Texte</h3>'+
-    '<label class="lbl" for="web-i">Mitteilung oben (optional)</label><textarea class="box" id="web-i" data-s="webInfo" style="min-height:64px" placeholder="z. B. Weihnachtsfeier am 18. Dezember in der Mensa, alle sind willkommen!">'+esc(st.webInfo||'')+'</textarea>'+
-    '<label class="lbl" for="web-n" style="margin-top:10px">Meldungen (eine pro Zeile: Titel | Datum | Text)</label><textarea class="box" id="web-n" data-s="webNews" style="min-height:70px" placeholder="Weihnachtsfeier | 18.12., ab 18 Uhr | Mensa, kleines Buffet, Spiele, Fotoecke">'+esc(st.webNews||'')+'</textarea>'+
-    '<label class="lbl" for="web-k" style="margin-top:10px">Kontakt (optional)</label><input type="text" id="web-k" data-s="webKontakt" value="'+esc(st.webKontakt||'')+'" placeholder="z. B. Ideen und Fragen gern per Instagram oder im SV-Raum">';
-  var up=sorted().filter(function(x){var d=dt(x.datum);return d&&d>=t0});
-  h+='<h3 style="margin:18px 0 6px">Nächste Sitzungen</h3>';
-  if(!up.length)h+='<p class="meta">Keine kommenden Sitzungen angelegt.</p>';
-  up.forEach(function(x){h+='<div class="frow" style="gap:12px;margin-bottom:6px;flex-wrap:wrap"><label class="frow" style="gap:8px"><input type="checkbox" data-sid="'+x.id+'" data-f="web" data-rr="1"'+(x.web===true?' checked':'')+'><span>'+esc(rowDate(x.datum)+' · '+(x.titel||'Ohne Titel'))+'</span></label>'+(x.web===true?'<label class="frow meta" style="gap:6px"><input type="checkbox" data-sid="'+x.id+'" data-f="webTop" data-rr="1"'+(x.webTop===true?' checked':'')+'>mit Tagesordnung</label>':'')+'</div>'});
-  h+='<h3 style="margin:18px 0 6px">Beschlüsse</h3><p class="meta" style="margin-bottom:6px">Standardmäßig ist nichts angehakt. Der Text steht so auf der Seite. Wer zuständig ist, wird nie veröffentlicht.</p>';
-  var any=false;
-  sorted().slice().reverse().forEach(function(x){
-    if(!x.beschluesse.length)return;any=true;
-    h+='<div class="meta" style="margin:10px 0 4px"><strong>'+esc(rowDate(x.datum)+' · '+(x.titel||'Ohne Titel'))+'</strong></div>';
-    x.beschluesse.forEach(function(b){var c='data-sid="'+x.id+'" data-coll="beschluesse" data-id="'+b.id+'"';
-      h+='<div class="frow" style="gap:10px;margin-bottom:6px;align-items:flex-start;flex-wrap:wrap"><label class="frow" style="gap:8px;flex:1 1 260px"><input type="checkbox" '+c+' data-f="web" data-rr="1"'+(b.web===true?' checked':'')+'><span>'+esc((b.text||'(ohne Text)').slice(0,200))+'</span></label>'+
-        (b.web===true?'<select '+c+' data-f="stand" data-rr="1" aria-label="Stand der Umsetzung" style="width:auto">'+opts(WSTAND,b.stand||'')+'</select>':'')+'</div>'});
-  });
-  if(!any)h+='<p class="meta">Noch keine Beschlüsse erfasst.</p>';
-  h+='<h3 style="margin:18px 0 6px">Projekte</h3>';
-  if(!S.projekte.length)h+='<p class="meta">Noch keine Projekte angelegt.</p>';
-  S.projekte.forEach(function(x){h+='<label class="frow" style="gap:8px;margin-bottom:6px"><input type="checkbox" data-pj="'+x.id+'" data-f="web" data-rr="1"'+(x.web===true?' checked':'')+'><span>'+esc(x.name||'(ohne Name)')+' <span class="meta">· '+esc((PJS.find(function(z){return z[0]===x.status})||PJS[0])[1])+'</span></span></label>'});
-  h+='<h3 style="margin:18px 0 6px">Prüfen und veröffentlichen</h3><div id="webprev">'+webPrevHTML()+'</div>'+
-    '<div class="frow" style="margin-top:10px"><button type="button" class="btn primary" data-act="webpub"'+(WEB_GESPERRT?' disabled':'')+'>'+(ui.confirm==='webpub'?'Sicher? Nochmal klicken':(st.webHash?'Aktualisieren':'Veröffentlichen'))+'</button>'+(st.webHash?cbtn('webunpub','Veröffentlichung zurückziehen','data-act="webunpub"'):'')+'</div>'+
-    '<p class="meta" style="margin-top:6px">Veröffentlichen ersetzt den bisherigen Stand der Seite. Zurückziehen löscht ihn wieder.</p></section>';
-  return h;
-}
 /* ---- Auszählhilfe ---- */
 function azRounds(){var a=S.settings.az;if(!Array.isArray(a))return [];return a.filter(function(r){return r&&Array.isArray(r.kand)&&r.kand.length&&Array.isArray(r.c)})}
 function azCur(){var a=azRounds();return a.length?a[a.length-1]:null}
@@ -1914,7 +1843,6 @@ function vVorl(){
       '<div class="sheet" style="margin-top:14px">'+bnHTML(bn)+'</div>';
   }
   h+='</section>';
-  h+='<!--Sc-->'+webHTML();
   var nss=ensureNs();
   h+='<!--S7--><section class="card"><div class="vh"><h2>Niederschrift</h2></div>';
   if(!nss)h+='<p class="empty">Noch keine Sitzung angelegt.</p>';
@@ -1935,7 +1863,7 @@ function vVorl(){
     '<div class="frow" style="margin-bottom:12px">'+(DL?'<button type="button" class="btn primary" data-act="bsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="bhtml">HTML kopieren</button>')+'</div><div class="sheet">'+berichtHTML(by,true)+'</div></section>';
   var pieces=h.replace('<div class="stack">','').split(/<!--S(\w+)-->/),parts={};
   for(var i=1;i<pieces.length;i+=2)parts[pieces[i]]=pieces[i+1];
-  var VT=[['0','Protokoll'],['7','Niederschrift'],['8','Beschluss-Aushang'],['c','Öffentliche Seite'],['1','Teilnehmerliste'],['4','Wahlniederschrift'],['a','Wahlzettel'],['b','Auszählung'],['5','Einladung & Aushang'],['9','Moderationsskript'],['6','Jahresbericht'],['2','Textvorlagen'],['3','Meine Vorlagen']];
+  var VT=[['0','Protokoll'],['7','Niederschrift'],['8','Beschluss-Aushang'],['1','Teilnehmerliste'],['4','Wahlniederschrift'],['a','Wahlzettel'],['b','Auszählung'],['5','Einladung & Aushang'],['9','Moderationsskript'],['6','Jahresbericht'],['2','Textvorlagen'],['3','Meine Vorlagen']];
   var cur=VT.some(function(x){return x[0]===ui.vtab})?ui.vtab:'0';
   return '<div class="stack"><div class="seg tabs" role="group" aria-label="Dokumente" style="align-self:flex-start;max-width:100%;overflow-x:auto">'+VT.map(function(x){return '<button type="button" data-act="vtab" data-v="'+x[0]+'" aria-pressed="'+(cur===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>'+parts[cur]+'</div>';
 }
@@ -2285,7 +2213,7 @@ function makePDF(html,name){
   };
   fr.srcdoc=html.replace('</head>','<style>html,body{margin:0!important;padding:0!important;background:#fff!important}.paper{border:0!important;padding:0!important;min-width:0!important;max-width:none!important;width:100%!important;margin:0!important}.sgb,.sgx{display:none!important}</style></head>');
 }
-var PDFMAP={ahsave:'ahpdf',ahhtml:'ahpdf',antsave:'antpdf',anthtml:'antpdf',bsave:'bpdf',bhtml:'bpdf',bnsave:'bnpdf',bnhtml:'bnpdf',gosave:'gopdf',gohtml:'gopdf',nssave:'nspdf',nshtml:'nspdf',protsave:'protpdf',prothtml:'protpdf',skrsave:'skrpdf',skrhtml:'skrpdf',tlsave:'tlpdf',tlhtml:'tlpdf',ufsave:'ufpdf',ufhtml:'ufpdf',wnsave:'wnpdf',wnhtml:'wnpdf',wzsave:'wzpdf',wzhtml:'wzpdf',ufosave:'ufopdf',ufohtml:'ufopdf',einlcopy:'einlpdf',websave:'webpdf',webhtml:'webpdf'};
+var PDFMAP={ahsave:'ahpdf',ahhtml:'ahpdf',antsave:'antpdf',anthtml:'antpdf',bsave:'bpdf',bhtml:'bpdf',bnsave:'bnpdf',bnhtml:'bnpdf',gosave:'gopdf',gohtml:'gopdf',nssave:'nspdf',nshtml:'nspdf',protsave:'protpdf',prothtml:'protpdf',skrsave:'skrpdf',skrhtml:'skrpdf',tlsave:'tlpdf',tlhtml:'tlpdf',ufsave:'ufpdf',ufhtml:'ufpdf',wnsave:'wnpdf',wnhtml:'wnpdf',wzsave:'wzpdf',wzhtml:'wzpdf',ufosave:'ufopdf',ufohtml:'ufopdf',einlcopy:'einlpdf'};
 function addPdfButtons(){
   [].forEach.call(document.querySelectorAll('button[data-act]'),function(b){
     var pa=PDFMAP[b.dataset.act];if(!pa)return;
@@ -2323,7 +2251,6 @@ var A={
   gdel:function(d){var s=sess(d.sid);if(!s)return 'skip';s.gaeste=GA(s).filter(function(g){return g.id!==d.id});save()},
   ahpdf:function(d,b){return pdfRun('ahsave',d,b)},antpdf:function(d,b){return pdfRun('antsave',d,b)},bpdf:function(d,b){return pdfRun('bsave',d,b)},bnpdf:function(d,b){return pdfRun('bnsave',d,b)},gopdf:function(d,b){return pdfRun('gosave',d,b)},
   nspdf:function(d,b){return pdfRun('nssave',d,b)},protpdf:function(d,b){return pdfRun('protsave',d,b)},skrpdf:function(d,b){return pdfRun('skrhtml',d,b)},tlpdf:function(d,b){return pdfRun('tlsave',d,b)},ufpdf:function(d,b){return pdfRun('ufsave',d,b)},wnpdf:function(d,b){return pdfRun('wnsave',d,b)},
-  webpdf:function(d,b){return pdfRun('websave',d,b)},
   einlpdf:function(){var s=ensureA(),el=$('#einltext');if(!s||!el)return 'skip';makePDF(docFile('<div class="paper" style="white-space:pre-wrap">'+esc(el.value)+'</div>','Einladung'),'einladung-'+(s.datum||today()).slice(0,10)+'.pdf');return 'skip'},
   rlpick:function(d){var s=sess(ui.sid);if(!s||!s.live)return 'skip';var x=s.live.rl.find(function(r){return r.name===d.n&&!r.done});
     if(x){if(x.t0)return 'skip';s.live.rl=s.live.rl.filter(function(r){return r!==x})}else s.live.rl.push({id:uid(),name:d.n,done:false,sec:0,t0:null});save()},
@@ -2508,14 +2435,6 @@ var A={
   wzsave:function(){var h=wzHTML();if(!h){toast('Bitte zuerst Kandidat/innen eintragen');return 'skip'}saveFile('stimmzettel-'+((S.settings.wzDatum||today()).replace(/[^0-9A-Za-z]+/g,'-'))+'.html',docFile(h,'Stimmzettel'));return 'skip'},
   wzhtml:function(){var h=wzHTML();if(!h){toast('Bitte zuerst Kandidat/innen eintragen');return 'skip'}copyText(docFile(h,'Stimmzettel'),'#none');return 'skip'},
   wzpdf:function(d,b){return pdfRun('wzsave',d,b)},
-  weblink:function(){copyText(voteBase()+'sv.html','#web-l');return 'skip'},
-  websave:function(){saveFile('sv-seite-qr.html',docFile(webDoc(),'SV-Seite'));return 'skip'},
-  webhtml:function(){copyText(docFile(webDoc(),'SV-Seite'),'#none');return 'skip'},
-  webpub:function(){if(WEB_GESPERRT){toast('Die öffentliche Seite ist vorerst gesperrt (Impressum und Datenschutz noch offen)');return 'skip'}if(!needCloud())return 'skip';if(!needConfirm('webpub'))return 'skip';
-    var snap=webSnap();toast('Wird veröffentlicht …');
-    CL.client.from('public_page').upsert({id:'main',daten:snap,updated_at:snap.at}).then(function(r){if(r.error)throw r.error;S.settings.webHash=webHashOf(snap);S.settings.webAt=snap.at;save();render();toast('Veröffentlicht')},function(e){toast(webErr(e))});return 'skip'},
-  webunpub:function(){if(!needCloud())return 'skip';if(!needConfirm('webunpub'))return 'skip';
-    CL.client.from('public_page').delete().eq('id','main').then(function(r){if(r.error)throw r.error;S.settings.webHash='';S.settings.webAt='';save();render();toast('Veröffentlichung zurückgezogen')},function(e){toast(webErr(e))});return 'skip'},
   azstart:function(){var names=String(S.settings.wzKand||'').split('\n').map(function(x){return x.trim()}).filter(Boolean);
     if(!names.length){toast('Bitte mindestens einen Namen eintragen');return 'skip'}
     S.settings.az=[{art:'wahl',kand:names,c:names.map(function(){return 0}),enth:0,ung:0,ausg:0,abg:0,fix:[]}];ui.azUndo=[];save()},
@@ -2614,7 +2533,7 @@ document.addEventListener('input',function(e){
   if(d.gentext!==undefined){if(ui.gen)ui.gen.text=t.value;return}
   if(d.az!==undefined){azSet(d.az,t.value);azRefresh();return}
   if(d.rr)return;
-  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);refreshDerived();if(/^web/.test(d.s||''))webRefresh();if(/^wz/.test(d.s||'')){var wze=$('#wzsheet');if(wze)wze.innerHTML=wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>'}if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
+  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);refreshDerived();if(/^wz/.test(d.s||'')){var wze=$('#wzsheet');if(wze)wze.innerHTML=wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>'}if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
 });
 document.addEventListener('change',function(e){
   var t=e.target,d=t.dataset;
