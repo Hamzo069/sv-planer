@@ -1351,14 +1351,30 @@ function vFerien(){
 var WTAGE=['Mo','Di','Mi','Do','Fr','Sa','So'];
 function calMonth(){if(!/^\d{4}-\d\d$/.test(ui.calM||''))ui.calM=today().slice(0,7);return ui.calM}
 function calShift(n){var m=calMonth().split('-').map(Number),d=new Date(m[0],m[1]-1+n,1);ui.calM=d.getFullYear()+'-'+pad(d.getMonth()+1);ui.calD=''}
+function tmForm(){
+  var t=ui.tmEdit&&S.termine.find(function(x){return x.id===ui.tmEdit});if(!t)return '';
+  var c='data-tm="'+t.id+'"',id=t.id;
+  var h='<section class="card" id="tmform"><div class="vh"><h3>Termin</h3></div>';
+  h+='<label class="lbl" for="tm-t-'+id+'">Titel</label><input type="text" id="tm-t-'+id+'" '+c+' data-f="titel" value="'+esc(t.titel)+'" placeholder="z. B. Gespräch mit der Schulleitung">';
+  h+='<div class="g2" style="margin-top:12px"><div><label class="lbl" for="tm-a-'+id+'">Art</label><select id="tm-a-'+id+'" '+c+' data-f="art" data-rr="1">'+opts([['','Termin']].concat(TM_ARTEN.map(function(a){return [a,a]})),t.art)+'</select></div>'+
+    '<div><label class="lbl" for="tm-d-'+id+'">Datum</label><input type="date" id="tm-d-'+id+'" '+c+' data-f="datum" data-rr="1" value="'+esc(t.datum)+'"></div>'+
+    '<div><label class="lbl" for="tm-v-'+id+'">Von (Uhrzeit)</label><input type="time" id="tm-v-'+id+'" '+c+' data-f="von" value="'+esc(t.von)+'"></div>'+
+    '<div><label class="lbl" for="tm-b-'+id+'">Bis (Uhrzeit)</label><input type="time" id="tm-b-'+id+'" '+c+' data-f="bis" value="'+esc(t.bis)+'"></div>'+
+    '<div><label class="lbl" for="tm-o-'+id+'">Ort</label><input type="text" id="tm-o-'+id+'" '+c+' data-f="ort" value="'+esc(t.ort)+'" placeholder="z. B. Sekretariat, Raum 12"></div>'+
+    '<div><label class="lbl" for="tm-w-'+id+'">Wiederholung</label><select id="tm-w-'+id+'" '+c+' data-f="wdh" data-rr="1">'+opts([['','Keine'],['woche','Jede Woche'],['2wochen','Alle 2 Wochen'],['monat','Jeden Monat']],t.wdh)+'</select></div>'+
+    (t.wdh?'<div><label class="lbl" for="tm-e-'+id+'">Wiederholen bis (leer = 1 Jahr)</label><input type="date" id="tm-e-'+id+'" '+c+' data-f="wbis" data-rr="1" value="'+esc(t.wbis)+'"></div>':'')+'</div>';
+  h+='<label class="lbl" for="tm-n-'+id+'" style="margin-top:12px">Notiz</label><textarea class="box" id="tm-n-'+id+'" '+c+' data-f="notiz" style="min-height:70px">'+esc(t.notiz)+'</textarea>';
+  h+='<div class="frow" style="margin-top:12px"><button type="button" class="btn primary" data-act="tmdone">Fertig</button>'+cbtn('tmdel'+id,'Termin löschen','data-act="tmdel" data-id="'+id+'"')+'</div></section>';
+  return h;
+}
 function vKal(){
   var cm=calMonth(),p=cm.split('-').map(Number),y=p[0],mo=p[1]-1,td=today();
   var off=(new Date(y,mo,1).getDay()+6)%7,days=new Date(y,mo+1,0).getDate();
   var it=planItems(sjd(cm+'-01')).filter(function(x){return x.k!=='Ferien'&&x.k!=='Feiertag'&&x.d.slice(0,7)===cm});
   var by={};it.forEach(function(x){(by[x.d]=by[x.d]||[]).push(x)});
   var mname=new Intl.DateTimeFormat('de-DE',{month:'long',year:'numeric'}).format(new Date(y,mo,1));
-  var h='<div class="stack"><section class="card"><div class="vh"><h2>'+esc(mname)+'</h2><div class="frow"><button type="button" class="btn sm" data-act="calp" aria-label="Voriger Monat">←</button><button type="button" class="btn sm" data-act="calt">Heute</button><button type="button" class="btn sm" data-act="caln" aria-label="Nächster Monat">→</button></div></div>';
-  h+='<p class="meta">Sitzungen, Fristen und Termine. Ferien sind grün, Feiertage gelb hinterlegt. Tippe auf einen Tag für die Einzelheiten.</p>';
+  var h='<div class="stack">'+tmForm()+'<section class="card"><div class="vh"><h2>'+esc(mname)+'</h2><div class="frow"><button type="button" class="btn sm" data-act="calp" aria-label="Voriger Monat">←</button><button type="button" class="btn sm" data-act="calt">Heute</button><button type="button" class="btn sm" data-act="caln" aria-label="Nächster Monat">→</button><button type="button" class="btn sm primary" data-act="tmnew">+ Termin</button></div></div>';
+  h+='<p class="meta">Sitzungen, Fristen und eigene Termine. Ferien sind grün, Feiertage gelb hinterlegt. Tippe auf einen Tag für die Einzelheiten.</p>';
   if(!ferienList().length)h+='<p class="meta" style="margin-top:6px"><span class="pill warn">Keine Schulferien hinterlegt</span> Lade sie unter Gremium oder trage sie dort von Hand ein. <button type="button" class="btn sm" data-act="nav" data-v="gremium">Ferien einrichten</button></p>';
   h+='<div class="cal" role="grid">'+WTAGE.map(function(w){return '<div class="calh">'+w+'</div>'}).join('');
   var i;for(i=0;i<off;i++)h+='<div class="calc off"></div>';
@@ -1374,12 +1390,26 @@ function vKal(){
     var l=by[sd]||[],f2=freiInfo(sd);
     h+='<section class="card"><h3 style="margin-bottom:6px">'+esc(langDatum(sd+'T00:00'))+'</h3>'+(f2?'<p>'+freiPill(sd)+'</p>':'');
     if(!l.length)h+='<p class="empty">Keine Termine an diesem Tag.</p>';
-    l.forEach(function(x){h+='<div class="toprow"><div class="frow">'+(x.tm?'<span class="mono">'+esc(x.tm)+'</span>':'')+'<span class="pill '+x.c+'">'+esc(x.k)+'</span><span class="grow">'+esc(x.t)+'</span>'+(x.act?'<button type="button" class="btn sm" data-act="'+x.act+'" '+x.attr+'>Öffnen</button>':'')+'</div></div>'});
-    h+='</section>';
+    l.forEach(function(x){h+='<div class="toprow"><div class="frow">'+(x.tm?'<span class="mono">'+esc(x.tm)+'</span>':'')+'<span class="pill '+x.c+'">'+esc(x.k)+'</span><span class="grow">'+esc(x.t)+'</span>'+(x.act?'<button type="button" class="btn sm" data-act="'+x.act+'" '+x.attr+'>'+(x.act==='tmedit'?'Bearbeiten':'Öffnen')+'</button>':'')+'</div></div>'});
+    h+='<div class="frow" style="margin-top:8px"><button type="button" class="btn sm" data-act="tmnew" data-d="'+sd+'">+ Termin an diesem Tag</button></div></section>';
   }
   return h+'</div>';
 }
 
+var TM_ARTEN=['Schulleitung','Konferenz','Schulveranstaltung','Externer Termin','Sonstiges'];
+function tmDates(t){
+  var d=(t.datum||'').slice(0,10);if(!/^\d{4}-\d\d-\d\d$/.test(d))return [];
+  if(!t.wdh)return [d];
+  var end=/^\d{4}-\d\d-\d\d$/.test(t.wbis||'')?t.wbis:addDays(d,365),out=[],n=0,p=d.split('-').map(Number),i=0;
+  while(n<200){
+    var cur;
+    if(t.wdh==='monat'){var dd=new Date(p[0],p[1]-1+i,1),last=new Date(dd.getFullYear(),dd.getMonth()+1,0).getDate();cur=dstr(new Date(dd.getFullYear(),dd.getMonth(),Math.min(p[2],last)))}
+    else cur=addDays(d,i*(t.wdh==='2wochen'?14:7));
+    if(cur>end)break;out.push(cur);i++;n++;
+  }
+  return out;
+}
+function tmCls(a){return a==='Schulleitung'?'good':(a==='Konferenz'?'accent':(a==='Schulveranstaltung'?'warn':''))}
 /* ---- Jahresplan ---- */
 function planItems(y){
   var it=[];
@@ -1391,6 +1421,9 @@ function planItems(y){
     if(s.status==='geplant'&&s.datum)add({d:addDays(d,-GO().ladung),k:'Einladung',c:'warn',t:'Einladung spätestens · '+(s.titel||'Sitzung'),done:false,task:true,act:'open',attr:a});
     if((s.status==='gehalten')&&GO().protfrist>0&&fg(s).st==='entwurf'&&s.datum)add({d:addDays(d,GO().protfrist),k:'Protokoll',c:'warn',t:'Protokoll verteilen bis · Sitzung vom '+d2(s.datum),done:false,task:true,act:'open',attr:a});
     if(fg(s).st==='verteilt'&&fg(s).frist)add({d:fg(s).frist,k:'Protokoll',c:'warn',t:'Einwände bis · Protokoll vom '+d2(s.datum),done:false,act:'open',attr:a});
+  });
+  S.termine.forEach(function(t){
+    tmDates(t).forEach(function(dd){add({d:dd,tm:t.von||'',k:t.art||'Termin',c:tmCls(t.art),t:(t.titel||'Termin')+(t.ort?' · '+t.ort:'')+(t.wdh?' ↻':''),done:false,act:'tmedit',attr:'data-id="'+t.id+'" data-d="'+dd+'"'})});
   });
   S.projekte.forEach(function(p){
     var a='data-id="'+p.id+'"';
@@ -1955,9 +1988,9 @@ function seed(){
           {id:uid(),titel:'Verschiedenes',min:10,typ:'info',notiz:''}],
     anw:a2,beschluesse:[],aufgaben:[],protokoll:''};
   var later={id:uid(),bsp:true,titel:'SV-Sitzung (Beispiel)',datum:at(34,18,0),ort:'',status:'geplant',tops:topsTpl(),anw:{},beschluesse:[],aufgaben:[],protokoll:''};
-  return {settings:setDef('SV Musterschule'),members:[m0,m1,m2,m3,m4,vl],sessions:[past,next,later],vorlagen:defaultVorlagen(),projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],go:goDef(),berichte:{},v2:true,examples:true};
+  return {settings:setDef('SV Musterschule'),members:[m0,m1,m2,m3,m4,vl],sessions:[past,next,later],vorlagen:defaultVorlagen(),termine:[],projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],go:goDef(),berichte:{},v2:true,examples:true};
 }
-function blank(){return {settings:setDef('SV'),members:[],sessions:[],vorlagen:defaultVorlagen(),projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],go:goDef(),berichte:{},v2:true,examples:false}}
+function blank(){return {settings:setDef('SV'),members:[],sessions:[],vorlagen:defaultVorlagen(),projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],termine:[],go:goDef(),berichte:{},v2:true,examples:false}}
 function norm(o){
   if(!o||!Array.isArray(o.sessions)||!Array.isArray(o.members))return null;
   o.settings=Object.assign(setDef('SV'),o.settings||{});
@@ -1969,6 +2002,8 @@ function norm(o){
     s.beschluesse.forEach(function(b){b.ja=+b.ja||0;b.nein=+b.nein||0;b.enth=+b.enth||0;b.text=b.text||'';b.wer=b.wer||'';b.frist=b.frist||''});
     s.tops.forEach(function(t){t.min=+t.min||0;t.typ=t.typ||'info';t.notiz=t.notiz||'';t.titel=t.titel||'';t.beschr=t.beschr||''});
   });
+  o.termine=Array.isArray(o.termine)?o.termine:[];
+  o.termine.forEach(function(t){t.id=t.id||uid();['titel','art','datum','von','bis','ort','notiz','wdh','wbis'].forEach(function(k){t[k]=t[k]||''})});
   o.projekte=Array.isArray(o.projekte)?o.projekte:[];o.verteiler=Array.isArray(o.verteiler)?o.verteiler:[];
   o.projekte.forEach(function(p){p.id=p.id||uid();p.name=p.name||'';p.ziel=p.ziel||'';p.termin=p.termin||'';p.status=p.status||'idee';p.lead=p.lead||'';p.notiz=p.notiz||'';p.sess=Array.isArray(p.sess)?p.sess:[];p.aufg=Array.isArray(p.aufg)?p.aufg:[];p.aufg.forEach(function(a){a.id=a.id||uid();a.text=a.text||'';a.wer=a.wer||'';a.frist=a.frist||'';a.done=!!a.done})});
   o.antraege=Array.isArray(o.antraege)?o.antraege:[];o.berichte=(o.berichte&&typeof o.berichte==='object')?o.berichte:{};
@@ -2793,6 +2828,10 @@ var A={
   calp:function(){calShift(-1);return true},
   caln:function(){calShift(1);return true},
   calt:function(){ui.calM=today().slice(0,7);ui.calD=today();return true},
+  tmnew:function(d){var dd=d.d||(ui.calD&&ui.calD.slice(0,7)===calMonth()?ui.calD:'')||(today().slice(0,7)===calMonth()?today():calMonth()+'-01');var t={id:uid(),titel:'',art:'Schulleitung',datum:dd,von:'',bis:'',ort:'',notiz:'',wdh:'',wbis:''};S.termine.push(t);ui.tmEdit=t.id;ui.view='kalender';save();return true},
+  tmedit:function(d){var t=S.termine.find(function(x){return x.id===d.id});if(!t)return 'skip';ui.tmEdit=t.id;ui.view='kalender';var dd=d.d||t.datum;if(dd){ui.calM=dd.slice(0,7);ui.calD=dd}return true},
+  tmdone:function(){var t=S.termine.find(function(x){return x.id===ui.tmEdit});if(t&&!t.titel.trim()&&!t.notiz.trim())S.termine=S.termine.filter(function(x){return x!==t});else if(t&&!t.titel.trim())t.titel='Termin';if(t&&t.datum){ui.calM=t.datum.slice(0,7);ui.calD=t.datum}ui.tmEdit=null;save();return true},
+  tmdel:function(d){if(!needConfirm('tmdel'+d.id))return 'skip';S.termine=S.termine.filter(function(x){return x.id!==d.id});ui.tmEdit=null;save();return true},
   calday:function(d){ui.calD=ui.calD===d.d?'':d.d;return true},
   nav:function(d){ui.view=d.v;ui.sid=null;ui.md=null;return true},
   open:function(d){ui.view='sitzungen';ui.sid=d.sid;ui.md=null;return true},
@@ -3065,6 +3104,7 @@ function setField(el){
   else if(d.th)o=S.themen.find(function(x){return x.id===d.th});
   else if(d.uf){o=S.umfragen.find(function(x){return x.id===d.uf});if(o&&d.coll)o=o[d.coll].find(function(x){return x.id===d.id})}
   else if(d.ant)o=S.antraege.find(function(x){return x.id===d.ant});
+  else if(d.tm)o=S.termine.find(function(x){return x.id===d.tm});
   else if(d.bj){o=S.berichte[d.bj]=S.berichte[d.bj]||{einl:'',fazit:''}}
   else if(d.s)o=S.settings;
   else if(d.tp)o=tplById(d.tp);
@@ -3083,7 +3123,7 @@ document.addEventListener('input',function(e){
   if(d.bmtext!==undefined){ui.bmText=t.value;var bt=$('#bm-text');if(bt)bt.textContent=t.value;if(ui.bm)bmArm();return}
   if(d.az!==undefined){azSet(d.az,t.value);azRefresh();return}
   if(d.rr)return;
-  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);refreshDerived();if(/^wz/.test(d.s||'')){var wze=$('#wzsheet');if(wze)wze.innerHTML=wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>'}if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
+  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th||d.tm){setField(t);refreshDerived();if(/^wz/.test(d.s||'')){var wze=$('#wzsheet');if(wze)wze.innerHTML=wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>'}if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
 });
 document.addEventListener('change',function(e){
   var t=e.target,d=t.dataset;
@@ -3091,7 +3131,7 @@ document.addEventListener('change',function(e){
   if(d.gensel){ui.gen[d.gensel]=t.value;regen();render();return}
   if(t.id==='mfile'){mediaAdd(t.files);try{t.value=''}catch(e){}return}
   if(t.id==='impfile'){readImport(t.files&&t.files[0]);return}
-  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th){setField(t);if(d.rr)render();else refreshDerived()}
+  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th||d.tm){setField(t);if(d.rr)render();else refreshDerived()}
 });
 
 render();
