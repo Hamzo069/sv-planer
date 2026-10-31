@@ -970,9 +970,9 @@ function mediaLoad(){
   },function(){});
 }
 function guessType(f){
-  if(f.type&&/^(image|video)\//.test(f.type))return f.type;
+  if(f.type&&(/^(image|video)\//.test(f.type)||f.type==='application/pdf'))return f.type;
   var e=(f.name.split('.').pop()||'').toLowerCase();
-  var m={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',heic:'image/heic',heif:'image/heif',mp4:'video/mp4',m4v:'video/mp4',mov:'video/quicktime',webm:'video/webm'};
+  var m={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',heic:'image/heic',heif:'image/heif',pdf:'application/pdf',mp4:'video/mp4',m4v:'video/mp4',mov:'video/quicktime',webm:'video/webm'};
   return m[e]||'';
 }
 function makeThumb(file,type){
@@ -987,12 +987,56 @@ function makeThumb(file,type){
       v.onseeked=function(){draw(v,v.videoWidth||320,v.videoHeight||180)};v.onerror=function(){fin(null)};v.src=url}
   });
 }
+var PDFJS=null;
+function pdfLib(){
+  if(PDFJS)return PDFJS;
+  PDFJS=new Promise(function(res,rej){
+    if(window.pdfjsLib)return res(window.pdfjsLib);
+    var sc=document.createElement('script');sc.src='pdf.min.js';
+    sc.onload=function(){try{window.pdfjsLib.GlobalWorkerOptions.workerSrc='pdf.worker.min.js'}catch(e){}res(window.pdfjsLib)};
+    sc.onerror=function(){PDFJS=null;rej(new Error('pdf.js fehlt'))};document.head.appendChild(sc);
+  });
+  return PDFJS;
+}
+var PDOC={};
+function pdfDoc(id){
+  if(PDOC[id])return PDOC[id];
+  PDOC[id]=Promise.all([pdfLib(),mediaBlob(id)]).then(function(a){return a[1].arrayBuffer().then(function(buf){return a[0].getDocument({data:buf}).promise})});
+  PDOC[id].catch(function(){delete PDOC[id]});return PDOC[id];
+}
+function mediaBlob(id){return mdbRun(['files'],'readonly',function(tx){return tx.objectStore('files').get(id)}).then(function(r){if(!r||!r.blob)throw new Error('fehlt');return r.blob})}
+function pdfThumb(file){
+  return pdfLib().then(function(lib){return file.arrayBuffer().then(function(buf){return lib.getDocument({data:buf}).promise})}).then(function(doc){
+    return doc.getPage(1).then(function(pg){
+      var v=pg.getViewport({scale:1}),sc=320/v.width,vp=pg.getViewport({scale:sc}),c=document.createElement('canvas');
+      c.width=Math.round(vp.width);c.height=Math.round(vp.height);
+      var cx=c.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,c.width,c.height);
+      return pg.render({canvasContext:cx,viewport:vp}).promise.then(function(){
+        var n=doc.numPages;try{doc.destroy()}catch(e){}
+        return new Promise(function(r){c.toBlob(function(b){r({blob:b,pages:n})},'image/jpeg',0.75)})});
+    });
+  });
+}
+function pdfRender(id,page,host){
+  return pdfDoc(id).then(function(doc){
+    var n=doc.numPages;page=Math.max(1,Math.min(n,page));
+    return doc.getPage(page).then(function(pg){
+      var box=host.getBoundingClientRect(),bw=Math.max(200,box.width),bh=Math.max(200,box.height);
+      var v=pg.getViewport({scale:1}),sc=Math.min(bw/v.width,bh/v.height),dpr=Math.min(2,window.devicePixelRatio||1);
+      var vp=pg.getViewport({scale:sc*dpr}),c=document.createElement('canvas');
+      c.width=Math.round(vp.width);c.height=Math.round(vp.height);c.style.width=Math.round(vp.width/dpr)+'px';c.style.height=Math.round(vp.height/dpr)+'px';
+      var cx=c.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,c.width,c.height);
+      return pg.render({canvasContext:cx,viewport:vp}).promise.then(function(){return {canvas:c,page:page,n:n}});
+    });
+  });
+}
 function mediaAdd1(f){
   var type=guessType(f);
-  if(!type){toast('„'+f.name+'“ ist kein Bild oder Video');return Promise.resolve()}
+  if(!type){toast('„'+f.name+'“ ist kein Bild, Video oder PDF');return Promise.resolve()}
   if(f.size>MAXMB*1048576){toast('„'+f.name+'“ ist größer als '+MAXMB+' MB');return Promise.resolve()}
-  return makeThumb(f,type).then(function(th){
-    var id=uid()+uid(),meta={id:id,name:f.name,type:type,size:f.size,added:Date.now(),thumb:th};
+  var tp=type==='application/pdf'?pdfThumb(f).then(function(r){return r},function(){return {blob:null,pages:0}}):makeThumb(f,type).then(function(b){return {blob:b}});
+  return tp.then(function(tr){
+    var th=tr.blob,id=uid()+uid(),meta={id:id,name:f.name,type:type,size:f.size,added:Date.now(),thumb:th,pages:tr.pages||0};
     return mdbRun(['meta','files'],'readwrite',function(tx){tx.objectStore('files').put({id:id,blob:f});tx.objectStore('meta').put(meta)}).then(function(){
       if(th)meta.turl=URL.createObjectURL(th);MEDIA.push(meta);mediaSort();
     });
@@ -1008,6 +1052,7 @@ function mediaAdd(files){
 function mediaDel(id){
   return mdbRun(['meta','files'],'readwrite',function(tx){tx.objectStore('files').delete(id);tx.objectStore('meta').delete(id)}).then(function(){
     var m=MEDIA.find(function(x){return x.id===id});if(m&&m.turl)URL.revokeObjectURL(m.turl);
+    if(PDOC[id]){PDOC[id].then(function(d){try{d.destroy()}catch(e){}},function(){});delete PDOC[id]}
     if(MURL[id]){MURL[id].then(function(u){URL.revokeObjectURL(u)});delete MURL[id]}
     MEDIA=MEDIA.filter(function(x){return x.id!==id});if(ui.bmMedia===id)ui.bmMedia=null;mediaEst();render();
   },function(){toast('Löschen nicht möglich')});
@@ -1019,23 +1064,33 @@ function mediaUrl(id){
 }
 function mb(n){return (n/1048576).toFixed(n>=1048576*10?0:1).replace('.',',')+' MB'}
 function vMedien(){
-  var h='<div class="stack"><section class="card"><div class="vh"><h2>Medien für den Beamer</h2></div><p class="meta">Lade Bilder und Videos hoch und zeige sie in der Beamer-Ansicht. Die Dateien bleiben nur auf diesem Gerät. Sie werden nicht in die Cloud synchronisiert und nicht in der Sicherung gespeichert. Nutze nur Inhalte, für die ihr die Rechte habt.</p>';
-  h+='<div class="frow" style="margin-top:10px"><label class="btn primary" for="mfile" style="cursor:pointer">'+(ui.mBusy?'Wird verarbeitet …':'Bilder oder Videos hochladen')+'</label><input type="file" id="mfile" multiple accept="image/*,video/*" style="position:absolute;opacity:0;width:1px;height:1px">'+
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>Medien für den Beamer</h2></div><p class="meta">Lade Bilder, Videos und PDFs hoch und zeige sie in der Beamer-Ansicht. Die Dateien bleiben nur auf diesem Gerät. Sie werden nicht in die Cloud synchronisiert und nicht in der Sicherung gespeichert. Nutze nur Inhalte, für die ihr die Rechte habt.</p>';
+  h+='<div class="frow" style="margin-top:10px"><label class="btn primary" for="mfile" style="cursor:pointer">'+(ui.mBusy?'Wird verarbeitet …':'Bilder, Videos oder PDFs hochladen')+'</label><input type="file" id="mfile" multiple accept="image/*,video/*,application/pdf,.pdf" style="position:absolute;opacity:0;width:1px;height:1px">'+
     (MEDIA.length?'<button type="button" class="btn" data-act="bmopen" data-m="media">Beamer öffnen</button>':'')+'</div>';
   if(ui.mEst&&ui.mEst.quota)h+='<p class="meta" style="margin-top:8px">Belegt: '+mb(ui.mEst.usage||0)+' von ca. '+mb(ui.mEst.quota)+' möglichem Speicher auf diesem Gerät.</p>';
   h+='</section>';
   if(!MEDIA.length)return h+'<section class="card"><p class="empty">Noch keine Medien.</p></section></div>';
   h+='<section class="card"><div class="mgrid">'+MEDIA.map(function(m){
-    var vid=m.type.indexOf('video')===0;
-    return '<div class="mcard"><div class="mth">'+(m.turl?'<img src="'+m.turl+'" alt="">':(vid?'▶':'🖼'))+'</div><div class="mi"><div class="mn" title="'+esc(m.name)+'">'+esc(m.name)+'</div><div class="meta">'+(vid?'Video':'Bild')+' · '+mb(m.size)+'</div>'+
+    var vid=m.type.indexOf('video')===0,pdf=m.type==='application/pdf';
+    return '<div class="mcard"><div class="mth">'+(m.turl?'<img src="'+m.turl+'" alt="">':(vid?'▶':(pdf?'PDF':'🖼')))+'</div><div class="mi"><div class="mn" title="'+esc(m.name)+'">'+esc(m.name)+'</div><div class="meta">'+(vid?'Video':(pdf?'PDF'+(m.pages?' · '+m.pages+' S.':''):'Bild'))+' · '+mb(m.size)+'</div>'+
       '<div class="frow"><button type="button" class="btn sm primary" data-act="bmopen" data-m="media" data-id="'+m.id+'">Zeigen</button>'+cbtn('mdel'+m.id,'Löschen','data-act="mdel" data-id="'+m.id+'"')+'</div></div></div>'}).join('')+'</div></section></div>';
   return h;
+}
+function bmPdfShow(it){
+  var h=$('#bm-media');if(!h)return;
+  var pg=ui.bmPage||1,tok=(ui.bmTok=(ui.bmTok||0)+1);
+  pdfRender(it.id,pg,h).then(function(r){
+    var h2=$('#bm-media');if(!h2||h2.dataset.mid!==it.id||tok!==ui.bmTok)return;
+    ui.bmPage=r.page;ui.bmPages=r.n;h2.innerHTML='';h2.appendChild(r.canvas);
+    var l=document.getElementById('bm-pl');if(l)l.textContent='Seite '+r.page+' / '+r.n;
+  },function(){var h2=$('#bm-media');if(h2)h2.innerHTML='<p class="bmmsg">PDF konnte nicht angezeigt werden.</p>'});
 }
 function bmMediaFill(){
   var h=$('#bm-media');if(!h)return;var id=h.dataset.mid,it=MEDIA.find(function(x){return x.id===id});if(!it)return;
   mediaUrl(id).then(function(u){
     var h2=$('#bm-media');if(!h2||h2.dataset.mid!==id||h2.firstChild)return;
     var e;
+    if(it.type==='application/pdf'){bmPdfShow(it);return}
     if(it.type.indexOf('video')===0){e=document.createElement('video');e.src=u;e.controls=true;e.playsInline=true;e.setAttribute('playsinline','');e.autoplay=true;h2.appendChild(e);var pr=e.play();if(pr&&pr.catch)pr.catch(function(){})}
     else{e=document.createElement('img');e.src=u;e.alt=it.name;h2.appendChild(e)}
   },function(){toast('Datei konnte nicht geladen werden')});
@@ -1087,9 +1142,11 @@ function bmHTML(){
     extra='<button type="button" class="bmb'+(ui.bmNames?' on':'')+'" data-act="bmnames">Namen '+(ui.bmNames?'verbergen':'zeigen')+'</button>';
   }else if(m==='media'){
     var mi=ui.bmMedia&&MEDIA.find(function(q){return q.id===ui.bmMedia});
-    if(mi){x='<div class="bmmedia" id="bm-media" data-mid="'+mi.id+'"></div>';extra='<button type="button" class="bmb" data-act="bmmsel">▦ Auswahl</button><button type="button" class="bmb" data-act="bmmstep" data-d="-1">◀ Zurück</button><button type="button" class="bmb" data-act="bmmstep" data-d="1">Weiter ▶</button>'}
+    if(mi){x='<div class="bmmedia" id="bm-media" data-mid="'+mi.id+'"></div>';
+      if(mi.type==='application/pdf')extra='<button type="button" class="bmb" data-act="bmmsel">▦ Auswahl</button><button type="button" class="bmb" data-act="bmpg" data-d="-1">◀ Seite</button><span class="bmb" id="bm-pl" style="pointer-events:none">Seite '+(ui.bmPage||1)+(ui.bmPages?' / '+ui.bmPages:'')+'</span><button type="button" class="bmb" data-act="bmpg" data-d="1">Seite ▶</button>';
+      else extra='<button type="button" class="bmb" data-act="bmmsel">▦ Auswahl</button><button type="button" class="bmb" data-act="bmmstep" data-d="-1">◀ Zurück</button><button type="button" class="bmb" data-act="bmmstep" data-d="1">Weiter ▶</button>'}
     else if(!MEDIA.length)x='<p class="bmmsg">Keine Medien vorhanden. Lade sie im Reiter „Medien“ hoch.</p>';
-    else x='<div class="bmhead">Medien auswählen</div><div class="bmthumbs">'+MEDIA.map(function(q){return '<button type="button" class="bmth" data-act="bmmpick" data-id="'+q.id+'"><div class="t">'+(q.turl?'<img src="'+q.turl+'" alt="">':(q.type.indexOf('video')===0?'▶':'🖼'))+'</div><span>'+esc(q.name)+'</span></button>'}).join('')+'</div>';
+    else x='<div class="bmhead">Medien auswählen</div><div class="bmthumbs">'+MEDIA.map(function(q){return '<button type="button" class="bmth" data-act="bmmpick" data-id="'+q.id+'"><div class="t">'+(q.turl?'<img src="'+q.turl+'" alt="">':(q.type.indexOf('video')===0?'▶':(q.type==='application/pdf'?'PDF':'🖼')))+'</div><span>'+esc(q.name)+'</span></button>'}).join('')+'</div>';
   }else if(m==='text'){
     x='<div class="bmtext" id="bm-text">'+esc(ui.bmText||'')+'</div>';
     extra='<textarea data-bmtext="1" placeholder="Text für den Beamer">'+esc(ui.bmText||'')+'</textarea>';
@@ -1115,7 +1172,7 @@ setInterval(function(){
   if(ui.bm!=='top')return;var s=bmSess();if(!s||!s.live||!s.live.on)return;
   var b=$('#bm-timer'),t=s.tops[s.live.top];if(b&&t){var e=lvTopSec(s,t);b.textContent=mmss(e);var m=+b.dataset.min;b.classList.toggle('over',m>0&&e>m*60)}
 },1000);
-document.addEventListener('keydown',function(e){if(e.key==='Escape'&&ui.bm){ui.bm=null;render();return}if(ui.bm==='media'&&ui.bmMedia&&(e.key==='ArrowRight'||e.key==='ArrowLeft')&&!/VIDEO|TEXTAREA|INPUT/.test((document.activeElement||{}).tagName||'')){A.bmmstep({d:e.key==='ArrowRight'?1:-1});render()}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&ui.bm){ui.bm=null;render();return}if(ui.bm==='media'&&ui.bmMedia&&(e.key==='ArrowRight'||e.key==='ArrowLeft')&&!/VIDEO|TEXTAREA|INPUT/.test((document.activeElement||{}).tagName||'')){var pdfm=MEDIA.some(function(q){return q.id===ui.bmMedia&&q.type==='application/pdf'});if(pdfm)A.bmpg({d:e.key==='ArrowRight'?1:-1});else{A.bmmstep({d:e.key==='ArrowRight'?1:-1});render()}}});
 
 /* ---- Ferien und Feiertage (Hessen) ---- */
 function easter(y){var a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da)}
@@ -2799,10 +2856,11 @@ var A={
   wzsave:function(){var h=wzHTML();if(!h){toast('Bitte zuerst Kandidat/innen eintragen');return 'skip'}saveFile('stimmzettel-'+((S.settings.wzDatum||today()).replace(/[^0-9A-Za-z]+/g,'-'))+'.html',docFile(h,'Stimmzettel'));return 'skip'},
   wzhtml:function(){var h=wzHTML();if(!h){toast('Bitte zuerst Kandidat/innen eintragen');return 'skip'}copyText(docFile(h,'Stimmzettel'),'#none');return 'skip'},
   wzpdf:function(d,b){return pdfRun('wzsave',d,b)},
-  bmopen:function(d){if(d.sid)ui.sid=d.sid;if(d.id)ui.bmMedia=d.id;ui.bm=d.m||'top';ui.bmBar=true;bmArm()},
+  bmopen:function(d){if(d.sid)ui.sid=d.sid;if(d.id){ui.bmMedia=d.id;ui.bmPage=1;ui.bmPages=0}ui.bm=d.m||'top';ui.bmBar=true;bmArm()},
   bmmode:function(d){ui.bm=d.m;ui.bmBar=true;bmArm()},
-  bmmpick:function(d){ui.bmMedia=d.id;ui.bmBar=true;bmArm()},
-  bmmsel:function(){ui.bmMedia=null;ui.bmBar=true;bmArm()},
+  bmmpick:function(d){ui.bmMedia=d.id;ui.bmPage=1;ui.bmPages=0;ui.bmBar=true;bmArm()},
+  bmpg:function(d){var it=MEDIA.find(function(x){return x.id===ui.bmMedia});if(!it)return 'skip';var n=ui.bmPages||it.pages||1;ui.bmPage=Math.max(1,Math.min(n,(ui.bmPage||1)+(+d.d||1)));ui.bmBar=true;bmArm();bmPdfShow(it);return 'skip'},
+  bmmsel:function(){ui.bmMedia=null;ui.bmPage=1;ui.bmPages=0;ui.bmBar=true;bmArm()},
   bmmstep:function(d){var n=MEDIA.length;if(!n)return 'skip';var i=MEDIA.findIndex(function(x){return x.id===ui.bmMedia});ui.bmMedia=MEDIA[(i+(+d.d||1)+n)%n].id;ui.bmBar=true;bmArm()},
   mdel:function(d){if(ui.confirm!==('mdel'+d.id)&&pc!==('mdel'+d.id)){ui.confirm='mdel'+d.id;return}mediaDel(d.id);return 'skip'},
   bmclose:function(){ui.bm=null;clearTimeout(bmT)},
