@@ -424,7 +424,7 @@ var STATUS=[['geplant','Geplant','neutral'],['eingeladen','Eingeladen','accent']
 var TYPEN=[['info','Information'],['diskussion','Diskussion'],['beschluss','Beschluss'],['wahl','Wahl'],['sonstiges','Sonstiges'],['ende','Sitzungsende']];
 var AV=[['ja','Anwesend'],['entsch','Entschuldigt'],['nein','Fehlt']];
 var RULES=[['gt50','Mehr als die Hälfte der Stimmberechtigten'],['ge50','Mindestens die Hälfte der Stimmberechtigten'],['ge66','Mindestens zwei Drittel der Stimmberechtigten']];
-var TABS=[['uebersicht','Übersicht'],['sitzungen','Sitzungen'],['anwesenheit','Anwesenheit'],['vorlagen','Vorlagen'],['aufgaben','Aufgaben'],['themen','Themen'],['projekte','Projekte'],['antraege','Anträge'],['umfragen','Umfragen'],['plan','Jahresplan'],['kalender','Kalender'],['beschluesse','Beschlüsse'],['gremium','Gremium'],['medien','Medien'],['daten','Daten']];
+var TABS=[['uebersicht','Übersicht'],['sitzungen','Sitzungen'],['anwesenheit','Anwesenheit'],['vorlagen','Vorlagen'],['aufgaben','Aufgaben'],['themen','Themen'],['projekte','Projekte'],['antraege','Anträge'],['umfragen','Umfragen'],['plan','Jahresplan'],['kalender','Kalender'],['beschluesse','Beschlüsse'],['gremium','Gremium'],['uebergabe','Übergabe'],['medien','Medien'],['daten','Daten']];
 var ART=[['tagesordnung','Tagesordnung'],['protokoll','Protokoll'],['einladung','Einladung'],['text','Sonstiges']];
 var PLATZ='{{gremium}} {{titel}} {{datum}} {{uhrzeit}} {{ort}} {{heute}} {{tagesordnung}} {{tops_notizen}} {{anwesenheit}} {{beschlussfaehigkeit}} {{beschluesse}} {{aufgaben}} {{notizen}}';
 
@@ -1614,6 +1614,45 @@ function vAnt(){
   return h+'</div>';
 }
 
+/* ---- Amtsübergabe-Mappe ---- */
+var UBL=['Mitgliederliste und Rollen im Reiter Gremium und Anwesenheit sind aktuell','Offene Aufgaben und Projekte mit der Nachfolge durchgesprochen','Beschlüsse und Anträge des Schuljahres gemeinsam durchgesehen','Kommende Sitzungen, Fristen und Termine übergeben (Jahresplan)','Sicherungsdatei erstellt und übergeben (Reiter Daten)','Zugang zum SV-Planer und zur Cloud geregelt (Passwörter nicht hier eintragen)','Schulleitung und wichtige Ansprechpersonen vorgestellt','Datenschutz: Einwilligungen der Mitglieder übergeben, nicht mehr benötigte Daten gelöscht','Geschäftsordnung und eigene Vorlagen übergeben'];
+function UB(){return S.uebergabe||(S.uebergabe={})}
+function ubHTML(y,edit){
+  var u=UB(),td=today();
+  function tbl(head,rows,w){return '<table style="margin-left:0;width:100%"><tr>'+head.map(function(x,i){return '<td'+(w&&w[i]?' style="width:'+w[i]+'"':'')+'><b>'+x+'</b></td>'}).join('')+'</tr>'+rows.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+esc(c)+'&nbsp;</td>'}).join('')+'</tr>'}).join('')+'</table>'}
+  function box(k,l){
+    var v=u[k]||'';
+    if(edit)return '<table class="ebox"><tr><td><textarea rows="'+Math.max(3,v.split('\n').length+1)+'" data-ub="1" data-f="'+k+'" aria-label="'+l+'">'+esc(v)+'</textarea></td></tr></table>';
+    return v?'<p style="white-space:pre-wrap">'+esc(v)+'</p>':'';
+  }
+  var ses=sorted().filter(function(s){return sjd(s.datum)===y});
+  var bes=[];ses.forEach(function(s){s.beschluesse.forEach(function(x){bes.push([d2(s.datum),x.text,x.ja+x.nein>0?res(x).label:''])})});
+  var aufg=allTasks().filter(function(t){return !t.done}).sort(byFrist);
+  var pr=S.projekte.filter(function(p){return p.status!=='erledigt'});
+  var an=S.antraege.filter(function(a){return sjd(a.datum)===y||(a.status!=='umgesetzt'&&a.status!=='abgelehnt')});
+  var tm=planItems(y).filter(function(x){return x.d>=td&&x.k!=='Feiertag'&&!x.done});
+  var o='<div class="paper'+(edit?' edit':'')+'"><h1>Amtsübergabe-Mappe</h1><div class="sub">'+esc(S.settings.name||'')+' – Schuljahr '+esc(y)+'</div>';
+  o+='<table><tr><td class="k">Schule</td><td>'+(esc(S.settings.schule||'')||'&nbsp;')+'</td></tr><tr><td class="k">Übergabe von</td><td>'+(esc(S.settings.leitung||'')||'&nbsp;')+'</td></tr><tr><td class="k">Übergabe an</td><td>'+(edit?'<input type="text" data-ub="1" data-f="nachf" value="'+esc(u.nachf||'')+'" aria-label="Nachfolge">':(esc(u.nachf||'')||'&nbsp;'))+'</td></tr><tr><td class="k">Stand</td><td>'+esc(d2(td+'T00:00'))+'</td></tr></table>';
+  o+='<h3>Hinweise an die Nachfolge</h3>'+box('hinweise','Hinweise an die Nachfolge');
+  o+='<h3>Checkliste</h3><table style="margin-left:0;width:100%">'+UBL.map(function(t,i){return '<tr><td style="width:6%">'+(u['c'+i]?'&#9745;':'&#9744;')+'</td><td>'+esc(t)+'</td></tr>'}).join('')+'</table>';
+  o+='<h3>Offene Aufgaben</h3>'+(aufg.length?tbl(['Aufgabe','Wer','Frist'],aufg.map(function(t){return [t.text,t.wer,t.frist?d2(t.frist+'T00:00'):'']}),['','22%','18%']):'<p>Keine offenen Aufgaben.</p>');
+  o+='<h3>Offene Projekte</h3>'+(pr.length?tbl(['Projekt','Status','Termin'],pr.map(function(p){return [p.name,(PJS.find(function(x){return x[0]===p.status})||PJS[0])[1],p.termin?d2(p.termin+'T00:00'):'']}),['','22%','18%']):'<p>Keine offenen Projekte.</p>');
+  o+='<h3>Beschlüsse des Schuljahres</h3>'+(bes.length?tbl(['Datum','Beschluss','Ergebnis'],bes,['18%','','20%']):'<p>Keine Beschlüsse in diesem Schuljahr.</p>');
+  o+='<h3>Anträge</h3>'+(an.length?tbl(['Antrag','Status','Datum'],an.map(function(a){return [a.titel,(ANS.find(function(x){return x[0]===a.status})||ANS[0])[1],a.datum?d2(a.datum+'T00:00'):'']}),['','22%','18%']):'<p>Keine Anträge.</p>');
+  o+='<h3>Kommende Termine und Fristen</h3>'+(tm.length?tbl(['Datum','Art','Termin'],tm.map(function(x){return [d2(x.d+'T00:00')+(x.tm?' '+x.tm:''),x.k,x.t]}),['22%','18%','']):'<p>Keine kommenden Termine in diesem Schuljahr.</p>');
+  o+='<table class="sig" style="margin-top:18px"><tr><td>Ort, Datum</td><td>Unterschrift Amtsinhaber/in</td><td>Unterschrift Nachfolge</td></tr><tr><td></td><td>'+sgHTML('ub:ab','Amtsinhaber/in')+'</td><td>'+sgHTML('ub:an','Nachfolge')+'</td></tr></table></div>';
+  return o;
+}
+function vUebergabe(){
+  var y=ensureSj('usj'),u=UB(),done=UBL.filter(function(t,i){return u['c'+i]}).length;
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>Übergabe-Checkliste</h2><span class="pill '+(done===UBL.length?'good':'')+'">'+done+' von '+UBL.length+' erledigt</span></div><p class="meta" style="margin-bottom:8px">Hake ab, was du der Nachfolge übergeben hast. Die Liste erscheint auch in der Mappe.</p>';
+  UBL.forEach(function(t,i){h+='<label class="frow" style="gap:10px;align-items:flex-start;padding:8px 0;cursor:pointer"><input type="checkbox" data-ub="1" data-f="c'+i+'" data-rr="1"'+(u['c'+i]?' checked':'')+' style="margin-top:3px"><span class="grow">'+esc(t)+'</span></label>'});
+  h+='<div class="frow" style="margin-top:10px">'+cbtn('ubreset','Haken zurücksetzen','data-act="ubreset"')+'</div></section>';
+  h+='<section class="card"><div class="vh"><h2>Mappe für die Nachfolge</h2>'+sjOpts(y,'u-sj','usj')+'</div><p class="meta" style="margin-bottom:12px">Wird aus offenen Aufgaben und Projekten, Beschlüssen und Anträgen des Schuljahres sowie den kommenden Terminen erstellt. Name der Nachfolge und Hinweise trägst du selbst ein. Die Mappe enthält Namen aus Aufgaben und Beschlüssen, gib sie nur an die Nachfolge weiter.</p>'+
+    '<div class="frow" style="margin-bottom:12px">'+(DL?'<button type="button" class="btn primary" data-act="ubsave">Als HTML speichern</button>':'<button type="button" class="btn primary" data-act="ubhtml">HTML kopieren</button>')+'</div><div class="sheet">'+ubHTML(y,true)+'</div></section></div>';
+  return h;
+}
+
 /* ---- Jahresbericht ---- */
 function berichtHTML(y,edit){
   var ses=sorted().filter(function(s){return sjd(s.datum)===y}),b=S.berichte[y]||{einl:'',fazit:''};
@@ -2087,9 +2126,9 @@ function seed(){
           {id:uid(),titel:'Verschiedenes',min:10,typ:'info',notiz:''}],
     anw:a2,beschluesse:[],aufgaben:[],protokoll:''};
   var later={id:uid(),bsp:true,titel:'SV-Sitzung (Beispiel)',datum:at(34,18,0),ort:'',status:'geplant',tops:topsTpl(),anw:{},beschluesse:[],aufgaben:[],protokoll:''};
-  return {settings:setDef('SV Musterschule'),members:[m0,m1,m2,m3,m4,vl],sessions:[past,next,later],vorlagen:defaultVorlagen(),termine:[],projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],go:goDef(),berichte:{},v2:true,examples:true};
+  return {settings:setDef('SV Musterschule'),members:[m0,m1,m2,m3,m4,vl],sessions:[past,next,later],vorlagen:defaultVorlagen(),termine:[],projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],go:goDef(),berichte:{},uebergabe:{},v2:true,examples:true};
 }
-function blank(){return {settings:setDef('SV'),members:[],sessions:[],vorlagen:defaultVorlagen(),projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],termine:[],go:goDef(),berichte:{},v2:true,examples:false}}
+function blank(){return {settings:setDef('SV'),members:[],sessions:[],vorlagen:defaultVorlagen(),projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],termine:[],go:goDef(),berichte:{},uebergabe:{},v2:true,examples:false}}
 function norm(o){
   if(!o||!Array.isArray(o.sessions)||!Array.isArray(o.members))return null;
   o.settings=Object.assign(setDef('SV'),o.settings||{});
@@ -2105,7 +2144,7 @@ function norm(o){
   o.termine.forEach(function(t){t.id=t.id||uid();['titel','art','datum','von','bis','ort','notiz','wdh','wbis'].forEach(function(k){t[k]=t[k]||''})});
   o.projekte=Array.isArray(o.projekte)?o.projekte:[];o.verteiler=Array.isArray(o.verteiler)?o.verteiler:[];
   o.projekte.forEach(function(p){p.id=p.id||uid();p.name=p.name||'';p.ziel=p.ziel||'';p.termin=p.termin||'';p.status=p.status||'idee';p.lead=p.lead||'';p.notiz=p.notiz||'';p.sess=Array.isArray(p.sess)?p.sess:[];p.aufg=Array.isArray(p.aufg)?p.aufg:[];p.aufg.forEach(function(a){a.id=a.id||uid();a.text=a.text||'';a.wer=a.wer||'';a.frist=a.frist||'';a.done=!!a.done})});
-  o.antraege=Array.isArray(o.antraege)?o.antraege:[];o.berichte=(o.berichte&&typeof o.berichte==='object')?o.berichte:{};
+  o.antraege=Array.isArray(o.antraege)?o.antraege:[];o.berichte=(o.berichte&&typeof o.berichte==='object')?o.berichte:{};o.uebergabe=(o.uebergabe&&typeof o.uebergabe==='object')?o.uebergabe:{};
   o.antraege.forEach(function(a){a.id=a.id||uid();['titel','empf','datum','text','begr','bez','ein','frist','antw','antwt'].forEach(function(k){a[k]=a[k]||''});a.status=a.status||'entwurf'});
   var gv=o.go&&o.go.v;o.go=Object.assign(goDef(),(o.go&&typeof o.go==='object')?o.go:{});o.go.ladung=Math.max(0,+o.go.ladung||0);o.go.protfrist=Math.max(0,+o.go.protfrist||0);
   if(!gv){o.go.v=2;if(!o.go.text)o.go.text=GO_TEXT;if(o.go.protfrist===14)o.go.protfrist=0;o.go.ladung=7;o.settings.quorumRule='ge50'}
@@ -2185,10 +2224,11 @@ var NAVICO={
   plan:'<circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h6a3 3 0 0 1 0 6h-4a3 3 0 0 0 0 6h6"/>',
   kalender:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
   gremium:'<path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
+  uebergabe:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 14h6m-2.5-2.5L15 14l-2.5 2.5"/>',
   medien:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/>',
   daten:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>'
 };
-var NAVG=[['',['uebersicht']],['Sitzungsarbeit',['sitzungen','anwesenheit','vorlagen','aufgaben','themen','beschluesse']],['Planung',['projekte','antraege','umfragen','plan','kalender']],['Verwaltung',['gremium','medien','daten']]];
+var NAVG=[['',['uebersicht']],['Sitzungsarbeit',['sitzungen','anwesenheit','vorlagen','aufgaben','themen','beschluesse']],['Planung',['projekte','antraege','umfragen','plan','kalender']],['Verwaltung',['gremium','uebergabe','medien','daten']]];
 function pageTitle(){var t=TABS.find(function(x){return x[0]===ui.view});return t?t[1]:(ui.view==='live'?'Live-Sitzung':'')}
 function pagehead(){var t=pageTitle();return '<div class="pagehead"><h1>'+esc(t)+'</h1><span class="meta">'+esc(langDatum(today()+'T00:00'))+'</span></div>'}
 function nav(){
@@ -2618,7 +2658,7 @@ function vDaten(){
 }
 
 /* ---------- Rendern ---------- */
-var VIEWS={uebersicht:vUeber,sitzungen:vSitz,vorlagen:vVorl,aufgaben:vAufg,live:vLive,anwesenheit:vAnwes,themen:vThemen,projekte:vProj,antraege:vAnt,umfragen:vUmf,plan:vPlan,kalender:vKal,beschluesse:vBesch,gremium:vGremium,medien:vMedien,daten:vDaten};
+var VIEWS={uebersicht:vUeber,sitzungen:vSitz,vorlagen:vVorl,aufgaben:vAufg,live:vLive,anwesenheit:vAnwes,themen:vThemen,projekte:vProj,antraege:vAnt,umfragen:vUmf,plan:vPlan,kalender:vKal,beschluesse:vBesch,gremium:vGremium,uebergabe:vUebergabe,medien:vMedien,daten:vDaten};
 function render(top){
   var y=window.scrollY;
   $('#gname').textContent=S.settings.name||'';
@@ -2896,7 +2936,7 @@ function makePDF(html,name){
   };
   fr.srcdoc=html.replace('</head>','<style>html,body{margin:0!important;padding:0!important;background:#fff!important}.paper{border:0!important;padding:0!important;min-width:0!important;max-width:none!important;width:100%!important;margin:0!important}.sgb,.sgx{display:none!important}</style></head>');
 }
-var PDFMAP={ahsave:'ahpdf',ahhtml:'ahpdf',antsave:'antpdf',anthtml:'antpdf',bsave:'bpdf',bhtml:'bpdf',bnsave:'bnpdf',bnhtml:'bnpdf',gosave:'gopdf',gohtml:'gopdf',nssave:'nspdf',nshtml:'nspdf',protsave:'protpdf',prothtml:'protpdf',skrsave:'skrpdf',skrhtml:'skrpdf',tlsave:'tlpdf',tlhtml:'tlpdf',ufsave:'ufpdf',ufhtml:'ufpdf',wnsave:'wnpdf',wnhtml:'wnpdf',wzsave:'wzpdf',wzhtml:'wzpdf',ufosave:'ufopdf',ufohtml:'ufopdf',einlcopy:'einlpdf'};
+var PDFMAP={ubsave:'ubpdf',ubhtml:'ubpdf',ahsave:'ahpdf',ahhtml:'ahpdf',antsave:'antpdf',anthtml:'antpdf',bsave:'bpdf',bhtml:'bpdf',bnsave:'bnpdf',bnhtml:'bnpdf',gosave:'gopdf',gohtml:'gopdf',nssave:'nspdf',nshtml:'nspdf',protsave:'protpdf',prothtml:'protpdf',skrsave:'skrpdf',skrhtml:'skrpdf',tlsave:'tlpdf',tlhtml:'tlpdf',ufsave:'ufpdf',ufhtml:'ufpdf',wnsave:'wnpdf',wnhtml:'wnpdf',wzsave:'wzpdf',wzhtml:'wzpdf',ufosave:'ufopdf',ufohtml:'ufopdf',einlcopy:'einlpdf'};
 function addPdfButtons(){
   [].forEach.call(document.querySelectorAll('button[data-act]'),function(b){
     var pa=PDFMAP[b.dataset.act];if(!pa)return;
@@ -2932,6 +2972,7 @@ function pdfRun(save,d,b){var orig=saveFile,cap=null;saveFile=function(n,h){cap=
 var A={
   gadd:function(d){var s=sess(d.sid),n=$('#g-name'),r=$('#g-rolle');if(!s||!n)return 'skip';var v=n.value.trim();if(!v){toast('Bitte einen Namen eingeben');return 'skip'}GA(s).push({id:uid(),name:v,rolle:r?r.value:''});save()},
   gdel:function(d){var s=sess(d.sid);if(!s)return 'skip';s.gaeste=GA(s).filter(function(g){return g.id!==d.id});save()},
+  ubpdf:function(d,b){return pdfRun('ubsave',d,b)},
   ahpdf:function(d,b){return pdfRun('ahsave',d,b)},antpdf:function(d,b){return pdfRun('antsave',d,b)},bpdf:function(d,b){return pdfRun('bsave',d,b)},bnpdf:function(d,b){return pdfRun('bnsave',d,b)},gopdf:function(d,b){return pdfRun('gosave',d,b)},
   nspdf:function(d,b){return pdfRun('nssave',d,b)},protpdf:function(d,b){return pdfRun('protsave',d,b)},skrpdf:function(d,b){return pdfRun('skrhtml',d,b)},tlpdf:function(d,b){return pdfRun('tlsave',d,b)},ufpdf:function(d,b){return pdfRun('ufsave',d,b)},wnpdf:function(d,b){return pdfRun('wnsave',d,b)},
   einlpdf:function(){var s=ensureA(),el=$('#einltext');if(!s||!el)return 'skip';makePDF(docFile('<div class="paper" style="white-space:pre-wrap">'+esc(el.value)+'</div>','Einladung'),'einladung-'+(s.datum||today()).slice(0,10)+'.pdf');return 'skip'},
@@ -3105,6 +3146,9 @@ var A={
   pjgo:function(d){ui.view='projekte';ui.pj=d.id;return true},
   ango:function(d){ui.view='antraege';ui.aopen=d.id;ui.astat='';return true},
   bsave:function(){saveFile('jahresbericht-'+ensureSj('bsj').replace('/','-')+'.html',docFile(berichtHTML(ensureSj('bsj'),false),'Jahresbericht'));return 'skip'},
+  ubsave:function(){var y=ensureSj('usj');saveFile('amtsuebergabe-'+y.replace('/','-')+'.html',docFile(ubHTML(y,false),'Amtsübergabe-Mappe'));return 'skip'},
+  ubhtml:function(){copyText(docFile(ubHTML(ensureSj('usj'),false),'Amtsübergabe-Mappe'),'#none');return 'skip'},
+  ubreset:function(){var u=UB();Object.keys(u).forEach(function(k){if(/^c\d+$/.test(k))delete u[k]});save()},
   bhtml:function(){copyText(docFile(berichtHTML(ensureSj('bsj'),false),'Jahresbericht'),'#none');return 'skip'},
   addpj:function(){var p={id:uid(),name:'Neues Projekt',ziel:'',termin:'',status:'idee',lead:'',notiz:'',sess:[],aufg:[]};S.projekte.push(p);ui.pj=p.id;save()},
   delpj:function(d){if(!needConfirm('delpj'+d.id))return 'skip';S.projekte=S.projekte.filter(function(p){return p.id!==d.id});ui.pj='';save()},
@@ -3228,6 +3272,7 @@ function setField(el){
   else if(d.uf){o=S.umfragen.find(function(x){return x.id===d.uf});if(o&&d.coll)o=o[d.coll].find(function(x){return x.id===d.id})}
   else if(d.ant)o=S.antraege.find(function(x){return x.id===d.ant});
   else if(d.tm)o=S.termine.find(function(x){return x.id===d.tm});
+  else if(d.ub){o=UB()}
   else if(d.bj){o=S.berichte[d.bj]=S.berichte[d.bj]||{einl:'',fazit:''}}
   else if(d.s)o=S.settings;
   else if(d.tp)o=tplById(d.tp);
@@ -3246,7 +3291,7 @@ document.addEventListener('input',function(e){
   if(d.bmtext!==undefined){ui.bmText=t.value;var bt=$('#bm-text');if(bt)bt.textContent=t.value;if(ui.bm)bmArm();return}
   if(d.az!==undefined){azSet(d.az,t.value);azRefresh();return}
   if(d.rr)return;
-  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th||d.tm){setField(t);refreshDerived();if(/^wz/.test(d.s||'')){var wze=$('#wzsheet');if(wze)wze.innerHTML=wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>'}if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
+  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.ub||d.go||d.uf||d.th||d.tm){setField(t);refreshDerived();if(/^wz/.test(d.s||'')){var wze=$('#wzsheet');if(wze)wze.innerHTML=wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>'}if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
 });
 document.addEventListener('change',function(e){
   var t=e.target,d=t.dataset;
@@ -3254,7 +3299,7 @@ document.addEventListener('change',function(e){
   if(d.gensel){ui.gen[d.gensel]=t.value;regen();render();return}
   if(t.id==='mfile'){mediaAdd(t.files);try{t.value=''}catch(e){}return}
   if(t.id==='impfile'){readImport(t.files&&t.files[0]);return}
-  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.go||d.uf||d.th||d.tm){setField(t);if(d.rr)render();else refreshDerived()}
+  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.ub||d.go||d.uf||d.th||d.tm){setField(t);if(d.rr)render();else refreshDerived()}
 });
 
 render();
