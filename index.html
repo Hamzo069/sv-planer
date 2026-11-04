@@ -1770,7 +1770,19 @@ function vGO(){
 }
 
 /* ---- Umfragen ---- */
+function qNorm(q){q.typ=q.typ==='frei'?'frei':'wahl';q.optionen=Array.isArray(q.optionen)?q.optionen:[];q.optionen.forEach(function(x){x.id=x.id||uid();x.text=x.text||'';x.n=Math.max(0,+x.n||0)});q.antw=Array.isArray(q.antw)?q.antw:[];q.antw.forEach(function(x){x.id=x.id||uid();x.text=x.text||''})}
+function UQS(u){return [{o:u,id:'q0',text:u.frage,main:true}].concat(u.fragen.map(function(q){return {o:q,id:q.id,text:q.text,main:false}}))}
+function qObj(u,qid){return qid&&qid!=='q0'?u.fragen.find(function(q){return q.id===qid}):u}
+function qTot(q){return q.typ==='frei'?q.antw.filter(function(a){return String(a.text).trim()}).length:q.optionen.reduce(function(a,x){return a+x.n},0)}
+function uTot(u){return Math.max.apply(null,UQS(u).map(function(x){return qTot(x.o)}).concat([0]))}
+function isMulti(u){return u.fragen.length>0||u.typ==='frei'}
+function antList(arr,doc){
+  var l=arr.filter(function(t){return String(t).trim()});
+  if(!l.length)return doc?'<p>Keine Antworten.</p>':'<p class="empty">Noch keine Antworten.</p>';
+  return '<ul style="margin:0;padding-left:'+(doc?'22':'20')+'px">'+l.map(function(t){return '<li style="margin-bottom:4px;white-space:pre-wrap">'+esc(t)+'</li>'}).join('')+'</ul>';
+}
 function ufRes(u){
+  if(u.typ==='frei')return '<div class="meta" style="margin-bottom:6px">Antworten: <b>'+qTot(u)+'</b></div>'+antList(u.antw.map(function(a){return a.text}));
   var tot=u.optionen.reduce(function(a,x){return a+x.n},0);
   if(!u.optionen.length)return '<p class="empty">Noch keine Antwortmöglichkeiten.</p>';
   var max=Math.max.apply(null,u.optionen.map(function(x){return x.n}));
@@ -1780,11 +1792,16 @@ function ufRes(u){
   }).join('');
 }
 function ufHTML(u){
-  var tot=u.optionen.reduce(function(a,x){return a+x.n},0);
+  var qs=UQS(u),tot=uTot(u),multi=qs.length>1;
   var z=(u.von||u.bis)?(u.von?d2(u.von+'T00:00'):'')+(u.bis?' bis '+d2(u.bis+'T00:00'):''):'';
-  var o='<div class="paper"><h1>Umfrage</h1><div class="sub">'+esc(u.frage||'')+'</div>';
+  var o='<div class="paper"><h1>Umfrage</h1>'+(multi?'':'<div class="sub">'+esc(u.frage||'')+'</div>');
   o+='<table style="margin-left:0;width:100%"><tr><td class="k">Zeitraum</td><td>'+(esc(z)||'&nbsp;')+'</td></tr><tr><td class="k">Befragt</td><td>'+(esc(u.ziel||'')||'&nbsp;')+'</td></tr><tr><td class="k">Teilnehmende</td><td>'+tot+'</td></tr></table>';
-  o+='<h3>Ergebnis</h3><table style="margin-left:0;width:100%"><tr><td><b>Antwort</b></td><td style="width:14%"><b>Stimmen</b></td><td style="width:14%"><b>Anteil</b></td><td style="width:34%"><b>Verteilung</b></td></tr>'+u.optionen.map(function(x){var p=tot?Math.round(x.n*1000/tot)/10:0;return '<tr><td>'+esc(x.text)+'</td><td>'+x.n+'</td><td>'+String(p).replace('.',',')+' %</td><td><div style="height:12px;width:'+p+'%;background:#0E6B58;-webkit-print-color-adjust:exact;print-color-adjust:exact"></div></td></tr>'}).join('')+'</table>';
+  qs.forEach(function(x,i){
+    var q=x.o,t=qTot(q);
+    o+='<h3>'+(multi?(i+1)+'. '+esc(x.text||'Frage'):'Ergebnis')+'</h3>';
+    if(q.typ==='frei'){o+=antList(q.antw.map(function(a){return a.text}),true);return}
+    o+='<table style="margin-left:0;width:100%"><tr><td><b>Antwort</b></td><td style="width:14%"><b>Stimmen</b></td><td style="width:14%"><b>Anteil</b></td><td style="width:34%"><b>Verteilung</b></td></tr>'+q.optionen.map(function(y){var p=t?Math.round(y.n*1000/t)/10:0;return '<tr><td>'+esc(y.text)+'</td><td>'+y.n+'</td><td>'+String(p).replace('.',',')+' %</td><td><div style="height:12px;width:'+p+'%;background:#0E6B58;-webkit-print-color-adjust:exact;print-color-adjust:exact"></div></td></tr>'}).join('')+'</table>';
+  });
   if(u.notiz)o+='<h3>Anmerkung</h3><p style="white-space:pre-wrap">'+esc(u.notiz)+'</p>';
   return o+'<p style="margin-top:14px">'+esc(S.settings.name||'')+', '+esc(S.settings.schule||'')+'</p></div>';
 }
@@ -1795,7 +1812,8 @@ function voteUrl(o,code){return voteBase()+'abstimmen.html?u='+encodeURIComponen
 function qrSvg(txt){try{var q=qrcode(0,'M');q.addData(txt);q.make();return q.createSvgTag({cellSize:4,margin:2,scalable:true})}catch(e){return ''}}
 function ufErr(e){var m=String(e&&e.message||e||'');if((e&&(e.code==='42P01'||e.code==='PGRST202'||e.code==='PGRST205'))||/relation|does not exist|schema cache|Could not find/i.test(m))return 'Datenbank noch nicht vorbereitet: SQL-Skript in Supabase ausführen';return 'Online-Abstimmung nicht möglich ('+m.slice(0,60)+')'}
 function needCloud(){if(!(CL.on&&CL.client&&CL.user)){toast('Bitte zuerst unter „Daten“ in der Cloud anmelden');return false}return true}
-function pollRow(u,o){return {id:o.id,frage:u.frage,optionen:u.optionen.map(function(x){return {id:x.id,text:x.text}}),modus:o.modus,status:o.offen?'offen':'zu'}}
+function pollQs(u){return UQS(u).map(function(x){var q=x.o;return {id:x.id,text:x.text,typ:q.typ,optionen:q.typ==='frei'?[]:q.optionen.map(function(y){return {id:y.id,text:y.text}})}})}
+function pollRow(u,o){var m=isMulti(u),r={id:o.id,frage:u.frage,optionen:m?[]:u.optionen.map(function(x){return {id:x.id,text:x.text}}),modus:o.modus,status:o.offen?'offen':'zu'};if(m)r.fragen=pollQs(u);return r}
 function ufOnlineHTML(u){
   var o=u.online,h='<h3 style="margin:16px 0 6px">Online abstimmen</h3>';
   if(!CL.on)return h+'<p class="meta">Dafür wird die Cloud gebraucht. Sie ist in dieser Version nicht eingerichtet.</p>';
@@ -1813,9 +1831,9 @@ function ufOnlineHTML(u){
   if(cod)h+='<label class="lbl" for="uoc-'+u.id+'" style="margin-top:12px">Codes ('+o.codes.length+')</label><textarea class="box" id="uoc-'+u.id+'" readonly style="min-height:70px;font-family:var(--mono,monospace)">'+esc(o.codes.join('\n'))+'</textarea><div class="frow" style="margin-top:6px"><button type="button" class="btn sm" data-act="ufocopy" data-id="'+u.id+'">Codes kopieren</button><button type="button" class="btn sm" data-act="ufomore" data-id="'+u.id+'">+ 10 Codes</button></div>';
   h+='<h4 style="margin:14px 0 6px">Online-Ergebnis</h4>';
   if(!r)h+='<p class="meta">Noch nicht abgerufen.</p>';
-  else h+='<div class="meta" style="margin-bottom:6px">Stand '+esc(r.at)+' · '+r.total+' Stimmen'+(cod?' von '+r.codes+' Codes':'')+'</div>'+ufRes({optionen:u.optionen.map(function(x){return {id:x.id,text:x.text,n:+(r.counts[x.id]||0)}})});
+  else h+='<div class="meta" style="margin-bottom:6px">Stand '+esc(r.at)+' · '+r.total+' Teilnehmende'+(cod?' von '+r.codes+' Codes':'')+'</div>'+(isMulti(u)?UQS(u).map(function(x,k){var q=x.o,qc=(r.qcounts||{})[x.id]||{};return '<h5 style="margin:10px 0 4px">'+(k+1)+'. '+esc(x.text||'Frage')+'</h5>'+(q.typ==='frei'?ufRes({typ:'frei',antw:((r.texts||{})[x.id]||[]).map(function(t){return {text:t}})}):ufRes({optionen:q.optionen.map(function(y){return {id:y.id,text:y.text,n:+(qc[y.id]||0)}})}))}).join(''):ufRes({optionen:u.optionen.map(function(x){return {id:x.id,text:x.text,n:+(r.counts[x.id]||0)}})}));
   h+='<div class="frow" style="margin-top:8px"><button type="button" class="btn primary sm" data-act="ufores" data-id="'+u.id+'">Ergebnis abrufen</button>'+(r?cbtn('ufotake'+u.id,'In die Zählung übernehmen','data-act="ufotake" data-id="'+u.id+'"'):'')+'<button type="button" class="btn sm" data-act="ufoclose" data-id="'+u.id+'">'+(o.offen?'Online schließen':'Wieder öffnen')+'</button><button type="button" class="btn sm" data-act="ufosync" data-id="'+u.id+'">Frage und Antworten übertragen</button>'+cbtn('ufodel'+u.id,'Online-Abstimmung entfernen','data-act="ufodel" data-id="'+u.id+'"')+'</div>'+
-    '<p class="meta" style="margin-top:6px">„In die Zählung übernehmen“ ersetzt die Stimmen oben durch das Online-Ergebnis. Nach Änderungen an Frage oder Antworten bitte übertragen, solange noch keine Stimmen vorliegen.</p>';
+    '<p class="meta" style="margin-top:6px">„In die Zählung übernehmen“ ersetzt die Stimmen und Freitext-Antworten oben durch das Online-Ergebnis. Freitext sieht nur, wer den Planer nutzt; prüfe ihn vor dem Aushang auf Namen oder Beleidigungen und lösche solche Zeilen. Nach Änderungen an Frage oder Antworten bitte übertragen, solange noch keine Stimmen vorliegen.</p>';
   return h;
 }
 function ufoDoc(u){
@@ -1833,26 +1851,44 @@ function ufoDoc(u){
   for(i=0;i<c.length;i+=2)rows.push('<tr style="page-break-inside:avoid;break-inside:avoid"><td>'+slip(c[i])+'</td><td>'+slip(c[i+1])+'</td></tr>');
   return '<div class="paper">'+sty+'<table class="uo">'+rows.join('')+'</table></div>';
 }
+function qEditor(u,x,i,n){
+  var q=x.o,main=x.main,c='data-uf="'+u.id+'"'+(main?'':' data-qid="'+q.id+'"'),qa=' data-q="'+x.id+'"',pre=main?'uq-'+u.id:'uq-'+q.id;
+  var h='<div style="margin-top:18px;padding-top:6px;border-top:1px solid var(--line,#dfe2f0)"><div class="frow" style="margin-bottom:6px"><h3 class="grow">'+(n>1?'Frage '+(i+1):'Frage')+'</h3>'+(main?'':cbtn('ufqdel'+q.id,'Frage entfernen','data-act="ufqdel" data-id="'+u.id+'" data-q="'+q.id+'"'))+'</div>'+
+    '<label class="lbl" for="'+pre+'">'+(main?'Frage (zugleich Titel der Umfrage)':'Fragetext')+'</label><input type="text" id="'+pre+'" '+c+' data-f="'+(main?'frage':'text')+'" value="'+esc(main?u.frage:q.text)+'">'+
+    '<label class="lbl" for="'+pre+'t" style="margin-top:12px">Art der Frage</label><select id="'+pre+'t" '+c+' data-f="typ" data-rr="1">'+opts([['wahl','Auswahl: Stimmen zählen'],['frei','Freitext: Antworten sammeln']],q.typ)+'</select>';
+  if(q.typ==='frei'){
+    h+='<h4 style="margin:14px 0 6px">Antworten</h4>';
+    if(!q.antw.length)h+='<p class="empty">Noch keine Antworten.</p>';
+    q.antw.forEach(function(a){
+      var cx=c+' data-coll="antw" data-id="'+a.id+'"';
+      h+='<div class="frow" style="margin-bottom:6px"><input type="text" class="grow" aria-label="Antwort" '+cx+' data-f="text" value="'+esc(a.text)+'" placeholder="Antwort"><button type="button" class="btn sm danger" data-act="ufansdel" data-id="'+u.id+'" data-aid="'+a.id+'"'+qa+'>Entfernen</button></div>';
+    });
+    h+='<div class="frow"><button type="button" class="btn sm" data-act="ufans" data-id="'+u.id+'"'+qa+'>+ Antwort eintragen</button></div>';
+  }else{
+    h+='<h4 style="margin:14px 0 6px">Antwortmöglichkeiten und Stimmen</h4>';
+    q.optionen.forEach(function(y){
+      var cx=c+' data-coll="optionen" data-id="'+y.id+'"';
+      h+='<div class="frow" style="margin-bottom:6px"><input type="text" class="grow" aria-label="Antwort" '+cx+' data-f="text" value="'+esc(y.text)+'" placeholder="Antwort"><input type="number" min="0" style="width:6rem" aria-label="Stimmen" '+cx+' data-f="n" value="'+y.n+'"><button type="button" class="btn sm danger" data-act="ufoptdel" data-uid="'+u.id+'" data-id="'+y.id+'"'+qa+'>Entfernen</button></div>';
+    });
+    h+='<div class="frow"><button type="button" class="btn sm" data-act="ufopt" data-id="'+u.id+'"'+qa+'>+ Antwort</button><button type="button" class="btn sm" data-act="ufpreset" data-id="'+u.id+'" data-v="jn"'+qa+'>Vorlage Ja / Nein / Enthaltung</button><button type="button" class="btn sm" data-act="ufpreset" data-id="'+u.id+'" data-v="skala"'+qa+'>Vorlage Skala 1 bis 5</button></div>';
+  }
+  return h+'<h4 style="margin:14px 0 6px">Auswertung</h4><div id="ufres-'+u.id+(main?'':'-'+q.id)+'">'+ufRes(q)+'</div></div>';
+}
 function vUmf(){
   var list=S.umfragen.slice().sort(function(a,b){return ((a.status==='offen'?0:1)-(b.status==='offen'?0:1))||(b.von||'').localeCompare(a.von||'')});
-  var h='<div class="stack"><section class="card"><div class="vh"><h2>Umfragen</h2><button type="button" class="btn primary" data-act="adduf">+ Umfrage</button></div><p class="meta">Meinungsbilder aus der Schülerschaft. Du trägst die gezählten Stimmen ein und bekommst Anteile, Balken und einen Aushang mit dem Ergebnis.</p></section>';
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>Umfragen</h2><button type="button" class="btn primary" data-act="adduf">+ Umfrage</button></div><p class="meta">Meinungsbilder aus der Schülerschaft. Eine Umfrage kann mehrere Fragen haben, als Auswahl (Stimmen zählen) oder als Freitext. Du trägst die Antworten selbst ein oder sammelst sie online per Link. Du bekommst Anteile, Balken und einen Aushang mit dem Ergebnis.</p></section>';
   if(!list.length)h+='<section class="card"><p class="empty">Noch keine Umfrage.</p></section>';
   list.forEach(function(u){
-    var open=ui.uopen===u.id,c='data-uf="'+u.id+'"',tot=u.optionen.reduce(function(a,x){return a+x.n},0);
-    h+='<section class="card"><div class="frow"><div class="grow"><strong>'+(esc(u.frage)||'<em>Ohne Frage</em>')+'</strong> <span class="pill '+(u.status==='offen'?'warn':'good')+'">'+(u.status==='offen'?'Läuft':'Abgeschlossen')+'</span><div class="meta">'+tot+' Teilnehmende'+(u.bis?' · bis '+esc(d2(u.bis+'T00:00')):'')+'</div></div><button type="button" class="btn sm" data-act="ufopen" data-id="'+u.id+'">'+(open?'Schließen':'Öffnen')+'</button></div>';
+    var open=ui.uopen===u.id,c='data-uf="'+u.id+'"',tot=uTot(u),qs=UQS(u);
+    h+='<section class="card"><div class="frow"><div class="grow"><strong>'+(esc(u.frage)||'<em>Ohne Frage</em>')+'</strong> <span class="pill '+(u.status==='offen'?'warn':'good')+'">'+(u.status==='offen'?'Läuft':'Abgeschlossen')+'</span><div class="meta">'+tot+' Teilnehmende'+(qs.length>1?' · '+qs.length+' Fragen':'')+(u.bis?' · bis '+esc(d2(u.bis+'T00:00')):'')+'</div></div><button type="button" class="btn sm" data-act="ufopen" data-id="'+u.id+'">'+(open?'Schließen':'Öffnen')+'</button></div>';
     if(open){
-      h+='<label class="lbl" for="uq-'+u.id+'" style="margin-top:12px">Frage</label><input type="text" id="uq-'+u.id+'" '+c+' data-f="frage" value="'+esc(u.frage)+'">'+
-        '<div class="g2" style="margin-top:12px"><div><label class="lbl" for="uv-'+u.id+'">Von</label><input type="date" id="uv-'+u.id+'" '+c+' data-f="von" value="'+esc(u.von)+'"></div>'+
+      h+='<div class="g2" style="margin-top:12px"><div><label class="lbl" for="uv-'+u.id+'">Von</label><input type="date" id="uv-'+u.id+'" '+c+' data-f="von" value="'+esc(u.von)+'"></div>'+
         '<div><label class="lbl" for="ub-'+u.id+'">Bis</label><input type="date" id="ub-'+u.id+'" '+c+' data-f="bis" value="'+esc(u.bis)+'"></div>'+
         '<div><label class="lbl" for="uz-'+u.id+'">Befragt (z. B. alle Klassen)</label><input type="text" id="uz-'+u.id+'" '+c+' data-f="ziel" value="'+esc(u.ziel)+'"></div>'+
-        '<div><label class="lbl" for="us-'+u.id+'">Status</label><select id="us-'+u.id+'" '+c+' data-f="status" data-rr="1">'+opts([['offen','Läuft'],['abgeschlossen','Abgeschlossen']],u.status)+'</select></div></div>'+
-        '<h3 style="margin:16px 0 6px">Antwortmöglichkeiten und Stimmen</h3>';
-      u.optionen.forEach(function(x){
-        var cx=c+' data-coll="optionen" data-id="'+x.id+'"';
-        h+='<div class="frow" style="margin-bottom:6px"><input type="text" class="grow" aria-label="Antwort" '+cx+' data-f="text" value="'+esc(x.text)+'" placeholder="Antwort"><input type="number" min="0" style="width:6rem" aria-label="Stimmen" '+cx+' data-f="n" value="'+x.n+'"><button type="button" class="btn sm danger" data-act="ufoptdel" data-uid="'+u.id+'" data-id="'+x.id+'">Entfernen</button></div>';
-      });
-      h+='<div class="frow"><button type="button" class="btn sm" data-act="ufopt" data-id="'+u.id+'">+ Antwort</button><button type="button" class="btn sm" data-act="ufpreset" data-id="'+u.id+'" data-v="jn">Vorlage Ja / Nein / Enthaltung</button><button type="button" class="btn sm" data-act="ufpreset" data-id="'+u.id+'" data-v="skala">Vorlage Skala 1 bis 5</button></div>'+
-        '<h3 style="margin:16px 0 6px">Auswertung</h3><div id="ufres-'+u.id+'">'+ufRes(u)+'</div>'+ufOnlineHTML(u)+
+        '<div><label class="lbl" for="us-'+u.id+'">Status</label><select id="us-'+u.id+'" '+c+' data-f="status" data-rr="1">'+opts([['offen','Läuft'],['abgeschlossen','Abgeschlossen']],u.status)+'</select></div></div>';
+      qs.forEach(function(x,i){h+=qEditor(u,x,i,qs.length)});
+      h+='<div class="frow" style="margin-top:14px"><button type="button" class="btn sm" data-act="ufqadd" data-id="'+u.id+'">+ Weitere Frage</button></div>'+
+        ufOnlineHTML(u)+
         '<label class="lbl" for="un-'+u.id+'" style="margin-top:12px">Anmerkung (erscheint auf dem Aushang)</label><textarea class="box" id="un-'+u.id+'" '+c+' data-f="notiz" style="min-height:70px">'+esc(u.notiz)+'</textarea>'+
         '<div class="frow" style="margin:12px 0">'+(DL?'<button type="button" class="btn primary" data-act="ufsave" data-id="'+u.id+'">Ergebnis-Aushang als HTML speichern</button>':'<button type="button" class="btn primary" data-act="ufhtml" data-id="'+u.id+'">Ergebnis-Aushang als HTML kopieren</button>')+cbtn('deluf'+u.id,'Umfrage löschen','data-act="deluf" data-id="'+u.id+'"')+'</div>';
     }
@@ -2202,8 +2238,8 @@ function norm(o){
   if(!gv){o.go.v=2;if(!o.go.text)o.go.text=GO_TEXT;if(o.go.protfrist===14)o.go.protfrist=0;o.go.ladung=7;o.settings.quorumRule='ge50'}
   o.themen=Array.isArray(o.themen)?o.themen:[];o.themen.forEach(function(t){t.id=t.id||uid();t.text=t.text||'';t.von=t.von||'';t.typ=t.typ||'diskussion';t.notiz=t.notiz||'';t.status=t.status||'offen';t.sid=t.sid||''});
   o.umfragen=Array.isArray(o.umfragen)?o.umfragen:[];
-  o.umfragen.forEach(function(u){u.id=u.id||uid();['frage','von','bis','ziel','notiz'].forEach(function(k){u[k]=u[k]||''});u.status=u.status||'offen';u.optionen=Array.isArray(u.optionen)?u.optionen:[];u.optionen.forEach(function(x){x.id=x.id||uid();x.text=x.text||'';x.n=Math.max(0,+x.n||0)})});
-  o.umfragen.forEach(function(u){var w=u.online;u.online=(w&&typeof w==='object'&&w.id)?{id:String(w.id),modus:w.modus==='codes'?'codes':'einfach',offen:w.offen!==false,codes:Array.isArray(w.codes)?w.codes.map(String):[]}:null});
+  o.umfragen.forEach(function(u){u.id=u.id||uid();['frage','von','bis','ziel','notiz'].forEach(function(k){u[k]=u[k]||''});u.status=u.status||'offen';u.optionen=Array.isArray(u.optionen)?u.optionen:[];u.optionen.forEach(function(x){x.id=x.id||uid();x.text=x.text||'';x.n=Math.max(0,+x.n||0)});qNorm(u);u.fragen=Array.isArray(u.fragen)?u.fragen:[];u.fragen.forEach(function(q){q.id=q.id||uid();q.text=q.text||'';qNorm(q)})});
+  o.umfragen.forEach(function(u){var w=u.online;u.online=(w&&typeof w==='object'&&w.id)?{id:String(w.id),modus:w.modus==='codes'?'codes':'einfach',offen:w.offen!==false,m:!!w.m,codes:Array.isArray(w.codes)?w.codes.map(String):[]}:null});
   o.verteiler.forEach(function(v){v.id=v.id||uid();v.name=v.name||'';v.ids=Array.isArray(v.ids)?v.ids:[];v.extra=v.extra||''});
   o.members.forEach(function(m){m.mail=m.mail||'';m.id=m.id||uid();m.name=m.name||'';m.rolle=m.rolle||'Mitglied';m.stimm=m.stimm!==false;m.aktiv=m.aktiv!==false;m.klasse=m.klasse||'';m.ksf=m.ksf||''});
   return o;
@@ -2723,7 +2759,7 @@ function render(top){
   try{localStorage.setItem(KEY+'-tab',ui.view)}catch(e){}
 }
 function refreshDerived(){
-  var ae=document.activeElement;if(ae&&ae.dataset&&ae.dataset.uf){var uu=S.umfragen.find(function(x){return x.id===ae.dataset.uf}),ux=$('#ufres-'+ae.dataset.uf);if(uu&&ux)ux.innerHTML=ufRes(uu)}
+  var ae=document.activeElement;if(ae&&ae.dataset&&ae.dataset.uf){var uu=S.umfragen.find(function(x){return x.id===ae.dataset.uf}),qq=uu&&(ae.dataset.qid?uu.fragen.find(function(x){return x.id===ae.dataset.qid}):uu),ux=$('#ufres-'+ae.dataset.uf+(ae.dataset.qid?'-'+ae.dataset.qid:''));if(qq&&ux)ux.innerHTML=ufRes(qq)}
   var sid=ui.view==='vorlagen'?ui.psid:(ui.view==='sitzungen'?ui.sid:'');
   var s=sid&&sess(sid);if(!s)return;
   var fpe=$('#frp');if(fpe)fpe.innerHTML=freiPill(s.datum);
@@ -3154,13 +3190,13 @@ var A={
   gosave:function(){saveFile('geschaeftsordnung.html',docFile(goHTML(),'Geschäftsordnung'));return 'skip'},
   gohtml:function(){copyText(docFile(goHTML(),'Geschäftsordnung'),'#none');return 'skip'},
   ufonline:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!needCloud())return 'skip';
-    if(u.optionen.length<2||u.optionen.some(function(x){return !String(x.text||'').trim()})){toast('Bitte mindestens zwei Antworten mit Text anlegen');return 'skip'}
+    if(UQS(u).some(function(x){var q=x.o;return !String(x.text||'').trim()||(q.typ==='wahl'&&(q.optionen.length<2||q.optionen.some(function(y){return !String(y.text||'').trim()})))})){toast('Jede Frage braucht einen Text, Auswahlfragen mindestens zwei Antworten mit Text');return 'skip'}
     var cod=ui['uom_'+u.id]==='codes',n=Math.min(500,Math.max(1,parseInt(ui['uon_'+u.id],10)||30)),o={id:rndStr(8,VCH),modus:cod?'codes':'einfach',offen:true,codes:[]},i,c;
     if(cod)for(i=0;i<n;i++){do{c=rndStr(6,VCA)}while(o.codes.indexOf(c)>=0);o.codes.push(c)}
     toast('Wird freigeschaltet …');
     CL.client.from('polls').insert(pollRow(u,o)).then(function(r){if(r.error)throw r.error;if(!o.codes.length)return;
       return CL.client.from('poll_codes').insert(o.codes.map(function(x){return {poll_id:o.id,code:x}})).then(function(r2){if(r2.error)throw r2.error})
-    }).then(function(){u.online=o;save();render();toast('Online freigeschaltet')},function(e){toast(ufErr(e))});
+    }).then(function(){o.m=isMulti(u);u.online=o;save();render();toast('Online freigeschaltet')},function(e){toast(ufErr(e))});
     return 'skip'},
   ufolink:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u&&u.online)copyText(voteUrl(u.online),'#uol-'+u.id);return 'skip'},
   ufocopy:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u&&u.online)copyText(u.online.codes.join('\n'),'#uoc-'+u.id);return 'skip'},
@@ -3168,24 +3204,28 @@ var A={
     for(i=0;i<10;i++){do{c=rndStr(6,VCA)}while(o.codes.indexOf(c)>=0||add.indexOf(c)>=0);add.push(c)}
     CL.client.from('poll_codes').insert(add.map(function(x){return {poll_id:o.id,code:x}})).then(function(r){if(r.error)throw r.error;o.codes=o.codes.concat(add);save();render()},function(e){toast(ufErr(e))});return 'skip'},
   ufores:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online||!needCloud())return 'skip';
-    CL.client.rpc('poll_results',{p_id:u.online.id}).then(function(r){if(r.error)throw r.error;var v=r.data||{};ui.uores=ui.uores||{};ui.uores[u.id]={counts:v.counts||{},total:+v.total||0,codes:+v.codes||0,at:clTime()};render()},function(e){toast(ufErr(e))});return 'skip'},
-  ufotake:function(d){var u=S.umfragen.find(function(x){return x.id===d.id}),r=(ui.uores||{})[d.id];if(!u||!r)return 'skip';if(!needConfirm('ufotake'+d.id))return 'skip';u.optionen.forEach(function(x){x.n=+(r.counts[x.id]||0)});save()},
+    CL.client.rpc('poll_results',{p_id:u.online.id}).then(function(r){if(r.error)throw r.error;var v=r.data||{};ui.uores=ui.uores||{};ui.uores[u.id]={counts:v.counts||{},qcounts:v.qcounts||{},texts:v.texts||{},total:+v.total||0,codes:+v.codes||0,at:clTime()};render()},function(e){toast(ufErr(e))});return 'skip'},
+  ufotake:function(d){var u=S.umfragen.find(function(x){return x.id===d.id}),r=(ui.uores||{})[d.id];if(!u||!r)return 'skip';if(!needConfirm('ufotake'+d.id))return 'skip';if(isMulti(u)){UQS(u).forEach(function(x){var q=x.o;if(q.typ==='frei')q.antw=((r.texts||{})[x.id]||[]).map(function(t){return {id:uid(),text:String(t)}});else{var qc=(r.qcounts||{})[x.id]||{};q.optionen.forEach(function(y){y.n=+(qc[y.id]||0)})}})}else u.optionen.forEach(function(x){x.n=+(r.counts[x.id]||0)});save()},
   ufoclose:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online||!needCloud())return 'skip';var o=u.online,st=o.offen?'zu':'offen';
     CL.client.from('polls').update({status:st}).eq('id',o.id).then(function(r){if(r.error)throw r.error;o.offen=st==='offen';save();render();toast(o.offen?'Online wieder geöffnet':'Online geschlossen')},function(e){toast(ufErr(e))});return 'skip'},
-  ufosync:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online||!needCloud())return 'skip';var row=pollRow(u,u.online);
-    CL.client.from('polls').update({frage:row.frage,optionen:row.optionen}).eq('id',row.id).then(function(r){if(r.error)throw r.error;toast('Übertragen')},function(e){toast(ufErr(e))});return 'skip'},
+  ufosync:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online||!needCloud())return 'skip';var row=pollRow(u,u.online),upd={frage:row.frage,optionen:row.optionen},wasM=u.online.m;if(row.fragen){upd.fragen=row.fragen;u.online.m=true}else if(wasM){upd.fragen=null;u.online.m=false}
+    CL.client.from('polls').update(upd).eq('id',row.id).then(function(r){if(r.error)throw r.error;toast('Übertragen')},function(e){toast(ufErr(e))});return 'skip'},
   ufodel:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online)return 'skip';if(!needConfirm('ufodel'+d.id))return 'skip';if(!needCloud())return 'skip';
     CL.client.from('polls').delete().eq('id',u.online.id).then(function(r){if(r.error)throw r.error;u.online=null;if(ui.uores)delete ui.uores[u.id];save();render();toast('Online-Abstimmung entfernt')},function(e){toast(ufErr(e))});return 'skip'},
   ufosave:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!u.online)return 'skip';saveFile((u.online.modus==='codes'?'code-zettel-':'abstimmung-qr-')+slug(u.frage)+'.html',docFile(ufoDoc(u),'Abstimmung'));return 'skip'},
   ufohtml:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u&&u.online)copyText(docFile(ufoDoc(u),'Abstimmung'),'#none');return 'skip'},
   ufopdf:function(d,b){return pdfRun('ufosave',d,b)},
-  adduf:function(){var u={id:uid(),frage:'Neue Umfrage',von:today(),bis:'',ziel:'',notiz:'',status:'offen',optionen:[]};S.umfragen.push(u);ui.uopen=u.id;save()},
+  adduf:function(){var u={id:uid(),frage:'Neue Umfrage',von:today(),bis:'',ziel:'',notiz:'',status:'offen',typ:'wahl',optionen:[],antw:[],fragen:[]};S.umfragen.push(u);ui.uopen=u.id;save()},
   deluf:function(d){if(!needConfirm('deluf'+d.id))return 'skip';var du=S.umfragen.find(function(u){return u.id===d.id});if(du&&du.online&&CL.client&&CL.user)CL.client.from('polls').delete().eq('id',du.online.id).then(function(){},function(){});S.umfragen=S.umfragen.filter(function(u){return u.id!==d.id});ui.uopen='';save()},
   ufopen:function(d){ui.uopen=ui.uopen===d.id?'':d.id},
   ufgo:function(d){ui.view='umfragen';ui.uopen=d.id;return true},
-  ufopt:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u){u.optionen.push({id:uid(),text:'',n:0});save()}},
-  ufoptdel:function(d){var u=S.umfragen.find(function(x){return x.id===d.uid});if(u){u.optionen=u.optionen.filter(function(x){return x.id!==d.id});save()}},
-  ufpreset:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u)return 'skip';var l=d.v==='jn'?['Ja','Nein','Enthaltung']:['1 (sehr schlecht)','2','3','4','5 (sehr gut)'];u.optionen=l.map(function(t){return {id:uid(),text:t,n:0}});save()},
+  ufopt:function(d){var u=S.umfragen.find(function(x){return x.id===d.id}),q=u&&qObj(u,d.q);if(q){q.optionen.push({id:uid(),text:'',n:0});save()}},
+  ufans:function(d){var u=S.umfragen.find(function(x){return x.id===d.id}),q=u&&qObj(u,d.q);if(q){q.antw.push({id:uid(),text:''});save()}},
+  ufansdel:function(d){var u=S.umfragen.find(function(x){return x.id===d.id}),q=u&&qObj(u,d.q);if(q){q.antw=q.antw.filter(function(a){return a.id!==d.aid});save()}},
+  ufqadd:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u){u.fragen.push({id:uid(),text:'',typ:'wahl',optionen:[],antw:[]});save()}},
+  ufqdel:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(!u||!needConfirm('ufqdel'+d.q))return 'skip';u.fragen=u.fragen.filter(function(q){return q.id!==d.q});save()},
+  ufoptdel:function(d){var u=S.umfragen.find(function(x){return x.id===d.uid}),q=u&&qObj(u,d.q);if(q){q.optionen=q.optionen.filter(function(x){return x.id!==d.id});save()}},
+  ufpreset:function(d){var u=S.umfragen.find(function(x){return x.id===d.id}),q=u&&qObj(u,d.q);if(!q)return 'skip';var l=d.v==='jn'?['Ja','Nein','Enthaltung']:['1 (sehr schlecht)','2','3','4','5 (sehr gut)'];q.optionen=l.map(function(t){return {id:uid(),text:t,n:0}});save()},
   ufsave:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u)saveFile('umfrage-ergebnis-'+(u.bis||u.von||today())+'.html',docFile(ufHTML(u),'Umfrage'));return 'skip'},
   ufhtml:function(d){var u=S.umfragen.find(function(x){return x.id===d.id});if(u)copyText(docFile(ufHTML(u),'Umfrage'),'#none');return 'skip'},
   addant:function(){var a={id:uid(),titel:'Neuer Antrag',empf:'Schulleitung',datum:today(),text:'',begr:'',bez:'',status:'entwurf',ein:'',frist:'',antw:'',antwt:''};S.antraege.push(a);ui.aopen=a.id;ui.astat='';save()},
@@ -3328,7 +3368,7 @@ function setField(el){
   else if(d.vt)o=S.verteiler.find(function(x){return x.id===d.vt});
   else if(d.go)o=GO();
   else if(d.th)o=S.themen.find(function(x){return x.id===d.th});
-  else if(d.uf){o=S.umfragen.find(function(x){return x.id===d.uf});if(o&&d.coll)o=o[d.coll].find(function(x){return x.id===d.id})}
+  else if(d.uf){o=S.umfragen.find(function(x){return x.id===d.uf});if(o&&d.qid)o=o.fragen.find(function(x){return x.id===d.qid});if(o&&d.coll)o=o[d.coll].find(function(x){return x.id===d.id})}
   else if(d.ant)o=S.antraege.find(function(x){return x.id===d.ant});
   else if(d.tm)o=S.termine.find(function(x){return x.id===d.tm});
   else if(d.ag){o=S.gruppen.find(function(x){return x.id===d.ag});if(o&&d.coll)o=o[d.coll].find(function(x){return x.id===d.id})}
