@@ -159,11 +159,18 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 @media (max-width:700px){.calc{min-height:3.8rem;padding:4px}.calev{flex-direction:row;flex-wrap:wrap}.cale{font-size:0;height:7px;width:7px;padding:0;border-radius:50%}.calc .fl{display:none}}
 #beamer{display:none}
 #beamer.on{display:flex;position:fixed;inset:0;z-index:5000;background:#0B0D2A;color:#fff;flex-direction:column;overflow:hidden;overscroll-behavior:contain}
-.bmbar{position:absolute;left:0;right:0;top:0;transform:translateY(-115%);transition:transform .2s;background:#14173Af5;padding:max(10px,env(safe-area-inset-top)) 14px 10px;display:flex;flex-wrap:wrap;gap:8px;z-index:2;align-items:center}
-.bmbar.show{transform:none}
-.bmb{font:inherit;font-size:16px;font-weight:600;padding:10px 16px;border-radius:12px;border:1.5px solid #4A5096;background:#1F2358;color:#fff;cursor:pointer;min-height:44px}
+.bmbar{position:absolute;left:0;right:0;top:0;transform:translateY(-115%);opacity:0;transition:transform .4s cubic-bezier(.32,.72,0,1),opacity .3s ease;will-change:transform,opacity;background:linear-gradient(#171A44f2,#10133Bf2);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);padding:max(10px,env(safe-area-inset-top)) 14px 12px;display:flex;flex-direction:column;gap:10px;z-index:2;border-radius:0 0 24px 24px;box-shadow:0 12px 32px #0009,inset 0 -1px 0 #ffffff14}
+.bmbar.show{transform:none;opacity:1}
+.bmrow{display:flex;align-items:center;gap:10px;width:100%}
+.bmseg{display:flex;gap:2px;padding:4px;background:#0B0D2A;border-radius:16px;overflow-x:auto;scrollbar-width:none;flex:1 1 auto;min-width:0;box-shadow:inset 0 1px 3px #0008}
+.bmseg::-webkit-scrollbar{display:none}
+.bmseg .bmb{flex:1 0 auto;border:0;background:transparent;color:#B7BCE6;box-shadow:none;padding:10px 14px}
+.bmseg .bmb.on{background:linear-gradient(#4A55EA,#3B45D8);color:#fff;box-shadow:0 2px 10px #3B45D888}
+.bmctx{justify-content:center;flex-wrap:wrap;gap:8px}
+.bmb{font:inherit;font-size:16px;font-weight:600;padding:10px 16px;border-radius:12px;border:1px solid #ffffff1f;background:#ffffff14;color:#fff;cursor:pointer;min-height:44px;white-space:nowrap;transition:background .15s}
+.bmb:active{background:#ffffff2e}
 .bmb.on{background:#3B45D8;border-color:#F5B94A}
-.bmb.x{margin-left:auto;background:#7a1f17;border-color:#e57a70}
+.bmb.x{margin-left:auto;background:#B0382D;border-color:transparent;padding:10px 18px;flex:none}
 .bmbar textarea{flex:1 1 100%;font:inherit;font-size:18px;min-height:80px;border-radius:10px;padding:10px;border:0}
 .bmc{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:5vmin 6vmin;text-align:center;gap:2.5vmin;overflow:auto;cursor:default}
 .bmhead{font-size:clamp(18px,3.2vmin,36px);color:#AEB4F0;font-weight:600}
@@ -204,11 +211,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .bmmedia .bmz>canvas,.bmmedia .bmz>img{display:block;position:absolute;left:0;top:0;width:100%;height:100%;max-width:none;max-height:none}
 .bmmedia .bmz>canvas.bmink{pointer-events:none}
 .bmlaser{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:radial-gradient(circle,#fff 0 16%,#ff2a2a 22% 52%,rgba(255,42,42,0) 72%);box-shadow:0 0 20px 8px rgba(255,40,40,.65);pointer-events:none;display:none;z-index:3}
-.bmtools{position:absolute;left:50%;bottom:0;transform:translate(-50%,115%);transition:transform .2s;background:#14173Af5;padding:10px 14px max(10px,env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:8px;z-index:2;border-radius:14px 14px 0 0;align-items:center;justify-content:center;max-width:100%}
-.bmtools.show{transform:translate(-50%,0)}
-.bmsw{width:34px;height:34px;border-radius:50%;border:3px solid #4A5096;padding:0;cursor:pointer}
-.bmsw.on{border-color:#fff;box-shadow:0 0 0 2px #3B45D8}
-.bmsep{width:1px;height:28px;background:#4A5096;margin:0 4px}
+.bmtools{position:absolute;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translate(-50%,150%);opacity:0;transition:transform .4s cubic-bezier(.32,.72,0,1),opacity .3s ease;will-change:transform,opacity;background:linear-gradient(#171A44f2,#10133Bf2);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);padding:8px;display:flex;flex-wrap:wrap;gap:8px;z-index:2;border-radius:24px;align-items:center;justify-content:center;width:max-content;max-width:calc(100vw - 20px);box-shadow:0 12px 32px #000a,inset 0 0 0 1px #ffffff18}
+.bmtools.show{transform:translate(-50%,0);opacity:1}
+.bmgrp{display:flex;gap:2px;align-items:center;padding:4px;background:#0B0D2A;border-radius:16px;box-shadow:inset 0 1px 3px #0008}
+.bmgrp .bmb{border:0;background:transparent;padding:9px 13px;min-height:42px}
+.bmgrp .bmb.on{background:linear-gradient(#4A55EA,#3B45D8);box-shadow:0 2px 10px #3B45D888}
+.bmgrp.col{gap:6px;padding:4px 10px}
+.bmsw{width:30px;height:30px;border-radius:50%;border:2px solid #ffffff40;padding:0;cursor:pointer}
+.bmsw.on{border-color:#fff;box-shadow:0 0 0 3px #3B45D8}
 .bmedge{position:absolute;left:0;right:0;height:34px;z-index:1}
 .bmedge.top{top:0}.bmedge.bot{bottom:0}
 .bmcm{padding:0!important;gap:0!important;overflow:hidden!important}
@@ -1210,7 +1220,7 @@ function bmMediaFill(){
 }
 
 /* ---- Beamer: Zoom, Laserpointer, Stift ---- */
-var VW={s:1,x:0,y:0},CUR=null,INK={},PTR={},PG=null,PAN=null,SW=null,STR=null,IGN=false,LT=null,TAP={t:0,x:0,y:0},RAF=0;
+var VW={s:1,x:0,y:0},CUR=null,INK={},PTR={},PG=null,PAN=null,SW=null,TP=null,STR=null,IGN=false,LT=null,TAP={t:0,x:0,y:0},RAF=0;
 var BMCOLS=['#e53935','#1e66f5','#2e9d4f','#ffd60a','#111111'];
 function bmClamp(){if(!CUR)return;var st=CUR.stage,W=st.clientWidth,H=st.clientHeight,w=CUR.w*VW.s,h=CUR.h*VW.s;
   VW.x=w<=W?(W-w)/2:Math.min(0,Math.max(W-w,VW.x));VW.y=h<=H?(H-h)/2:Math.min(0,Math.max(H-h,VW.y))}
@@ -1235,7 +1245,7 @@ function bmStageMount(host,el,key,w,h){
   el.removeAttribute('style');el.draggable=false;
   var q=Math.min(2,4096/Math.max(w,h));ink.width=Math.round(w*q);ink.height=Math.round(h*q);
   z.appendChild(el);z.appendChild(ink);st.appendChild(z);st.appendChild(la);host.appendChild(st);
-  CUR={key:key,stage:st,z:z,ink:ink,laser:la,w:w,h:h};VW={s:1,x:0,y:0};PTR={};PG=null;PAN=null;SW=null;STR=null;IGN=false;
+  CUR={key:key,stage:st,z:z,ink:ink,laser:la,w:w,h:h};VW={s:1,x:0,y:0};PTR={};PG=null;PAN=null;SW=null;TP=null;STR=null;IGN=false;
   bmApply();bmInkDraw();bmStageEvents(st);
 }
 function bmRel(e){var r=CUR.stage.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}}
@@ -1252,13 +1262,13 @@ function bmStageEvents(st){
     if(ids.length>=2){
       if(STR){var a=INK[CUR.key];if(a&&a[a.length-1]===STR)a.pop();STR=null;bmInkDraw()}
       bmLaser(p,false);var A=PTR[ids[0]],B=PTR[ids[1]];
-      PG={d:Math.hypot(A.x-B.x,A.y-B.y)||1,cx:(A.x+B.x)/2,cy:(A.y+B.y)/2,s:VW.s,x:VW.x,y:VW.y};IGN=true;PAN=null;SW=null;return}
+      PG={d:Math.hypot(A.x-B.x,A.y-B.y)||1,cx:(A.x+B.x)/2,cy:(A.y+B.y)/2,s:VW.s,x:VW.x,y:VW.y};IGN=true;PAN=null;SW=null;TP=null;return}
     if(IGN)return;
     var t=ui.bmTool||'hand';
     if(t==='hand'){
       var now=Date.now();
       if(now-TAP.t<320&&Math.hypot(p.x-TAP.x,p.y-TAP.y)<30){if(VW.s>1.05){VW.s=1;VW.x=0;VW.y=0;bmApply()}else bmZoomAt(2.5,p.x,p.y);TAP.t=0;return}
-      TAP={t:now,x:p.x,y:p.y};PAN={x:p.x,y:p.y,vx:VW.x,vy:VW.y};SW=VW.s<=1.05?{x:p.x,y:p.y,t:now}:null;
+      TAP={t:now,x:p.x,y:p.y};TP={x:p.x,y:p.y,t:now};PAN={x:p.x,y:p.y,vx:VW.x,vy:VW.y};SW=VW.s<=1.05?{x:p.x,y:p.y,t:now}:null;
     }else if(t==='laser'){bmLaser(p,true)}
     else{
       var mk=t==='marker';
@@ -1289,7 +1299,8 @@ function bmStageEvents(st){
         var q=bmRel(e),dx=q.x-SW.x,dy=q.y-SW.y,dtm=Date.now()-SW.t,pm=MEDIA.find(function(m){return m.id===ui.bmMedia});
         if(pm&&pm.type==='application/pdf'&&Math.abs(dx)>=60&&Math.abs(dx)>1.8*Math.abs(dy)&&dtm<900){TAP.t=0;A.bmpg({d:dx<0?1:-1})}
       }
-      SW=null;IGN=false;PG=null;PAN=null;
+      if(TP&&!IGN&&e.type==='pointerup'&&(ui.bmTool||'hand')==='hand'&&ui.bmBar){var q2=bmRel(e);if(Math.hypot(q2.x-TP.x,q2.y-TP.y)<12&&Date.now()-TP.t<350)A.bmtap()}
+      TP=null;SW=null;IGN=false;PG=null;PAN=null;
       if(STR){STR=null;bmInkDraw()}
       if((ui.bmTool||'hand')==='laser'){clearTimeout(LT);LT=setTimeout(function(){if(CUR)bmLaser(null,false)},e.pointerType==='mouse'?60000:700)}
     }else if(Object.keys(PTR).length<2)PG=null;
@@ -1300,10 +1311,10 @@ function bmStageEvents(st){
 function bmToolsHTML(){
   var t=ui.bmTool||'hand',c=ui.bmCol||BMCOLS[0];
   function tb(k,l){return '<button type="button" class="bmb'+(t===k?' on':'')+'" data-act="bmtool" data-t="'+k+'">'+l+'</button>'}
-  var h='<div class="bmtools'+(ui.bmBar?' show':'')+'" role="toolbar" aria-label="Werkzeuge">'+tb('hand','✋ Zoom')+tb('laser','🔴 Laser')+tb('pen','✏️ Stift')+tb('marker','🖍 Marker');
-  h+='<span class="bmsep"></span>'+BMCOLS.map(function(k){return '<button type="button" class="bmsw'+(c===k?' on':'')+'" style="background:'+k+'" data-act="bmcol" data-c="'+k+'" aria-label="Farbe '+k+'"></button>'}).join('');
-  h+='<span class="bmsep"></span><button type="button" class="bmb" data-act="bmzoom" data-z="-">−</button><button type="button" class="bmb" data-act="bmzoom" data-z="+">＋</button><button type="button" class="bmb" data-act="bmzoom" data-z="0">Einpassen</button>';
-  h+='<span class="bmsep"></span><button type="button" class="bmb" data-act="bmundo">↶ Zurück</button><button type="button" class="bmb" data-act="bmclr">Seite leeren</button></div>';
+  var h='<div class="bmtools'+(ui.bmBar?' show':'')+'" role="toolbar" aria-label="Werkzeuge"><div class="bmgrp">'+tb('hand','✋ Zoom')+tb('laser','🔴 Laser')+tb('pen','✏️ Stift')+tb('marker','🖍 Marker')+'</div>';
+  h+='<div class="bmgrp col">'+BMCOLS.map(function(k){return '<button type="button" class="bmsw'+(c===k?' on':'')+'" style="background:'+k+'" data-act="bmcol" data-c="'+k+'" aria-label="Farbe '+k+'"></button>'}).join('')+'</div>';
+  h+='<div class="bmgrp"><button type="button" class="bmb" data-act="bmzoom" data-z="-" aria-label="Verkleinern">−</button><button type="button" class="bmb" data-act="bmzoom" data-z="+" aria-label="Vergrößern">＋</button><button type="button" class="bmb" data-act="bmzoom" data-z="0">Einpassen</button></div>';
+  h+='<div class="bmgrp"><button type="button" class="bmb" data-act="bmundo">↶ Zurück</button><button type="button" class="bmb" data-act="bmclr">Seite leeren</button></div></div>';
   return h;
 }
 /* ---- Beamer-Ansicht (gespiegelt per AirPlay oder HDMI) ---- */
@@ -1363,7 +1374,7 @@ function bmHTML(){
     x='<div class="bmtext" id="bm-text">'+esc(ui.bmText||'')+'</div>';
     extra='<textarea data-bmtext="1" placeholder="Text für den Beamer">'+esc(ui.bmText||'')+'</textarea>';
   }
-  var bar='<div class="bmbar'+(ui.bmBar?' show':'')+'">'+bmBtn('top','Tagesordnung')+bmBtn('bes','Beschluss')+bmBtn('az','Auszählung')+bmBtn('anw','Anwesenheit')+bmBtn('media','Medien')+bmBtn('text','Text')+bmBtn('black','Schwarz')+'<button type="button" class="bmb x" data-act="bmclose">Beenden</button>'+extra+'</div>';
+  var bar='<div class="bmbar'+(ui.bmBar?' show':'')+'"><div class="bmrow"><div class="bmseg">'+bmBtn('top','Tagesordnung')+bmBtn('bes','Beschluss')+bmBtn('az','Auszählung')+bmBtn('anw','Anwesenheit')+bmBtn('media','Medien')+bmBtn('text','Text')+bmBtn('black','Schwarz')+'</div><button type="button" class="bmb x" data-act="bmclose">Beenden</button></div>'+(extra?'<div class="bmrow bmctx">'+extra+'</div>':'')+'</div>';
   var cc=(m==='media'&&ui.bmMedia&&MEDIA.some(function(q){return q.id===ui.bmMedia}))?' bmcm':'';
   if(tools)edge='<div class="bmedge top" data-act="bmtap"></div><div class="bmedge bot" data-act="bmtap"></div>';
   return bar+tools+edge+'<div class="bmc'+cc+'" data-act="bmtap">'+x+'</div>';
@@ -3288,7 +3299,7 @@ var A={
   bmmstep:function(d){var n=MEDIA.length;if(!n)return 'skip';var i=MEDIA.findIndex(function(x){return x.id===ui.bmMedia});ui.bmMedia=MEDIA[(i+(+d.d||1)+n)%n].id;ui.bmBar=true;bmArm()},
   mdel:function(d){if(ui.confirm!==('mdel'+d.id)&&pc!==('mdel'+d.id)){ui.confirm='mdel'+d.id;return}mediaDel(d.id);return 'skip'},
   bmclose:function(){ui.bm=null;clearTimeout(bmT)},
-  bmtap:function(){ui.bmBar=true;document.querySelectorAll('#beamer .bmbar,#beamer .bmtools').forEach(function(b){b.classList.add('show')});bmArm();return 'skip'},
+  bmtap:function(){var bs=document.querySelectorAll('#beamer .bmbar,#beamer .bmtools'),vis=ui.bmBar||document.querySelector('#beamer .bmbar.show,#beamer .bmtools.show');if(vis){ui.bmBar=false;clearTimeout(bmT);bs.forEach(function(b){b.classList.remove('show')})}else{ui.bmBar=true;bs.forEach(function(b){b.classList.add('show')});bmArm()}return 'skip'},
   bmbes:function(d){var s=bmSess();if(!s||!s.beschluesse.length)return 'skip';ui.bmB=Math.max(0,Math.min(s.beschluesse.length-1,bmBesIdx(s)+(+d.d||0)));ui.bmBar=true;bmArm()},
   bmnames:function(){ui.bmNames=!ui.bmNames;ui.bmBar=true;bmArm()},
   frload:function(){if(ui.frBusy)return 'skip';ferienLaden();return 'skip'},
