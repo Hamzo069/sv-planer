@@ -1561,15 +1561,17 @@ function vPlan(){
 /* ---- Arbeitsgruppen ---- */
 var AGS=[['aktiv','Aktiv'],['geplant','Geplant'],['ruhend','Pausiert'],['beendet','Beendet']];
 var AGU=[['sr','Schülerrat'],['vs','Vorstand'],['sl','Schulleitung']];
+function agOpts(g,cur){var act=S.members.filter(function(m){return m.aktiv||g.ids.indexOf(m.id)>=0||m.id===g.leitung||m.id===g.stv});return '<option value="">– offen –</option>'+act.map(function(m){return '<option value="'+m.id+'"'+(m.id===cur?' selected':'')+'>'+esc(m.name||'Ohne Namen')+'</option>'}).join('')+g.ext.filter(function(x){return (x.name||'').trim()}).map(function(x){return '<option value="'+x.id+'"'+(x.id===cur?' selected':'')+'>'+esc(x.name)+' (nicht in der SV)</option>'}).join('')}
+document.addEventListener('focusin',function(e){var t=e.target;if(t&&t.tagName==='SELECT'&&t.dataset&&t.dataset.ag&&(t.dataset.f==='leitung'||t.dataset.f==='stv')){var g=agById(t.dataset.ag);if(g){var cur=g[t.dataset.f];t.innerHTML=agOpts(g,cur)}}});
 function agById(id){return S.gruppen.find(function(g){return g.id===id})}
-function agMem(id){var m=id&&mem(id);return m?(m.name||'Ohne Namen'):''}
+function agMem(id,g){var m=id&&mem(id);if(m)return m.name||'Ohne Namen';var x=id&&g&&g.ext.find(function(e){return e.id===id});return x?(x.name||'Ohne Namen')+' (extern)':''}
 function agUnter(g){var u=AGU.find(function(x){return x[0]===g.unter});if(u)return u[1];var p=agById(g.unter);return p?(p.name||'Ohne Namen'):'Schülerrat'}
 function agDesc(g,id){var c=S.gruppen.filter(function(x){return x.unter===id});var o=[];c.forEach(function(x){o.push(x.id);o=o.concat(agDesc(x,x.id))});return o}
 function agTree(key,lvl){
   var kids=S.gruppen.filter(function(g){return g.unter===key}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'','de')});
   return kids.map(function(g){
     var cls=g.status==='aktiv'?'good':g.status==='geplant'?'warn':'';
-    return '<div style="margin-left:'+(lvl*22)+'px;padding:6px 0;border-left:2px solid var(--line,#dfe2f0);padding-left:10px;margin-bottom:2px"><button type="button" class="linkbtn" data-act="agopen" data-id="'+g.id+'" style="font-weight:600;background:none;border:0;padding:0;color:inherit;cursor:pointer;text-align:left">'+(esc(g.name)||'Ohne Namen')+'</button> <span class="pill '+cls+'">'+(AGS.find(function(x){return x[0]===g.status})||AGS[0])[1]+'</span><span class="meta"> · Leitung: '+(esc(agMem(g.leitung))||'<em>offen</em>')+'</span></div>'+agTree(g.id,lvl+1);
+    return '<div style="margin-left:'+(lvl*22)+'px;padding:6px 0;border-left:2px solid var(--line,#dfe2f0);padding-left:10px;margin-bottom:2px"><button type="button" class="linkbtn" data-act="agopen" data-id="'+g.id+'" style="font-weight:600;background:none;border:0;padding:0;color:inherit;cursor:pointer;text-align:left">'+(esc(g.name)||'Ohne Namen')+'</button> <span class="pill '+cls+'">'+(AGS.find(function(x){return x[0]===g.status})||AGS[0])[1]+'</span><span class="meta"> · Leitung: '+(esc(agMem(g.leitung,g))||'<em>offen</em>')+'</span></div>'+agTree(g.id,lvl+1);
   }).join('');
 }
 function vGruppen(){
@@ -1583,11 +1585,11 @@ function vGruppen(){
     var open=ui.ag===g.id,c='data-ag="'+g.id+'"';
     var cls=g.status==='aktiv'?'good':g.status==='geplant'?'warn':'';
     var act=S.members.filter(function(m){return m.aktiv||g.ids.indexOf(m.id)>=0||m.id===g.leitung||m.id===g.stv});
-    var mo=function(cur){return '<option value="">– offen –</option>'+act.map(function(m){return '<option value="'+m.id+'"'+(m.id===cur?' selected':'')+'>'+esc(m.name||'Ohne Namen')+'</option>'}).join('')};
+    var mo=function(cur){return agOpts(g,cur)};
     var blocked=agDesc(g,g.id).concat([g.id]);
     var uo=AGU.map(function(u){return [u[0],u[1]]}).concat(S.gruppen.filter(function(x){return blocked.indexOf(x.id)<0}).map(function(x){return [x.id,'AG '+(x.name||'Ohne Namen')]}));
     h+='<section class="card"><div class="frow"><div class="grow"><strong>'+(esc(g.name)||'<em>Ohne Namen</em>')+'</strong> <span class="pill '+cls+'">'+(AGS.find(function(x){return x[0]===g.status})||AGS[0])[1]+'</span>'+((!g.leitung&&g.status==='aktiv')?' <span class="pill warn">Leitung fehlt</span>':'')+
-      '<div class="meta">Leitung: '+(esc(agMem(g.leitung))||'offen')+(g.stv?' · Stellvertretung: '+esc(agMem(g.stv)):'')+' · untersteht: '+esc(agUnter(g))+' · '+g.ids.length+' Mitglieder</div></div>'+
+      '<div class="meta">Leitung: '+(esc(agMem(g.leitung,g))||'offen')+(g.stv?' · Stellvertretung: '+esc(agMem(g.stv,g)):'')+' · untersteht: '+esc(agUnter(g))+' · '+g.ids.length+' Mitglieder'+(g.ext.length?' + '+g.ext.length+' ohne SV':'')+'</div></div>'+
       '<button type="button" class="btn sm" data-act="agopen" data-id="'+g.id+'">'+(open?'Schließen':'Öffnen')+'</button></div>';
     if(open){
       h+='<div class="g2" style="margin-top:12px"><div><label class="lbl" for="agn-'+g.id+'">Name</label><input type="text" id="agn-'+g.id+'" '+c+' data-f="name" value="'+esc(g.name)+'"></div>'+
@@ -1599,6 +1601,7 @@ function vGruppen(){
         '<label class="lbl" for="aga-'+g.id+'" style="margin-top:12px">Auftrag</label><textarea class="box" id="aga-'+g.id+'" '+c+' data-f="auftrag" style="min-height:80px">'+esc(g.auftrag)+'</textarea>'+
         '<h3 style="margin:16px 0 6px">Mitglieder</h3><div class="frow" style="flex-wrap:wrap">'+
         S.members.filter(function(m){return m.aktiv||g.ids.indexOf(m.id)>=0}).map(function(m){return '<label class="frow meta" style="gap:6px"><input type="checkbox" data-act="agmem" data-id="'+g.id+'" data-m2="'+m.id+'"'+(g.ids.indexOf(m.id)>=0?' checked':'')+'>'+esc(m.name||'Ohne Namen')+'</label>'}).join('')+'</div>'+
+        '<h3 style="margin:16px 0 4px">Weitere Teilnehmende (nicht in der SV)</h3><p class="meta" style="margin-bottom:8px">Schüler/innen, die bei der Arbeitsgruppe mitmachen, ohne Mitglied der SV zu sein. Trage Namen nur mit Einverständnis der Person ein.</p>'+(g.ext.length?'':'<p class="empty">Noch niemand eingetragen.</p>')+g.ext.map(function(x){var cx=c+' data-coll="ext" data-id="'+x.id+'"';return '<div class="frow" style="margin-bottom:6px"><input type="text" class="grow" aria-label="Name" '+cx+' data-f="name" value="'+esc(x.name)+'" placeholder="Name"><input type="text" style="width:7rem" aria-label="Klasse" '+cx+' data-f="klasse" value="'+esc(x.klasse)+'" placeholder="Klasse"><button type="button" class="btn sm danger" data-act="delagx" data-id="'+g.id+'" data-xid="'+x.id+'">Entfernen</button></div>'}).join('')+'<button type="button" class="btn sm" data-act="addagx" data-id="'+g.id+'">+ Person hinzufügen</button>'+
         '<label class="lbl" for="agt-'+g.id+'" style="margin-top:12px">Notizen</label><textarea class="box" id="agt-'+g.id+'" '+c+' data-f="notiz" style="min-height:70px">'+esc(g.notiz)+'</textarea>'+
         '<div class="frow" style="margin-top:16px">'+cbtn('delag'+g.id,'Arbeitsgruppe löschen','data-act="delag" data-id="'+g.id+'"')+'</div>';
     }
@@ -2193,7 +2196,7 @@ function norm(o){
   o.termine.forEach(function(t){t.id=t.id||uid();['titel','art','datum','von','bis','ort','notiz','wdh','wbis'].forEach(function(k){t[k]=t[k]||''})});
   o.projekte=Array.isArray(o.projekte)?o.projekte:[];o.verteiler=Array.isArray(o.verteiler)?o.verteiler:[];
   o.projekte.forEach(function(p){p.id=p.id||uid();p.name=p.name||'';p.ziel=p.ziel||'';p.termin=p.termin||'';p.status=p.status||'idee';p.lead=p.lead||'';p.notiz=p.notiz||'';p.sess=Array.isArray(p.sess)?p.sess:[];p.aufg=Array.isArray(p.aufg)?p.aufg:[];p.aufg.forEach(function(a){a.id=a.id||uid();a.text=a.text||'';a.wer=a.wer||'';a.frist=a.frist||'';a.done=!!a.done})});
-  o.antraege=Array.isArray(o.antraege)?o.antraege:[];o.berichte=(o.berichte&&typeof o.berichte==='object')?o.berichte:{};o.uebergabe=(o.uebergabe&&typeof o.uebergabe==='object')?o.uebergabe:{};o.gruppen=Array.isArray(o.gruppen)?o.gruppen:[];o.gruppen.forEach(function(g){g.id=g.id||uid();['name','auftrag','leitung','stv','unter','bericht','notiz'].forEach(function(k){g[k]=g[k]||''});g.status=g.status||'aktiv';g.unter=g.unter||'sr';g.ids=Array.isArray(g.ids)?g.ids:[]});
+  o.antraege=Array.isArray(o.antraege)?o.antraege:[];o.berichte=(o.berichte&&typeof o.berichte==='object')?o.berichte:{};o.uebergabe=(o.uebergabe&&typeof o.uebergabe==='object')?o.uebergabe:{};o.gruppen=Array.isArray(o.gruppen)?o.gruppen:[];o.gruppen.forEach(function(g){g.id=g.id||uid();['name','auftrag','leitung','stv','unter','bericht','notiz'].forEach(function(k){g[k]=g[k]||''});g.status=g.status||'aktiv';g.unter=g.unter||'sr';g.ids=Array.isArray(g.ids)?g.ids:[];g.ext=Array.isArray(g.ext)?g.ext:[];g.ext.forEach(function(x){x.id=x.id||uid();x.name=x.name||'';x.klasse=x.klasse||''})});
   o.antraege.forEach(function(a){a.id=a.id||uid();['titel','empf','datum','text','begr','bez','ein','frist','antw','antwt'].forEach(function(k){a[k]=a[k]||''});a.status=a.status||'entwurf'});
   var gv=o.go&&o.go.v;o.go=Object.assign(goDef(),(o.go&&typeof o.go==='object')?o.go:{});o.go.ladung=Math.max(0,+o.go.ladung||0);o.go.protfrist=Math.max(0,+o.go.protfrist||0);
   if(!gv){o.go.v=2;if(!o.go.text)o.go.text=GO_TEXT;if(o.go.protfrist===14)o.go.protfrist=0;o.go.ladung=7;o.settings.quorumRule='ge50'}
@@ -3201,7 +3204,9 @@ var A={
   ubreset:function(){var u=UB();Object.keys(u).forEach(function(k){if(/^c\d+$/.test(k))delete u[k]});save()},
   bhtml:function(){copyText(docFile(berichtHTML(ensureSj('bsj'),false),'Jahresbericht'),'#none');return 'skip'},
   addpj:function(){var p={id:uid(),name:'Neues Projekt',ziel:'',termin:'',status:'idee',lead:'',notiz:'',sess:[],aufg:[]};S.projekte.push(p);ui.pj=p.id;save()},
-  addag:function(){var g={id:uid(),name:'Neue Arbeitsgruppe',auftrag:'',leitung:'',stv:'',unter:'sr',bericht:'',notiz:'',status:'geplant',ids:[]};S.gruppen.push(g);ui.ag=g.id;save()},
+  addag:function(){var g={id:uid(),name:'Neue Arbeitsgruppe',auftrag:'',leitung:'',stv:'',unter:'sr',bericht:'',notiz:'',status:'geplant',ids:[],ext:[]};S.gruppen.push(g);ui.ag=g.id;save()},
+  addagx:function(d){var g=agById(d.id);if(!g)return 'skip';g.ext.push({id:uid(),name:'',klasse:''});save()},
+  delagx:function(d){var g=agById(d.id);if(!g)return 'skip';g.ext=g.ext.filter(function(x){return x.id!==d.xid});if(g.leitung===d.xid)g.leitung='';if(g.stv===d.xid)g.stv='';save()},
   agopen:function(d){ui.ag=ui.ag===d.id?'':d.id},
   agmem:function(d){var g=agById(d.id);if(!g)return 'skip';var i=g.ids.indexOf(d.m2);if(i<0)g.ids.push(d.m2);else g.ids.splice(i,1);save()},
   delag:function(d){if(!needConfirm('delag'+d.id))return 'skip';S.gruppen=S.gruppen.filter(function(g){return g.id!==d.id});S.gruppen.forEach(function(g){if(g.unter===d.id)g.unter='sr'});ui.ag='';save()},
@@ -3326,7 +3331,7 @@ function setField(el){
   else if(d.uf){o=S.umfragen.find(function(x){return x.id===d.uf});if(o&&d.coll)o=o[d.coll].find(function(x){return x.id===d.id})}
   else if(d.ant)o=S.antraege.find(function(x){return x.id===d.ant});
   else if(d.tm)o=S.termine.find(function(x){return x.id===d.tm});
-  else if(d.ag){o=S.gruppen.find(function(x){return x.id===d.ag})}
+  else if(d.ag){o=S.gruppen.find(function(x){return x.id===d.ag});if(o&&d.coll)o=o[d.coll].find(function(x){return x.id===d.id})}
   else if(d.ub){o=UB()}
   else if(d.bj){o=S.berichte[d.bj]=S.berichte[d.bj]||{einl:'',fazit:''}}
   else if(d.s)o=S.settings;
