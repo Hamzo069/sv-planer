@@ -292,7 +292,14 @@ textarea.box{font-family:var(--f-mono);font-size:13px;min-height:220px}
 .a-ja{color:var(--good);font-weight:700}.a-nein{color:var(--bad);font-weight:700}.a-ent{color:var(--warn);font-weight:700}.a-x{color:var(--ink2)}
 .att sup{font-size:10px;font-weight:400}
 /* Übrige Bausteine im neuen Look */
-.srow{border-top:0;border-radius:14px;padding:12px 14px;margin-top:2px}
+.srow{border-top:0;border-radius:14px;padding:14px 16px 14px 20px;margin-top:2px;position:relative;align-items:start}
+.srow::before{content:'';position:absolute;left:6px;top:12px;bottom:12px;width:4px;border-radius:4px;background:var(--line)}
+.srow.t-accent::before{background:var(--accent)}.srow.t-good::before{background:var(--good)}.srow.t-warn::before{background:#F5B94A}.srow.t-bad::before{background:var(--bad)}
+.srow .sdate{display:flex;flex-direction:column;gap:2px}.srow .rel{font-size:12px;color:var(--ink2);font-weight:500}
+.srow>.pill{align-self:center}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:12px;font-weight:600;padding:2px 10px;border-radius:99px;background:var(--surface2);color:var(--ink2);border:1px solid var(--line)}
+.chip.good{background:var(--good-soft);color:var(--good);border-color:transparent}.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}.chip.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
 .srow:hover{background:var(--surface2)}
 .trow,.toprow,.arow,.bes,.brow{border-top:1px solid var(--line)}
 .azt{border-radius:18px;border-width:2px}
@@ -312,6 +319,29 @@ textarea.box{font-family:var(--f-mono);font-size:13px;min-height:220px}
 .att th,.att td{border-color:var(--line)}
 .sheet{border-radius:var(--r2)}
 .paper{border-radius:6px}
+.shell{transition:grid-template-columns .34s cubic-bezier(.32,.72,0,1)}
+.sidetog{display:flex;align-items:center;gap:12px;width:100%;margin:0 0 4px;background:none;border:0;border-radius:12px;padding:8px 12px;font:inherit;font-weight:650;font-size:14px;color:#8E94D2;cursor:pointer;text-align:left;white-space:nowrap;transition:background .15s,color .15s}
+.sidetog:hover{background:rgba(255,255,255,.07);color:#fff}
+.sidetog svg{width:21px;height:21px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;transition:transform .34s cubic-bezier(.32,.72,0,1)}
+.shell.mini .sidetog svg{transform:rotate(180deg)}
+@media (min-width:1041px){
+  .shell.mini{--side:84px}
+  .mini .brand{justify-content:center;padding:0 0 14px}
+  .mini .brand div{display:none}
+  .mini .ngrp{height:1px;padding:0;margin:12px 14px;background:rgba(255,255,255,.12);font-size:0}
+  .mini .nav button,.mini .sidetog{justify-content:center;padding:12px 0}
+  .mini .nav button .t,.mini .sidetog .t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .mini .nav button[aria-current="page"]::before{left:-14px}
+  .mini .nav .badge{position:absolute;top:2px;right:8px;margin:0;min-width:18px;line-height:18px;padding:0 5px;font-size:11px}
+  .mini #cpill{display:none!important}
+}
+@media (max-width:1040px){.sidetog{display:none}}
+@keyframes vin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#app.vin{animation:vin .32s cubic-bezier(.22,.8,.3,1)}
+.nav button,.srow,.btn{transition:background .15s,color .15s,transform .12s,box-shadow .15s}
+.btn:active,.nav button:active{transform:scale(.97)}
+.srow:active{transform:scale(.995)}
+@media (prefers-reduced-motion:reduce){.shell,.sidetog svg,#app.vin,.nav button,.srow{transition:none;animation:none}}
 @media (max-width:1040px){
   :root{--side:84px}
   .brand{justify-content:center;padding:0 0 14px}
@@ -395,6 +425,7 @@ textarea.box{font-family:var(--f-mono);font-size:13px;min-height:220px}
       <svg viewBox="0 0 40 40" role="img" aria-label="SV-Planer"><rect width="40" height="40" rx="11" fill="#F5B94A"/><rect x="9" y="9" width="9" height="9" rx="2.2" fill="#14173A"/><rect x="22" y="9" width="9" height="9" rx="2.2" fill="#14173A"/><rect x="9" y="22" width="9" height="9" rx="2.2" fill="#14173A"/><rect x="22" y="22" width="9" height="9" rx="2.2" fill="#14173A" opacity=".3"/></svg>
       <div><b>SV-Planer</b><small id="gname"></small></div>
     </div>
+    <button type="button" class="sidetog" data-act="sidetog" title="Seitenleiste ein-/ausklappen" aria-label="Seitenleiste ein- oder ausklappen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 7l-5 5 5 5"/><path d="M19 5v14"/></svg><span class="t">Einklappen</span></button>
     <div id="navmount"></div>
     <button type="button" class="pill" id="cpill" data-act="nav" data-v="daten" style="display:none;border:0;cursor:pointer"></button>
   </aside>
@@ -2337,6 +2368,7 @@ var NAVICO={
 var NAVG=[['',['uebersicht']],['Sitzungsarbeit',['sitzungen','anwesenheit','vorlagen','aufgaben','themen','beschluesse']],['Planung',['projekte','gruppen','antraege','umfragen','plan','kalender']],['Verwaltung',['gremium','uebergabe','medien','daten']]];
 function pageTitle(){var t=TABS.find(function(x){return x[0]===ui.view});return t?t[1]:(ui.view==='live'?'Live-Sitzung':'')}
 function pagehead(){var t=pageTitle();return '<div class="pagehead"><h1>'+esc(t)+'</h1><span class="meta">'+esc(langDatum(today()+'T00:00'))+'</span></div>'}
+(function(){try{var sh=document.querySelector('.shell');if(sh&&localStorage.getItem(KEY+'-mini')==='1')sh.classList.add('mini')}catch(e){}})();
 function nav(){
   var open=allTasks().filter(function(t){return !t.done}).length;
   return '<nav class="nav" aria-label="Bereiche">'+NAVG.map(function(g){
@@ -2359,8 +2391,20 @@ function banner(){
   if(!S.examples)return o;
   return o+'<div class="banner"><span>Du siehst Beispieldaten. Trage deine eigenen Sitzungen ein und entferne die Beispiele, wenn du soweit bist.</span><button type="button" class="btn sm" data-act="rmex">Beispieldaten entfernen</button></div>';
 }
+function relDay(d){var a=dt(String(d).slice(0,10)+'T00:00');if(!a)return '';var n=Math.round((a-dt(today()+'T00:00'))/86400000);return n===0?'heute':n===1?'morgen':n===-1?'gestern':n>0?(n<14?'in '+n+' Tagen':'in '+Math.round(n/7)+' Wochen'):(n>-14?'vor '+(-n)+' Tagen':'vor '+Math.round(-n/7)+' Wochen')}
+function sChips(s){
+  var c=[],q=quorum(s),up=s.status==='geplant'||s.status==='eingeladen';
+  if(s.status!=='abgesagt'&&q.N>0){
+    if(up)c.push('<span class="chip '+(q.ok?'good':(s.status==='eingeladen'?'warn':''))+'">'+q.present+'/'+q.N+' zugesagt'+(q.ok?'':' · benötigt '+q.need)+'</span>');
+    else if(q.present>0)c.push('<span class="chip">'+q.present+' von '+q.N+' anwesend</span>');
+  }
+  var od=s.aufgaben.filter(function(t){return !t.done&&t.frist&&t.frist<today()}).length;
+  if(od)c.push('<span class="chip bad">'+od+' überfällig</span>');
+  return c.length?'<span class="chips">'+c.join('')+'</span>':'';
+}
 function sRow(s){
-  return '<button type="button" class="srow" data-act="open" data-sid="'+s.id+'"><span class="sdate mono">'+esc(rowDate(s.datum))+'</span><span><span class="st">'+esc(s.titel||'Ohne Titel')+'</span>'+(s.bsp?' <span class="tag">Beispiel</span>':'')+'<br><span class="meta">'+s.tops.length+' TOPs · '+s.beschluesse.length+' Beschlüsse · '+s.aufgaben.length+' Aufgaben</span>'+((s.status==='geplant'||s.status==='eingeladen')&&freiInfo(s.datum)?'<br>'+freiPill(s.datum):'')+'</span>'+pill(s.status)+'</button>';
+  var tone=statusInfo(s.status)[2]||'neutral';
+  return '<button type="button" class="srow t-'+tone+'" data-act="open" data-sid="'+s.id+'"><span class="sdate"><span class="mono">'+esc(rowDate(s.datum))+'</span><span class="rel">'+esc(relDay(s.datum))+'</span></span><span><span class="st">'+esc(s.titel||'Ohne Titel')+'</span>'+(s.bsp?' <span class="tag">Beispiel</span>':'')+'<br><span class="meta">'+s.tops.length+' TOPs · '+s.beschluesse.length+' Beschlüsse · '+s.aufgaben.length+' Aufgaben</span>'+((s.status==='geplant'||s.status==='eingeladen')&&freiInfo(s.datum)?'<br>'+freiPill(s.datum):'')+sChips(s)+'</span>'+pill(s.status)+'</button>';
 }
 function taskRow(t,showSess){
   var od=!t.done&&t.frist&&t.frist<today();
@@ -2765,8 +2809,12 @@ function vDaten(){
 
 /* ---------- Rendern ---------- */
 var VIEWS={uebersicht:vUeber,sitzungen:vSitz,vorlagen:vVorl,aufgaben:vAufg,live:vLive,anwesenheit:vAnwes,themen:vThemen,projekte:vProj,antraege:vAnt,gruppen:vGruppen,umfragen:vUmf,plan:vPlan,kalender:vKal,beschluesse:vBesch,gremium:vGremium,uebergabe:vUebergabe,medien:vMedien,daten:vDaten};
+var RK;
 function render(top){
   var y=window.scrollY;
+  var rk=ui.view+'|'+(ui.sid||'')+'|'+(ui.psid||''),ap=$('#app');
+  if(RK!==undefined&&rk!==RK&&ap&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){ap.classList.remove('vin');void ap.offsetWidth;ap.classList.add('vin')}
+  RK=rk;
   $('#gname').textContent=S.settings.name||'';
   $('#navmount').innerHTML=nav();
   $('#app').innerHTML=pagehead()+banner()+(VIEWS[ui.view]||vUeber)();
@@ -3104,6 +3152,7 @@ var A={
   tmdel:function(d){if(!needConfirm('tmdel'+d.id))return 'skip';S.termine=S.termine.filter(function(x){return x.id!==d.id});ui.tmEdit=null;save();return true},
   calday:function(d){ui.calD=ui.calD===d.d?'':d.d;return true},
   nav:function(d){ui.view=d.v;ui.sid=null;ui.md=null;return true},
+  sidetog:function(){var sh=document.querySelector('.shell');if(!sh)return 'skip';var m=sh.classList.toggle('mini');try{localStorage.setItem(KEY+'-mini',m?'1':'0')}catch(e){}return 'skip'},
   open:function(d){ui.view='sitzungen';ui.sid=d.sid;ui.md=null;return true},
   back:function(){ui.sid=null;ui.md=null;return true},
   newsess:function(){
