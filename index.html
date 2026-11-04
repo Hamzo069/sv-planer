@@ -1210,7 +1210,7 @@ function bmMediaFill(){
 }
 
 /* ---- Beamer: Zoom, Laserpointer, Stift ---- */
-var VW={s:1,x:0,y:0},CUR=null,INK={},PTR={},PG=null,PAN=null,STR=null,IGN=false,LT=null,TAP={t:0,x:0,y:0},RAF=0;
+var VW={s:1,x:0,y:0},CUR=null,INK={},PTR={},PG=null,PAN=null,SW=null,STR=null,IGN=false,LT=null,TAP={t:0,x:0,y:0},RAF=0;
 var BMCOLS=['#e53935','#1e66f5','#2e9d4f','#ffd60a','#111111'];
 function bmClamp(){if(!CUR)return;var st=CUR.stage,W=st.clientWidth,H=st.clientHeight,w=CUR.w*VW.s,h=CUR.h*VW.s;
   VW.x=w<=W?(W-w)/2:Math.min(0,Math.max(W-w,VW.x));VW.y=h<=H?(H-h)/2:Math.min(0,Math.max(H-h,VW.y))}
@@ -1235,7 +1235,7 @@ function bmStageMount(host,el,key,w,h){
   el.removeAttribute('style');el.draggable=false;
   var q=Math.min(2,4096/Math.max(w,h));ink.width=Math.round(w*q);ink.height=Math.round(h*q);
   z.appendChild(el);z.appendChild(ink);st.appendChild(z);st.appendChild(la);host.appendChild(st);
-  CUR={key:key,stage:st,z:z,ink:ink,laser:la,w:w,h:h};VW={s:1,x:0,y:0};PTR={};PG=null;PAN=null;STR=null;IGN=false;
+  CUR={key:key,stage:st,z:z,ink:ink,laser:la,w:w,h:h};VW={s:1,x:0,y:0};PTR={};PG=null;PAN=null;SW=null;STR=null;IGN=false;
   bmApply();bmInkDraw();bmStageEvents(st);
 }
 function bmRel(e){var r=CUR.stage.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}}
@@ -1252,13 +1252,13 @@ function bmStageEvents(st){
     if(ids.length>=2){
       if(STR){var a=INK[CUR.key];if(a&&a[a.length-1]===STR)a.pop();STR=null;bmInkDraw()}
       bmLaser(p,false);var A=PTR[ids[0]],B=PTR[ids[1]];
-      PG={d:Math.hypot(A.x-B.x,A.y-B.y)||1,cx:(A.x+B.x)/2,cy:(A.y+B.y)/2,s:VW.s,x:VW.x,y:VW.y};IGN=true;PAN=null;return}
+      PG={d:Math.hypot(A.x-B.x,A.y-B.y)||1,cx:(A.x+B.x)/2,cy:(A.y+B.y)/2,s:VW.s,x:VW.x,y:VW.y};IGN=true;PAN=null;SW=null;return}
     if(IGN)return;
     var t=ui.bmTool||'hand';
     if(t==='hand'){
       var now=Date.now();
       if(now-TAP.t<320&&Math.hypot(p.x-TAP.x,p.y-TAP.y)<30){if(VW.s>1.05){VW.s=1;VW.x=0;VW.y=0;bmApply()}else bmZoomAt(2.5,p.x,p.y);TAP.t=0;return}
-      TAP={t:now,x:p.x,y:p.y};PAN={x:p.x,y:p.y,vx:VW.x,vy:VW.y};
+      TAP={t:now,x:p.x,y:p.y};PAN={x:p.x,y:p.y,vx:VW.x,vy:VW.y};SW=VW.s<=1.05?{x:p.x,y:p.y,t:now}:null;
     }else if(t==='laser'){bmLaser(p,true)}
     else{
       var mk=t==='marker';
@@ -1283,7 +1283,13 @@ function bmStageEvents(st){
   function up(e){
     if(!CUR||CUR.stage!==st)return;
     delete PTR[e.pointerId];
-    if(!Object.keys(PTR).length){IGN=false;PG=null;PAN=null;
+    if(!Object.keys(PTR).length){
+      /* Wischen = Seite wechseln (nur PDF, nur Hand-Werkzeug, nur unvergrößert, nur ein Finger) */
+      if(SW&&!IGN&&e.type==='pointerup'&&VW.s<=1.05&&(ui.bmTool||'hand')==='hand'){
+        var q=bmRel(e),dx=q.x-SW.x,dy=q.y-SW.y,dtm=Date.now()-SW.t,pm=MEDIA.find(function(m){return m.id===ui.bmMedia});
+        if(pm&&pm.type==='application/pdf'&&Math.abs(dx)>=60&&Math.abs(dx)>1.8*Math.abs(dy)&&dtm<900){TAP.t=0;A.bmpg({d:dx<0?1:-1})}
+      }
+      SW=null;IGN=false;PG=null;PAN=null;
       if(STR){STR=null;bmInkDraw()}
       if((ui.bmTool||'hand')==='laser'){clearTimeout(LT);LT=setTimeout(function(){if(CUR)bmLaser(null,false)},e.pointerType==='mouse'?60000:700)}
     }else if(Object.keys(PTR).length<2)PG=null;
