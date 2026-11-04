@@ -424,7 +424,7 @@ var STATUS=[['geplant','Geplant','neutral'],['eingeladen','Eingeladen','accent']
 var TYPEN=[['info','Information'],['diskussion','Diskussion'],['beschluss','Beschluss'],['wahl','Wahl'],['sonstiges','Sonstiges'],['ende','Sitzungsende']];
 var AV=[['ja','Anwesend'],['entsch','Entschuldigt'],['nein','Fehlt']];
 var RULES=[['gt50','Mehr als die Hälfte der Stimmberechtigten'],['ge50','Mindestens die Hälfte der Stimmberechtigten'],['ge66','Mindestens zwei Drittel der Stimmberechtigten']];
-var TABS=[['uebersicht','Übersicht'],['sitzungen','Sitzungen'],['anwesenheit','Anwesenheit'],['vorlagen','Vorlagen'],['aufgaben','Aufgaben'],['themen','Themen'],['projekte','Projekte'],['antraege','Anträge'],['umfragen','Umfragen'],['plan','Jahresplan'],['kalender','Kalender'],['beschluesse','Beschlüsse'],['gremium','Gremium'],['uebergabe','Übergabe'],['medien','Medien'],['daten','Daten']];
+var TABS=[['uebersicht','Übersicht'],['sitzungen','Sitzungen'],['anwesenheit','Anwesenheit'],['vorlagen','Vorlagen'],['aufgaben','Aufgaben'],['themen','Themen'],['projekte','Projekte'],['gruppen','Arbeitsgruppen'],['antraege','Anträge'],['umfragen','Umfragen'],['plan','Jahresplan'],['kalender','Kalender'],['beschluesse','Beschlüsse'],['gremium','Gremium'],['uebergabe','Übergabe'],['medien','Medien'],['daten','Daten']];
 var ART=[['tagesordnung','Tagesordnung'],['protokoll','Protokoll'],['einladung','Einladung'],['text','Sonstiges']];
 var PLATZ='{{gremium}} {{titel}} {{datum}} {{uhrzeit}} {{ort}} {{heute}} {{tagesordnung}} {{tops_notizen}} {{anwesenheit}} {{beschlussfaehigkeit}} {{beschluesse}} {{aufgaben}} {{notizen}}';
 
@@ -1558,6 +1558,55 @@ function vPlan(){
   return h+'</section></div>';
 }
 
+/* ---- Arbeitsgruppen ---- */
+var AGS=[['aktiv','Aktiv'],['geplant','Geplant'],['ruhend','Pausiert'],['beendet','Beendet']];
+var AGU=[['sr','Schülerrat'],['vs','Vorstand'],['sl','Schulleitung']];
+function agById(id){return S.gruppen.find(function(g){return g.id===id})}
+function agMem(id){var m=id&&mem(id);return m?(m.name||'Ohne Namen'):''}
+function agUnter(g){var u=AGU.find(function(x){return x[0]===g.unter});if(u)return u[1];var p=agById(g.unter);return p?(p.name||'Ohne Namen'):'Schülerrat'}
+function agDesc(g,id){var c=S.gruppen.filter(function(x){return x.unter===id});var o=[];c.forEach(function(x){o.push(x.id);o=o.concat(agDesc(x,x.id))});return o}
+function agTree(key,lvl){
+  var kids=S.gruppen.filter(function(g){return g.unter===key}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'','de')});
+  return kids.map(function(g){
+    var cls=g.status==='aktiv'?'good':g.status==='geplant'?'warn':'';
+    return '<div style="margin-left:'+(lvl*22)+'px;padding:6px 0;border-left:2px solid var(--line,#dfe2f0);padding-left:10px;margin-bottom:2px"><button type="button" class="linkbtn" data-act="agopen" data-id="'+g.id+'" style="font-weight:600;background:none;border:0;padding:0;color:inherit;cursor:pointer;text-align:left">'+(esc(g.name)||'Ohne Namen')+'</button> <span class="pill '+cls+'">'+(AGS.find(function(x){return x[0]===g.status})||AGS[0])[1]+'</span><span class="meta"> · Leitung: '+(esc(agMem(g.leitung))||'<em>offen</em>')+'</span></div>'+agTree(g.id,lvl+1);
+  }).join('');
+}
+function vGruppen(){
+  var rank={aktiv:0,geplant:1,ruhend:2,beendet:3};
+  var list=S.gruppen.slice().sort(function(a,b){return (rank[a.status]-rank[b.status])||(a.name||'').localeCompare(b.name||'','de')});
+  var h='<div class="stack"><section class="card"><div class="vh"><h2>Arbeitsgruppen</h2><button type="button" class="btn primary" data-act="addag">+ Arbeitsgruppe</button></div><p class="meta">Lege Arbeitsgruppen mit Auftrag, Leitung und Mitgliedern an und halte fest, wem sie unterstehen. Eine Arbeitsgruppe kann dem Schülerrat, dem Vorstand, der Schulleitung oder einer anderen Arbeitsgruppe unterstehen.</p></section>';
+  if(!list.length)return h+'<section class="card"><p class="empty">Noch keine Arbeitsgruppe.</p></section></div>';
+  var tr=AGU.map(function(u){var t=agTree(u[0],0);return t?'<div style="margin-bottom:10px"><div class="meta" style="font-weight:600;margin-bottom:4px">'+u[1]+'</div>'+t+'</div>':''}).join('');
+  if(tr)h+='<section class="card"><h3 style="margin-bottom:8px">Struktur</h3>'+tr+'</section>';
+  list.forEach(function(g){
+    var open=ui.ag===g.id,c='data-ag="'+g.id+'"';
+    var cls=g.status==='aktiv'?'good':g.status==='geplant'?'warn':'';
+    var act=S.members.filter(function(m){return m.aktiv||g.ids.indexOf(m.id)>=0||m.id===g.leitung||m.id===g.stv});
+    var mo=function(cur){return '<option value="">– offen –</option>'+act.map(function(m){return '<option value="'+m.id+'"'+(m.id===cur?' selected':'')+'>'+esc(m.name||'Ohne Namen')+'</option>'}).join('')};
+    var blocked=agDesc(g,g.id).concat([g.id]);
+    var uo=AGU.map(function(u){return [u[0],u[1]]}).concat(S.gruppen.filter(function(x){return blocked.indexOf(x.id)<0}).map(function(x){return [x.id,'AG '+(x.name||'Ohne Namen')]}));
+    h+='<section class="card"><div class="frow"><div class="grow"><strong>'+(esc(g.name)||'<em>Ohne Namen</em>')+'</strong> <span class="pill '+cls+'">'+(AGS.find(function(x){return x[0]===g.status})||AGS[0])[1]+'</span>'+((!g.leitung&&g.status==='aktiv')?' <span class="pill warn">Leitung fehlt</span>':'')+
+      '<div class="meta">Leitung: '+(esc(agMem(g.leitung))||'offen')+(g.stv?' · Stellvertretung: '+esc(agMem(g.stv)):'')+' · untersteht: '+esc(agUnter(g))+' · '+g.ids.length+' Mitglieder</div></div>'+
+      '<button type="button" class="btn sm" data-act="agopen" data-id="'+g.id+'">'+(open?'Schließen':'Öffnen')+'</button></div>';
+    if(open){
+      h+='<div class="g2" style="margin-top:12px"><div><label class="lbl" for="agn-'+g.id+'">Name</label><input type="text" id="agn-'+g.id+'" '+c+' data-f="name" value="'+esc(g.name)+'"></div>'+
+        '<div><label class="lbl" for="ags-'+g.id+'">Status</label><select id="ags-'+g.id+'" '+c+' data-f="status" data-rr="1">'+opts(AGS,g.status)+'</select></div>'+
+        '<div><label class="lbl" for="agl-'+g.id+'">Verantwortlich (Leitung)</label><select id="agl-'+g.id+'" '+c+' data-f="leitung" data-rr="1">'+mo(g.leitung)+'</select></div>'+
+        '<div><label class="lbl" for="agv-'+g.id+'">Stellvertretung</label><select id="agv-'+g.id+'" '+c+' data-f="stv" data-rr="1">'+mo(g.stv)+'</select></div>'+
+        '<div><label class="lbl" for="agu-'+g.id+'">Untersteht</label><select id="agu-'+g.id+'" '+c+' data-f="unter" data-rr="1">'+opts(uo,g.unter)+'</select></div>'+
+        '<div><label class="lbl" for="agb-'+g.id+'">Berichtet an den Schülerrat</label><input type="text" id="agb-'+g.id+'" '+c+' data-f="bericht" value="'+esc(g.bericht)+'" placeholder="z. B. in jeder Sitzung"></div></div>'+
+        '<label class="lbl" for="aga-'+g.id+'" style="margin-top:12px">Auftrag</label><textarea class="box" id="aga-'+g.id+'" '+c+' data-f="auftrag" style="min-height:80px">'+esc(g.auftrag)+'</textarea>'+
+        '<h3 style="margin:16px 0 6px">Mitglieder</h3><div class="frow" style="flex-wrap:wrap">'+
+        S.members.filter(function(m){return m.aktiv||g.ids.indexOf(m.id)>=0}).map(function(m){return '<label class="frow meta" style="gap:6px"><input type="checkbox" data-act="agmem" data-id="'+g.id+'" data-m2="'+m.id+'"'+(g.ids.indexOf(m.id)>=0?' checked':'')+'>'+esc(m.name||'Ohne Namen')+'</label>'}).join('')+'</div>'+
+        '<label class="lbl" for="agt-'+g.id+'" style="margin-top:12px">Notizen</label><textarea class="box" id="agt-'+g.id+'" '+c+' data-f="notiz" style="min-height:70px">'+esc(g.notiz)+'</textarea>'+
+        '<div class="frow" style="margin-top:16px">'+cbtn('delag'+g.id,'Arbeitsgruppe löschen','data-act="delag" data-id="'+g.id+'"')+'</div>';
+    }
+    h+='</section>';
+  });
+  return h+'</div>';
+}
+
 /* ---- Anträge ---- */
 var ANS=[['entwurf','Entwurf'],['eingereicht','Eingereicht'],['genehmigt','Genehmigt'],['abgelehnt','Abgelehnt'],['umgesetzt','Umgesetzt']];
 function ansPill(st){var c={eingereicht:'warn',genehmigt:'good',abgelehnt:'bad',umgesetzt:'accent'}[st]||'';return '<span class="pill '+c+'">'+(ANS.find(function(x){return x[0]===st})||ANS[0])[1]+'</span>'}
@@ -2126,9 +2175,9 @@ function seed(){
           {id:uid(),titel:'Verschiedenes',min:10,typ:'info',notiz:''}],
     anw:a2,beschluesse:[],aufgaben:[],protokoll:''};
   var later={id:uid(),bsp:true,titel:'SV-Sitzung (Beispiel)',datum:at(34,18,0),ort:'',status:'geplant',tops:topsTpl(),anw:{},beschluesse:[],aufgaben:[],protokoll:''};
-  return {settings:setDef('SV Musterschule'),members:[m0,m1,m2,m3,m4,vl],sessions:[past,next,later],vorlagen:defaultVorlagen(),termine:[],projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],go:goDef(),berichte:{},uebergabe:{},v2:true,examples:true};
+  return {settings:setDef('SV Musterschule'),members:[m0,m1,m2,m3,m4,vl],sessions:[past,next,later],vorlagen:defaultVorlagen(),termine:[],projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],go:goDef(),berichte:{},uebergabe:{},gruppen:[],v2:true,examples:true};
 }
-function blank(){return {settings:setDef('SV'),members:[],sessions:[],vorlagen:defaultVorlagen(),projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],termine:[],go:goDef(),berichte:{},uebergabe:{},v2:true,examples:false}}
+function blank(){return {settings:setDef('SV'),members:[],sessions:[],vorlagen:defaultVorlagen(),projekte:[],verteiler:[],antraege:[],umfragen:[],themen:[],termine:[],go:goDef(),berichte:{},uebergabe:{},gruppen:[],v2:true,examples:false}}
 function norm(o){
   if(!o||!Array.isArray(o.sessions)||!Array.isArray(o.members))return null;
   o.settings=Object.assign(setDef('SV'),o.settings||{});
@@ -2144,7 +2193,7 @@ function norm(o){
   o.termine.forEach(function(t){t.id=t.id||uid();['titel','art','datum','von','bis','ort','notiz','wdh','wbis'].forEach(function(k){t[k]=t[k]||''})});
   o.projekte=Array.isArray(o.projekte)?o.projekte:[];o.verteiler=Array.isArray(o.verteiler)?o.verteiler:[];
   o.projekte.forEach(function(p){p.id=p.id||uid();p.name=p.name||'';p.ziel=p.ziel||'';p.termin=p.termin||'';p.status=p.status||'idee';p.lead=p.lead||'';p.notiz=p.notiz||'';p.sess=Array.isArray(p.sess)?p.sess:[];p.aufg=Array.isArray(p.aufg)?p.aufg:[];p.aufg.forEach(function(a){a.id=a.id||uid();a.text=a.text||'';a.wer=a.wer||'';a.frist=a.frist||'';a.done=!!a.done})});
-  o.antraege=Array.isArray(o.antraege)?o.antraege:[];o.berichte=(o.berichte&&typeof o.berichte==='object')?o.berichte:{};o.uebergabe=(o.uebergabe&&typeof o.uebergabe==='object')?o.uebergabe:{};
+  o.antraege=Array.isArray(o.antraege)?o.antraege:[];o.berichte=(o.berichte&&typeof o.berichte==='object')?o.berichte:{};o.uebergabe=(o.uebergabe&&typeof o.uebergabe==='object')?o.uebergabe:{};o.gruppen=Array.isArray(o.gruppen)?o.gruppen:[];o.gruppen.forEach(function(g){g.id=g.id||uid();['name','auftrag','leitung','stv','unter','bericht','notiz'].forEach(function(k){g[k]=g[k]||''});g.status=g.status||'aktiv';g.unter=g.unter||'sr';g.ids=Array.isArray(g.ids)?g.ids:[]});
   o.antraege.forEach(function(a){a.id=a.id||uid();['titel','empf','datum','text','begr','bez','ein','frist','antw','antwt'].forEach(function(k){a[k]=a[k]||''});a.status=a.status||'entwurf'});
   var gv=o.go&&o.go.v;o.go=Object.assign(goDef(),(o.go&&typeof o.go==='object')?o.go:{});o.go.ladung=Math.max(0,+o.go.ladung||0);o.go.protfrist=Math.max(0,+o.go.protfrist||0);
   if(!gv){o.go.v=2;if(!o.go.text)o.go.text=GO_TEXT;if(o.go.protfrist===14)o.go.protfrist=0;o.go.ladung=7;o.settings.quorumRule='ge50'}
@@ -2166,7 +2215,7 @@ var S=load();
 if(!S){S=seed();save()}
 var tab='uebersicht';
 try{var t0=localStorage.getItem(KEY+'-tab');if(t0&&TABS.some(function(t){return t[0]===t0}))tab=t0}catch(e){}
-var ui={view:tab,sid:null,sj:'alle',q:'',who:'',confirm:null,md:null,json:false,pending:null,gen:null,psid:'',tsid:'',nsid:'',asj:'',afilter:'',ainact:false,bnid:'',thsel:'',uopen:'',psj:'',bsj:'',aopen:'',asel:'',astat:'',pj:'',pjsel:'',wsid:'',wtop:'',asid:'',vtab:'0',vedit:null,apSid:''};
+var ui={view:tab,sid:null,sj:'alle',q:'',who:'',confirm:null,md:null,json:false,pending:null,gen:null,psid:'',tsid:'',nsid:'',asj:'',afilter:'',ainact:false,bnid:'',thsel:'',uopen:'',psj:'',bsj:'',aopen:'',asel:'',astat:'',pj:'',pjsel:'',ag:'',wsid:'',wtop:'',asid:'',vtab:'0',vedit:null,apSid:''};
 
 function sess(id){return S.sessions.find(function(s){return s.id===id})}
 function mem(id){return S.members.find(function(m){return m.id===id})}
@@ -2218,6 +2267,7 @@ var NAVICO={
   aufgaben:'<path d="M4 7l2 2 3-3M4 17l2 2 3-3M12 8h8M12 18h8"/>',
   themen:'<path d="M5 5h14v11H10l-5 4z"/>',
   beschluesse:'<path d="M12 4v16M6 20h12M5 8h14M5 8l-3 7a3 3 0 0 0 6 0zM19 8l-3 7a3 3 0 0 0 6 0z"/>',
+  gruppen:'<circle cx="12" cy="5" r="2.2"/><circle cx="5.5" cy="19" r="2.2"/><circle cx="18.5" cy="19" r="2.2"/><path d="M12 7.2v4.3M12 11.5H5.5v5.3M12 11.5h6.5v5.3"/>',
   projekte:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
   antraege:'<path d="M3 11l18-8-8 18-2-8z"/>',
   umfragen:'<path d="M5 20V10M12 20V4M19 20v-7"/>',
@@ -2228,7 +2278,7 @@ var NAVICO={
   medien:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/>',
   daten:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>'
 };
-var NAVG=[['',['uebersicht']],['Sitzungsarbeit',['sitzungen','anwesenheit','vorlagen','aufgaben','themen','beschluesse']],['Planung',['projekte','antraege','umfragen','plan','kalender']],['Verwaltung',['gremium','uebergabe','medien','daten']]];
+var NAVG=[['',['uebersicht']],['Sitzungsarbeit',['sitzungen','anwesenheit','vorlagen','aufgaben','themen','beschluesse']],['Planung',['projekte','gruppen','antraege','umfragen','plan','kalender']],['Verwaltung',['gremium','uebergabe','medien','daten']]];
 function pageTitle(){var t=TABS.find(function(x){return x[0]===ui.view});return t?t[1]:(ui.view==='live'?'Live-Sitzung':'')}
 function pagehead(){var t=pageTitle();return '<div class="pagehead"><h1>'+esc(t)+'</h1><span class="meta">'+esc(langDatum(today()+'T00:00'))+'</span></div>'}
 function nav(){
@@ -2658,7 +2708,7 @@ function vDaten(){
 }
 
 /* ---------- Rendern ---------- */
-var VIEWS={uebersicht:vUeber,sitzungen:vSitz,vorlagen:vVorl,aufgaben:vAufg,live:vLive,anwesenheit:vAnwes,themen:vThemen,projekte:vProj,antraege:vAnt,umfragen:vUmf,plan:vPlan,kalender:vKal,beschluesse:vBesch,gremium:vGremium,uebergabe:vUebergabe,medien:vMedien,daten:vDaten};
+var VIEWS={uebersicht:vUeber,sitzungen:vSitz,vorlagen:vVorl,aufgaben:vAufg,live:vLive,anwesenheit:vAnwes,themen:vThemen,projekte:vProj,antraege:vAnt,gruppen:vGruppen,umfragen:vUmf,plan:vPlan,kalender:vKal,beschluesse:vBesch,gremium:vGremium,uebergabe:vUebergabe,medien:vMedien,daten:vDaten};
 function render(top){
   var y=window.scrollY;
   $('#gname').textContent=S.settings.name||'';
@@ -3151,6 +3201,10 @@ var A={
   ubreset:function(){var u=UB();Object.keys(u).forEach(function(k){if(/^c\d+$/.test(k))delete u[k]});save()},
   bhtml:function(){copyText(docFile(berichtHTML(ensureSj('bsj'),false),'Jahresbericht'),'#none');return 'skip'},
   addpj:function(){var p={id:uid(),name:'Neues Projekt',ziel:'',termin:'',status:'idee',lead:'',notiz:'',sess:[],aufg:[]};S.projekte.push(p);ui.pj=p.id;save()},
+  addag:function(){var g={id:uid(),name:'Neue Arbeitsgruppe',auftrag:'',leitung:'',stv:'',unter:'sr',bericht:'',notiz:'',status:'geplant',ids:[]};S.gruppen.push(g);ui.ag=g.id;save()},
+  agopen:function(d){ui.ag=ui.ag===d.id?'':d.id},
+  agmem:function(d){var g=agById(d.id);if(!g)return 'skip';var i=g.ids.indexOf(d.m2);if(i<0)g.ids.push(d.m2);else g.ids.splice(i,1);save()},
+  delag:function(d){if(!needConfirm('delag'+d.id))return 'skip';S.gruppen=S.gruppen.filter(function(g){return g.id!==d.id});S.gruppen.forEach(function(g){if(g.unter===d.id)g.unter='sr'});ui.ag='';save()},
   delpj:function(d){if(!needConfirm('delpj'+d.id))return 'skip';S.projekte=S.projekte.filter(function(p){return p.id!==d.id});ui.pj='';save()},
   pjopen:function(d){ui.pj=ui.pj===d.id?'':d.id},
   pjlink:function(d){var p=pjById(d.id);if(p&&ui.pjsel&&p.sess.indexOf(ui.pjsel)<0){p.sess.push(ui.pjsel);save()}},
@@ -3272,6 +3326,7 @@ function setField(el){
   else if(d.uf){o=S.umfragen.find(function(x){return x.id===d.uf});if(o&&d.coll)o=o[d.coll].find(function(x){return x.id===d.id})}
   else if(d.ant)o=S.antraege.find(function(x){return x.id===d.ant});
   else if(d.tm)o=S.termine.find(function(x){return x.id===d.tm});
+  else if(d.ag){o=S.gruppen.find(function(x){return x.id===d.ag})}
   else if(d.ub){o=UB()}
   else if(d.bj){o=S.berichte[d.bj]=S.berichte[d.bj]||{einl:'',fazit:''}}
   else if(d.s)o=S.settings;
@@ -3291,7 +3346,7 @@ document.addEventListener('input',function(e){
   if(d.bmtext!==undefined){ui.bmText=t.value;var bt=$('#bm-text');if(bt)bt.textContent=t.value;if(ui.bm)bmArm();return}
   if(d.az!==undefined){azSet(d.az,t.value);azRefresh();return}
   if(d.rr)return;
-  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.ub||d.go||d.uf||d.th||d.tm){setField(t);refreshDerived();if(/^wz/.test(d.s||'')){var wze=$('#wzsheet');if(wze)wze.innerHTML=wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>'}if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
+  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.ub||d.ag||d.go||d.uf||d.th||d.tm){setField(t);refreshDerived();if(/^wz/.test(d.s||'')){var wze=$('#wzsheet');if(wze)wze.innerHTML=wzHTML()||'<p class="empty">Trage mindestens eine Kandidatin oder einen Kandidaten ein.</p>'}if(d.s==='tlRows'){var ts=sess(ui.tsid),sh=$('#tlsheet');if(ts&&sh)sh.innerHTML=tlHTML(ts,true)}}
 });
 document.addEventListener('change',function(e){
   var t=e.target,d=t.dataset;
@@ -3299,7 +3354,7 @@ document.addEventListener('change',function(e){
   if(d.gensel){ui.gen[d.gensel]=t.value;regen();render();return}
   if(t.id==='mfile'){mediaAdd(t.files);try{t.value=''}catch(e){}return}
   if(t.id==='impfile'){readImport(t.files&&t.files[0]);return}
-  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.ub||d.go||d.uf||d.th||d.tm){setField(t);if(d.rr)render();else refreshDerived()}
+  if(d.sid||d.m||d.s||d.tp||d.pj||d.vt||d.ant||d.bj||d.ub||d.ag||d.go||d.uf||d.th||d.tm){setField(t);if(d.rr)render();else refreshDerived()}
 });
 
 render();
