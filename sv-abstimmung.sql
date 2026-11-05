@@ -221,3 +221,96 @@ grant execute on function public.get_poll(text)                    to anon, auth
 grant execute on function public.cast_vote(text, text, text, text) to anon, authenticated;
 grant execute on function public.cast_answers(text, text, text, jsonb) to anon, authenticated;
 grant execute on function public.poll_results(text)                to authenticated;
+
+-- 4) Anliegen-Box (anonyme Anliegen der Schülerschaft) ------------------------
+-- Besucher können nur über submit_concern etwas einreichen. Lesen, Bearbeiten und
+-- Löschen dürfen nur die angemeldeten Konten (im Planer unter "Themen").
+
+create table if not exists public.concern_box (
+  id    text primary key default 'main' check (id = 'main'),
+  offen boolean not null default false,
+  intro text check (intro is null or char_length(intro) <= 300)
+);
+insert into public.concern_box (id, offen) values ('main', false) on conflict do nothing;
+
+create table if not exists public.concerns (
+  id         bigint generated always as identity primary key,
+  kat        text not null,
+  text       text not null check (char_length(text) between 5 and 600),
+  token      text not null,                      -- zufällige Gerätekennung nur gegen Missbrauch, nie ein Name
+  status     text not null default 'neu' check (status in ('neu','uebernommen','erledigt','verworfen')),
+  created_at timestamptz not null default now()
+);
+create index if not exists concerns_status on public.concerns (status, created_at desc);
+
+-- Eigene Art (frei beschrieben): neue Spalte und erweiterte Prüfung (gefahrlos wiederholbar)
+alter table public.concerns add column if not exists kat_text text;
+alter table public.concerns drop constraint if exists concerns_kat_check;
+alter table public.concerns add constraint concerns_kat_check
+  check (kat in ('unterricht','raeume','organisation','veranstaltung','sonstiges','frei'));
+alter table public.concerns drop constraint if exists concerns_kat_text_check;
+alter table public.concerns add constraint concerns_kat_text_check
+  check ((kat = 'frei' and kat_text is not null and char_length(kat_text) between 2 and 40) or (kat <> 'frei' and kat_text is null));
+
+alter table public.concern_box enable row level security;
+alter table public.concerns    enable row level security;
+
+drop policy if exists "concern_box_auth_all" on public.concern_box;
+create policy "concern_box_auth_all" on public.concern_box
+  for all to authenticated using (true) with check (true);
+drop policy if exists "concerns_auth_all" on public.concerns;
+create policy "concerns_auth_all" on public.concerns
+  for all to authenticated using (true) with check (true);
+
+revoke all on public.concern_box, public.concerns from anon;
+grant select, insert, update, delete on public.concern_box to authenticated;
+grant select, update, delete         on public.concerns    to authenticated;
+
+-- Zustand der Box für die Einreichungsseite (offen/zu, Begrüßungstext)
+create or replace function public.get_concern_box()
+returns json
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select json_build_object('offen', offen, 'intro', intro) from public.concern_box where id = 'main';
+$$;
+
+-- Anliegen einreichen (anonym). Rückgabe: ok | geschlossen | token | kat | text | limit
+-- Bei p_kat = 'frei' beschreibt p_kat_text die Art selbst (2 bis 40 Zeichen).
+drop function if exists public.submit_concern(text, text, text);
+create or replace function public.submit_concern(p_kat text, p_text text, p_token text, p_kat_text text default null)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  t text;
+  kt text;
+  tok text;
+begin
+  if not coalesce((select offen from public.concern_box where id = 'main'), false) then return 'geschlossen'; end if;
+  if p_token is null or length(p_token) < 16 or length(p_token) > 64 then return 'token'; end if;
+  if p_kat is null or p_kat not in ('unterricht','raeume','organisation','veranstaltung','sonstiges','frei') then return 'kat'; end if;
+  kt := null;
+  if p_kat = 'frei' then
+    kt := trim(coalesce(p_kat_text, ''));
+    if char_length(kt) < 2 or char_length(kt) > 40 then return 'kat'; end if;
+  end if;
+  t := trim(coalesce(p_text, ''));
+  if char_length(t) < 5 or char_length(t) > 600 then return 'text'; end if;
+  tok := 'd:' || p_token;
+  -- Missbrauchsschutz: höchstens 5 pro Gerät und Tag, höchstens 300 pro Stunde insgesamt
+  if (select count(*) from public.concerns where token = tok and created_at > now() - interval '1 day') >= 5 then return 'limit'; end if;
+  if (select count(*) from public.concerns where created_at > now() - interval '1 hour') >= 300 then return 'limit'; end if;
+  insert into public.concerns (kat, kat_text, text, token) values (p_kat, kt, t, tok);
+  return 'ok';
+end;
+$$;
+
+revoke all on function public.get_concern_box()                  from public;
+revoke all on function public.submit_concern(text, text, text, text) from public;
+grant execute on function public.get_concern_box()                to anon, authenticated;
+grant execute on function public.submit_concern(text, text, text, text) to anon, authenticated;

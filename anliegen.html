@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0E6B58">
+<title>Anliegen an die SV</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#14201c;--ink2:#52605a;--line:#d5ddd9;--brand:#0E6B58;--brandink:#fff;--bad:#a12d2d;--good:#14663f;--sel:#e3f1ec}
+@media (prefers-color-scheme:dark){:root{--bg:#101614;--surface:#18201d;--ink:#e8efec;--ink2:#a2b0aa;--line:#2c3834;--brand:#46b296;--brandink:#06251c;--bad:#ff9a9a;--good:#7fe0ae;--sel:#1f3029}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}
+main{max-width:34rem;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px}
+h1{font-size:1.25rem;line-height:1.35;margin:0 0 4px}
+.meta{color:var(--ink2);font-size:.92rem;margin:0 0 16px}
+fieldset{border:0;margin:0 0 16px;padding:0}
+legend{font-weight:600;margin:0 0 8px;padding:0}
+.cats{display:flex;flex-wrap:wrap;gap:8px}
+.cat{position:relative}
+.cat input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.cat span{display:block;padding:10px 14px;border:1.5px solid var(--line);border-radius:99px;font-weight:600;min-height:44px;line-height:1.7}
+.cat input:checked+span{border-color:var(--brand);background:var(--sel)}
+#kfw{display:none;margin-top:12px}#kfw.on{display:block}
+input[type=text]{width:100%;font:inherit;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+.cat input:focus-visible+span{outline:3px solid var(--brand);outline-offset:2px}
+label.l{display:block;font-weight:600;margin:0 0 6px}
+textarea{width:100%;font:inherit;padding:12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);resize:vertical;min-height:140px}
+.cnt{color:var(--ink2);font-size:.8rem;text-align:right;margin-top:4px}
+button{width:100%;margin-top:16px;font:inherit;font-weight:600;padding:14px;border:0;border-radius:12px;background:var(--brand);color:var(--brandink);cursor:pointer;min-height:52px}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.msg{padding:14px;border-radius:12px;border:1.5px solid var(--line);margin-top:14px}
+.msg.bad{border-color:var(--bad);color:var(--bad)}
+.msg.good{border-color:var(--good);color:var(--good)}
+.hint{color:var(--ink2);font-size:.85rem;margin-top:16px}
+</style>
+</head>
+<body>
+<main>
+  <div class="card" id="box" aria-live="polite"><p class="meta">Wird geladen …</p></div>
+  <p class="hint">Dein Anliegen ist anonym: Gespeichert werden nur der Text, die Art und eine zufällige Gerätekennung gegen Missbrauch, kein Name. Schreibe bitte keine Namen von Personen hinein. Die SV liest die Anliegen und bespricht sie in ihren Sitzungen. Einzelne Antworten gibt es nicht.</p>
+</main>
+<script>
+window.SV_CLOUD={url:'https://nrtpytnvbeosvuztmsgm.supabase.co',key:'sb_publishable_oU-geWGpwIOLAtoeGthfkA_Z9zs8P_U'};
+(function(){
+'use strict';
+var box=document.getElementById('box');
+var API=(window.SV_CLOUD||{}).url,KEY=(window.SV_CLOUD||{}).key;
+var KATS=[['unterricht','Unterricht'],['raeume','Räume & Technik'],['organisation','Organisation'],['veranstaltung','Veranstaltungen'],['sonstiges','Sonstiges'],['frei','Etwas anderes …']];
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function st(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+function rpc(fn,body){
+  return fetch(API+'/rest/v1/rpc/'+fn,{method:'POST',headers:{'apikey':KEY,'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){if(!r.ok)throw new Error('http '+r.status);return r.json()});
+}
+function tok(){
+  var t=st('sv-anl-token');
+  if(!t||t.length<16){
+    var a=new Uint8Array(16);try{crypto.getRandomValues(a)}catch(e){for(var i=0;i<16;i++)a[i]=Math.floor(Math.random()*256)}
+    t=Array.prototype.map.call(a,function(x){return ('0'+x.toString(16)).slice(-2)}).join('');
+    st('sv-anl-token',t);
+  }
+  return t;
+}
+function info(title,text,cls){box.innerHTML='<h1>'+esc(title)+'</h1>'+(text?'<div class="msg'+(cls?' '+cls:'')+'">'+esc(text)+'</div>':'')}
+if(!API||!KEY){info('Link ungültig','Bitte öffne den Link oder den QR-Code noch einmal.','bad');return}
+rpc('get_concern_box',{}).then(function(b){
+  if(!b||!b.offen){info('Anliegen an die SV','Die Anliegen-Box ist gerade nicht geöffnet. Bitte versuche es später noch einmal.');return}
+  var h='<h1>Anliegen an die SV</h1><p class="meta">'+esc(b.intro||'Was soll sich ändern, was fällt dir auf, was wünschst du dir? Schreibe es hier kurz auf.')+'</p><form id="f" novalidate><fieldset><legend>Worum geht es?</legend><div class="cats">';
+  KATS.forEach(function(k,i){h+='<label class="cat"><input type="radio" name="k" value="'+k[0]+'"'+(i===0?' required':'')+'><span>'+esc(k[1])+'</span></label>'});
+  h+='</div><div id="kfw"><label class="l" for="kf">Beschreibe die Art kurz</label><input type="text" id="kf" maxlength="40" autocomplete="off" placeholder="z. B. Mensa-Preise"></div></fieldset><label class="l" for="t">Dein Anliegen</label><textarea id="t" maxlength="600" aria-describedby="cnt"></textarea><div class="cnt" id="cnt">0 / 600</div>'+
+     '<button type="submit" id="go">Absenden</button><div id="m" role="alert"></div></form>';
+  box.innerHTML=h;
+  var f=document.getElementById('f'),m=document.getElementById('m'),go=document.getElementById('go'),t=document.getElementById('t'),cnt=document.getElementById('cnt');
+  t.addEventListener('input',function(){cnt.textContent=t.value.length+' / 600'});
+  var kfw=document.getElementById('kfw'),kf=document.getElementById('kf');
+  f.addEventListener('change',function(e){if(e.target.name==='k'){kfw.className=e.target.value==='frei'?'on':'';if(e.target.value==='frei')kf.focus()}});
+  function err(x){m.className='msg bad';m.textContent=x}
+  f.addEventListener('submit',function(e){
+    e.preventDefault();m.className='';m.textContent='';
+    var k=f.querySelector('input[name=k]:checked'),txt=(t.value||'').trim();
+    if(!k){err('Bitte wähle, worum es geht.');return}
+    var kt=(kf.value||'').trim();
+    if(k.value==='frei'&&kt.length<2){err('Bitte beschreibe die Art kurz (mindestens 2 Zeichen).');return}
+    if(txt.length<5){err('Bitte schreibe dein Anliegen auf (mindestens 5 Zeichen).');return}
+    go.disabled=true;
+    rpc('submit_concern',{p_kat:k.value,p_text:txt.slice(0,600),p_token:tok(),p_kat_text:k.value==='frei'?kt.slice(0,40):null}).then(function(r){
+      go.disabled=false;
+      if(r==='ok'){info('Danke, dein Anliegen ist angekommen.','Die SV bespricht es in einer ihrer nächsten Sitzungen. Du kannst dieses Fenster jetzt schließen.','good')}
+      else if(r==='geschlossen')info('Anliegen an die SV','Die Anliegen-Box ist inzwischen geschlossen.');
+      else if(r==='limit')err('Von diesem Gerät sind heute schon mehrere Anliegen eingegangen. Bitte versuche es morgen noch einmal.');
+      else if(r==='text')err('Bitte schreibe zwischen 5 und 600 Zeichen.');
+      else if(r==='kat')err('Bitte wähle eine Art oder beschreibe sie kurz (2 bis 40 Zeichen).');
+      else err('Das Anliegen konnte nicht gesendet werden. Bitte versuche es noch einmal.');
+    },function(){go.disabled=false;err('Keine Verbindung. Bitte versuche es noch einmal.')});
+  });
+},function(){info('Keine Verbindung','Die Seite konnte nicht geladen werden. Bitte versuche es später noch einmal.','bad')});
+})();
+</script>
+</body>
+</html>
